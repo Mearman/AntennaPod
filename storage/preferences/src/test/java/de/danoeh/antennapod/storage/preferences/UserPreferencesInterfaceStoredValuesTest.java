@@ -47,14 +47,20 @@ public class UserPreferencesInterfaceStoredValuesTest extends StoredPreferencesT
     }
 
     @Test
-    public void blackThemeAndTintedColorsReadTheFlagsWrittenBySettings() {
+    public void blackThemeReadsTheFlagWrittenBySettings() {
         assertFalse(UserPreferences.getIsBlackTheme());
-        assertFalse(UserPreferences.getIsThemeColorTinted());
 
-        stored.edit().putBoolean(UserPreferences.PREF_THEME_BLACK, true)
-                .putBoolean(UserPreferences.PREF_TINTED_COLORS, true).commit();
+        stored.edit().putBoolean(UserPreferences.PREF_THEME_BLACK, true).commit();
 
         assertTrue(UserPreferences.getIsBlackTheme());
+    }
+
+    @Test
+    public void tintedColorsReadTheFlagWrittenBySettings() {
+        assertFalse(UserPreferences.getIsThemeColorTinted());
+
+        stored.edit().putBoolean(UserPreferences.PREF_TINTED_COLORS, true).commit();
+
         assertTrue(UserPreferences.getIsThemeColorTinted());
     }
 
@@ -149,14 +155,20 @@ public class UserPreferencesInterfaceStoredValuesTest extends StoredPreferencesT
     }
 
     @Test
-    public void episodeCoverIsUsedByDefaultAndRemainingTimeIsOptIn() {
+    public void episodeCoverIsUsedByDefaultUntilTheStoredFlagTurnsItOff() {
         assertTrue(UserPreferences.getUseEpisodeCoverSetting());
-        assertFalse(UserPreferences.shouldShowRemainingTime());
 
         stored.edit().putBoolean(UserPreferences.PREF_USE_EPISODE_COVER, false).commit();
-        UserPreferences.setShowRemainTimeSetting(true);
 
         assertFalse(UserPreferences.getUseEpisodeCoverSetting());
+    }
+
+    @Test
+    public void remainingTimeIsOptInAndStoredUnderTheTimeLeftKey() {
+        assertFalse(UserPreferences.shouldShowRemainingTime());
+
+        UserPreferences.setShowRemainTimeSetting(true);
+
         assertTrue(UserPreferences.shouldShowRemainingTime());
         assertTrue(stored.getBoolean(UserPreferences.PREF_SHOW_TIME_LEFT, false));
     }
@@ -173,30 +185,52 @@ public class UserPreferencesInterfaceStoredValuesTest extends StoredPreferencesT
     }
 
     @Test
-    public void notificationPriorityAndPersistenceFollowTheStoredFlags() {
+    public void expandedNotificationRaisesTheNotificationPriority() {
         assertEquals(NotificationCompat.PRIORITY_DEFAULT, UserPreferences.getNotifyPriority());
-        assertTrue(UserPreferences.isPersistNotify());
-        assertTrue(UserPreferences.getShowDownloadReportRaw());
 
-        stored.edit().putBoolean(UserPreferences.PREF_EXPANDED_NOTIFICATION, true)
-                .putBoolean(UserPreferences.PREF_PERSISTENT_NOTIFICATION, false).commit();
+        stored.edit().putBoolean(UserPreferences.PREF_EXPANDED_NOTIFICATION, true).commit();
 
         assertEquals(NotificationCompat.PRIORITY_MAX, UserPreferences.getNotifyPriority());
+    }
+
+    @Test
+    public void persistentNotificationIsOnUntilTheStoredFlagTurnsItOff() {
+        assertTrue(UserPreferences.isPersistNotify());
+
+        stored.edit().putBoolean(UserPreferences.PREF_PERSISTENT_NOTIFICATION, false).commit();
+
         assertFalse(UserPreferences.isPersistNotify());
     }
 
     @Test
-    public void defaultPageAndNavigationSettingsRoundTrip() {
+    public void downloadReportIsShownByDefault() {
+        assertTrue(UserPreferences.getShowDownloadReportRaw());
+    }
+
+    @Test
+    public void defaultPageIsTheHomeScreenUntilARememberedPageIsChosen() {
         assertEquals("HomeFragment", UserPreferences.getDefaultPage());
-        assertTrue(UserPreferences.isBottomNavigationEnabled());
-        assertFalse(UserPreferences.backButtonOpensDrawer());
 
         UserPreferences.setDefaultPage(UserPreferences.DEFAULT_PAGE_REMEMBER);
-        UserPreferences.setBottomNavigationEnabled(false);
-        stored.edit().putBoolean(UserPreferences.PREF_BACK_OPENS_DRAWER, true).commit();
 
         assertEquals("remember", UserPreferences.getDefaultPage());
+    }
+
+    @Test
+    public void bottomNavigationIsEnabledUntilItIsSwitchedOff() {
+        assertTrue(UserPreferences.isBottomNavigationEnabled());
+
+        UserPreferences.setBottomNavigationEnabled(false);
+
         assertFalse(UserPreferences.isBottomNavigationEnabled());
+    }
+
+    @Test
+    public void backButtonOpensTheDrawerOnlyWhenTheStoredFlagIsSet() {
+        assertFalse(UserPreferences.backButtonOpensDrawer());
+
+        stored.edit().putBoolean(UserPreferences.PREF_BACK_OPENS_DRAWER, true).commit();
+
         assertTrue(UserPreferences.backButtonOpensDrawer());
     }
 
