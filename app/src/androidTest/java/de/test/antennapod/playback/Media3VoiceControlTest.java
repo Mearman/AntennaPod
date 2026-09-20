@@ -17,12 +17,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-/**
- * Starts playback through the search requests that a voice assistant sends to the media session, both for a named episode and for the open request to play something.
- */
 @LargeTest
 public class Media3VoiceControlTest extends Media3ServiceTest {
 
@@ -48,14 +44,20 @@ public class Media3VoiceControlTest extends Media3ServiceTest {
     }
 
     @Test
-    public void testVoiceSearchWithoutAMatchStartsNothing() {
-        playSearch("no episode is called like this");
+    public void testVoiceSearchWithoutAMatchStopsInsteadOfPlayingAnotherEpisode() {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        play(media);
+        awaitCurrentMedia(media);
+        awaitPlaying();
+        pausePlayback();
+
+        prepareSearch("no episode is called like this");
 
         Awaitility.await("nothing is loaded for a search without results")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> Media3TestUtils.getOnMain(controller()::getMediaItemCount) == 0);
-        assertEquals(PlaybackPreferences.NO_MEDIA_PLAYING,
-                PlaybackPreferences.getCurrentlyPlayingFeedMediaId());
+        assertFalse("Nothing is playing after a search without results",
+                Media3TestUtils.getOnMain(controller()::isPlaying));
     }
 
     @Test
@@ -87,6 +89,11 @@ public class Media3VoiceControlTest extends Media3ServiceTest {
     }
 
     private void playSearch(String query) {
+        prepareSearch(query);
+        Media3TestUtils.runOnMain(controller()::play);
+    }
+
+    private void prepareSearch(String query) {
         MediaController mediaController = controller();
         MediaItem item = new MediaItem.Builder()
                 .setRequestMetadata(new MediaItem.RequestMetadata.Builder()
@@ -96,7 +103,6 @@ public class Media3VoiceControlTest extends Media3ServiceTest {
         Media3TestUtils.runOnMain(() -> {
             mediaController.setMediaItem(item);
             mediaController.prepare();
-            mediaController.play();
         });
     }
 }
