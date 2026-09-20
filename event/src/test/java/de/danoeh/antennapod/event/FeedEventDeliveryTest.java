@@ -4,11 +4,12 @@ import android.content.Context;
 import de.danoeh.antennapod.model.download.DownloadStatus;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
+import de.danoeh.antennapod.model.feed.FeedPreferences;
 import de.danoeh.antennapod.model.feed.SortOrder;
+import de.danoeh.antennapod.model.feed.VolumeAdaptionSetting;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
-import org.greenrobot.eventbus.EventBus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -126,10 +127,22 @@ public class FeedEventDeliveryTest {
     }
 
     @Test
-    public void feedListUpdateEventIsDeliveredToSubscribers() {
-        EventBus.getDefault().post(new FeedListUpdateEvent(feed));
+    public void savingFeedPreferencesPublishesAFeedListUpdateNamingOnlyThatFeed()
+            throws ExecutionException, InterruptedException {
+        Feed other = EventTestDatabase.storeFeed(context, "http://example.com/other", "Other", 1);
+        recorder.clear();
+        FeedPreferences preferences = feed.getPreferences();
+        preferences.setFeedSkipIntro(30);
+        preferences.setVolumeAdaptionSetting(VolumeAdaptionSetting.HEAVY_REDUCTION);
 
-        assertTrue(recorder.single(FeedListUpdateEvent.class).contains(feed));
+        DBWriter.setFeedPreferences(preferences).get();
+
+        FeedListUpdateEvent event = recorder.single(FeedListUpdateEvent.class);
+        assertTrue(event.contains(feed));
+        assertFalse(event.contains(other));
+        FeedPreferences stored = DBReader.getFeed(feed.getId(), false, 0, 0).getPreferences();
+        assertEquals(30, stored.getFeedSkipIntro());
+        assertEquals(VolumeAdaptionSetting.HEAVY_REDUCTION, stored.getVolumeAdaptionSetting());
     }
 
     @Test
