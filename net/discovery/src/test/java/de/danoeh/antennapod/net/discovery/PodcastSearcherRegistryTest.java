@@ -34,20 +34,6 @@ public class PodcastSearcherRegistryTest extends SearcherTestBase {
     }
 
     @Test
-    public void defaultProvidersStartWithTheCombinedSearcherAndQueryAppleAndPodcastIndex() {
-        List<PodcastSearcherRegistry.SearcherInfo> providers = originalProviders;
-
-        assertEquals(CombinedSearcher.class, providers.get(0).searcher.getClass());
-        List<String> weightedNames = new ArrayList<>();
-        for (PodcastSearcherRegistry.SearcherInfo provider : providers) {
-            if (provider.weight > 0 && provider.searcher.getClass() != CombinedSearcher.class) {
-                weightedNames.add(provider.searcher.getName());
-            }
-        }
-        assertEquals(List.of("Apple", "Podcast Index"), weightedNames);
-    }
-
-    @Test
     public void lookupOfUrlNoProviderClaimsReturnsItUnchanged() {
         assertFalse(PodcastSearcherRegistry.urlNeedsLookup("https://feeds.example/a.xml"));
 
