@@ -22,9 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Tests the player controls of the Media3 playback service, using an episode that is long enough to seek around in it.
- */
 @LargeTest
 public class Media3PlayerControlsTest extends Media3ServiceTest {
 
@@ -72,10 +69,9 @@ public class Media3PlayerControlsTest extends Media3ServiceTest {
         prepare(media);
         awaitCurrentMedia(media);
         awaitReady();
-        Media3TestUtils.runOnMain(() -> {
-            controller().seekTo(15000);
-            controller().seekBack();
-        });
+        Media3TestUtils.runOnMain(() -> controller().seekTo(15000));
+        awaitPositionAtLeast(15000);
+        Media3TestUtils.runOnMain(controller()::seekBack);
 
         Awaitility.await("seeked back by the configured interval")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -90,10 +86,9 @@ public class Media3PlayerControlsTest extends Media3ServiceTest {
         prepare(media);
         awaitCurrentMedia(media);
         awaitReady();
-        Media3TestUtils.runOnMain(() -> {
-            controller().seekTo(3000);
-            controller().seekBack();
-        });
+        Media3TestUtils.runOnMain(() -> controller().seekTo(3000));
+        awaitPositionAtLeast(3000);
+        Media3TestUtils.runOnMain(controller()::seekBack);
 
         Awaitility.await("rewound to the start of the episode")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
