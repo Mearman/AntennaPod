@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+    <channel>
+        <title>Channel</title>
+        <podcast:funding url="https://example.com/support">Support us</podcast:funding>
+        <item>
+            <title>Full</title>
+            <podcast:chapters url="https://example.com/chapters.json" type="application/json+chapters"/>
+            <podcast:socialInteract uri="https://social.example.com/post/1" protocol="activitypub"/>
+            <podcast:transcript url="https://example.com/t.srt" type="application/srt"/>
+            <podcast:transcript url="https://example.com/t.vtt" type="text/vtt"/>
+            <podcast:transcript url="https://example.com/t.html" type="text/html"/>
+            <podcast:transcript url="https://example.com/t.srt2" type="application/x-subrip"/>
+        </item>
+        <item>
+            <title>Empty attributes</title>
+            <podcast:chapters url=""/>
+            <podcast:socialInteract uri=""/>
+            <podcast:transcript url="https://example.com/no-type.srt"/>
+            <podcast:transcript type="text/vtt"/>
+        </item>
+    </channel>
+</rss>
