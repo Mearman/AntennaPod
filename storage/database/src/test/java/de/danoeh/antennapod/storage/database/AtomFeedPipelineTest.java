@@ -82,14 +82,16 @@ public class AtomFeedPipelineTest extends FeedPipelineTestBase {
     public void alternateAndArchiveFeedsAreCollected() throws Exception {
         FeedHandlerResult result = parse(atom("""
                 <title>Alternates</title>
-                <link rel="alternate" type="application/rss+xml" title="RSS version" href="https://example.com/rss.xml"/>
+                <link rel="alternate" type="application/rss+xml" title="RSS version"
+                      href="https://example.com/rss.xml"/>
                 <link rel="archives" type="application/atom+xml" href="https://example.com/archive.xml"/>
                 <link rel="archives" type="text/html" href="https://example.com/archive.html"/>
                 """));
 
         assertEquals(2, result.alternateFeedUrls.size());
         assertEquals("RSS version", result.alternateFeedUrls.get("https://example.com/rss.xml"));
-        assertEquals("https://example.com/archive.xml", result.alternateFeedUrls.get("https://example.com/archive.xml"));
+        assertEquals("https://example.com/archive.xml",
+                result.alternateFeedUrls.get("https://example.com/archive.xml"));
     }
 
     @Test
@@ -167,7 +169,7 @@ public class AtomFeedPipelineTest extends FeedPipelineTestBase {
                 <entry>
                   <id>html</id><title type="html">Bold &lt;b&gt;title&lt;/b&gt;</title>
                   <summary>Short</summary>
-                  <content type="html">&lt;p&gt;Rich &lt;em&gt;content&lt;/em&gt; that is longer than the summary&lt;/p&gt;</content>
+                  <content type="html">&lt;p&gt;Rich &lt;em&gt;content&lt;/em&gt; beats the summary&lt;/p&gt;</content>
                 </entry>
                 """));
 
@@ -175,7 +177,7 @@ public class AtomFeedPipelineTest extends FeedPipelineTestBase {
         assertEquals("Bold title", item.getTitle());
         DBReader.loadDescriptionOfFeedItem(item);
         assertNotNull(item.getDescription());
-        assertTrue(item.getDescription().contains("Rich content that is longer than the summary"));
+        assertTrue(item.getDescription().contains("Rich content beats the summary"));
         assertFalse(item.getDescription().contains("<"));
     }
 

@@ -63,7 +63,7 @@ public class FeedItemFilterPipelineTest extends FeedPipelineTestBase {
         DBWriter.addQueueItem(context, storedItem(subscribed, "queued"));
         FeedItem downloaded = storedItem(subscribed, "downloaded");
         downloaded.getMedia().setLocalFileUrl("/downloads/downloaded.mp3");
-        downloaded.getMedia().setDownloaded(true, new Date().getTime());
+        downloaded.getMedia().setDownloaded(true, 1000L);
         DBWriter.setMediaDownloadInformation(downloaded.getMedia());
         DBWriter.addItemToPlaybackHistory(storedItem(subscribed, "in-history").getMedia());
         DBWriter.tearDownTests();
