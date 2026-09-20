@@ -148,6 +148,13 @@ public class HTTPBin extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
+        Response response = serveRequest(session);
+        // The server keeps request headers of earlier requests on the same connection, so every request needs its own
+        response.addHeader("Connection", "close");
+        return response;
+    }
+
+    private Response serveRequest(IHTTPSession session) {
 
         if (BuildConfig.DEBUG) Log.d(TAG, "Requested url: " + session.getUri());
         requests.add(new RecordedRequest(session.getMethod().name(), session.getUri(),
@@ -479,7 +486,7 @@ public class HTTPBin extends NanoHTTPD {
 
                     @Override
                     public String getDescription() {
-                        return "Unknown";
+                        return code + " Unknown";
                     }
                 };
         }

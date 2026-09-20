@@ -66,6 +66,10 @@ public class DownloadTestFixture {
         return context;
     }
 
+    public File file(String name) {
+        return new File(hostedDir, name);
+    }
+
     public File newMediaFile(String name) throws IOException {
         File mediaFile = new File(hostedDir, name);
         try (InputStream in = InstrumentationRegistry.getInstrumentation().getContext().getAssets().open(MEDIA_ASSET);
