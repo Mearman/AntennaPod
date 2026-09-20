@@ -1,8 +1,10 @@
 package de.test.antennapod.playback;
 
+import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import androidx.media3.common.Player;
 import androidx.media3.session.MediaBrowser;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
@@ -71,9 +73,9 @@ public final class Media3TestUtils {
     }
 
     /**
-     * Stops playback, releases the controller and waits until the service no longer reports playback.
+     * Stops playback, releases the controller and waits until the service is destroyed. Tests must not continue while the service is alive because it keeps writing to the database.
      */
-    public static void stopPlaybackService(Context context, MediaController controller) {
+    public static void stopPlaybackService(Context context, Player controller) {
         if (controller != null) {
             runOnMain(() -> {
                 controller.stop();
@@ -81,9 +83,24 @@ public final class Media3TestUtils {
                 controller.release();
             });
         }
+        awaitServiceStopped(context);
+    }
+
+    public static void awaitServiceStopped(Context context) {
         context.stopService(new Intent(context, Media3PlaybackService.class));
         Awaitility.await("playback service stopped")
                 .atMost(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !PlaybackService.isRunning);
+                .until(() -> !PlaybackService.isRunning && !isServiceAlive(context));
+    }
+
+    private static boolean isServiceAlive(Context context) {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service
+                : activityManager.getRunningServices(Integer.MAX_VALUE)) {
+            if (Media3PlaybackService.class.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
