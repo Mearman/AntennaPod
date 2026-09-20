@@ -28,6 +28,7 @@ dependencies {
     implementation libs.eventbus
     implementation libs.guava
 
+    testImplementation project(':net:sync:service-interface')
     testImplementation project(':parser:feed')
     testImplementation libs.junit
     testImplementation libs.androidx.test.core
