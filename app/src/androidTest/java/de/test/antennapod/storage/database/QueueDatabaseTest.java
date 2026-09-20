@@ -13,6 +13,7 @@ import de.danoeh.antennapod.storage.database.LongList;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.service.download.DownloadTestFixture;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,18 +24,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Changes the playback queue through the database writer and reads it back.
- */
 @RunWith(AndroidJUnit4.class)
 public class QueueDatabaseTest {
     private static final int EPISODES = 5;
+    private static final long TIMEOUT_SECONDS = 30;
 
     private final DownloadTestFixture fixture = new DownloadTestFixture();
     private Context context;
@@ -147,14 +147,20 @@ public class QueueDatabaseTest {
     }
 
     @Test
-    public void randomEnqueueLocationKeepsEveryItem() throws Exception {
+    public void randomEnqueueLocationNeverReordersTheItemsThatAreAlreadyQueued() throws Exception {
         UserPreferences.setEnqueueLocation(UserPreferences.EnqueueLocation.RANDOM);
 
-        enqueue(0, 1, 2, 3);
+        for (int index = 0; index < EPISODES; index++) {
+            List<String> before = queueTitles();
 
-        List<String> queued = queueTitles();
-        assertEquals(4, queued.size());
-        assertTrue(queued.containsAll(titles(0, 1, 2, 3)));
+            enqueue(index);
+
+            List<String> after = queueTitles();
+            assertEquals(before.size() + 1, after.size());
+            assertTrue(after.contains(item(index).getTitle()));
+            after.remove(item(index).getTitle());
+            assertEquals(before, after);
+        }
     }
 
     @Test
@@ -276,14 +282,14 @@ public class QueueDatabaseTest {
         DBWriter.reorderQueue(SortOrder.EPISODE_TITLE_A_Z, true).get();
         assertEquals(titles(0, 1, 2, 3, 4), queueTitles());
 
-        DBWriter.reorderQueue(SortOrder.EPISODE_TITLE_Z_A, false).get();
-        assertEquals(titles(4, 3, 2, 1, 0), queueTitles());
-
         DBWriter.reorderQueue(SortOrder.DATE_OLD_NEW, true).get();
         assertEquals(titles(4, 3, 2, 1, 0), queueTitles());
 
         DBWriter.reorderQueue(SortOrder.DATE_NEW_OLD, true).get();
         assertEquals(titles(0, 1, 2, 3, 4), queueTitles());
+
+        DBWriter.reorderQueue(SortOrder.EPISODE_TITLE_Z_A, false).get();
+        assertEquals(titles(4, 3, 2, 1, 0), queueTitles());
     }
 
     @Test
@@ -309,51 +315,59 @@ public class QueueDatabaseTest {
     @Test
     public void queueCanBeSortedByLinkAndFeedTitle() throws Exception {
         Feed other = fixture.subscribe("Another", 1);
+        List<String> otherTitle = Collections.singletonList(other.getItemAtIndex(0).getTitle());
         enqueue(3, 1);
         DBWriter.addQueueItem(context, other.getItemAtIndex(0)).get();
 
         DBWriter.reorderQueue(SortOrder.EPISODE_FILENAME_A_Z, true).get();
-        assertEquals(Arrays.asList(other.getItemAtIndex(0).getTitle(), item(1).getTitle(), item(3).getTitle()),
-                queueTitles());
+        assertEquals(concat(otherTitle, titles(1, 3)), queueTitles());
 
         DBWriter.reorderQueue(SortOrder.EPISODE_FILENAME_Z_A, true).get();
-        assertEquals(Arrays.asList(item(3).getTitle(), item(1).getTitle(), other.getItemAtIndex(0).getTitle()),
-                queueTitles());
+        assertEquals(concat(titles(3, 1), otherTitle), queueTitles());
 
         DBWriter.reorderQueue(SortOrder.FEED_TITLE_A_Z, true).get();
-        assertEquals(other.getItemAtIndex(0).getTitle(), queueTitles().get(0));
+        assertEquals(concat(otherTitle, titles(3, 1)), queueTitles());
 
         DBWriter.reorderQueue(SortOrder.FEED_TITLE_Z_A, true).get();
-        assertEquals(other.getItemAtIndex(0).getTitle(), queueTitles().get(2));
+        assertEquals(concat(titles(3, 1), otherTitle), queueTitles());
+    }
+
+    private List<String> concat(List<String> first, List<String> second) {
+        List<String> all = new ArrayList<>(first);
+        all.addAll(second);
+        return all;
     }
 
     @Test
-    public void shufflingKeepsEveryItemInTheQueue() throws Exception {
+    public void shufflingReordersTheQueueAndKeepsEveryItem() throws Exception {
         enqueue(0, 1, 2, 3, 4);
+        List<String> original = queueTitles();
 
-        DBWriter.reorderQueue(SortOrder.RANDOM, true).get();
+        Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> {
+            DBWriter.reorderQueue(SortOrder.RANDOM, true).get();
+            return !queueTitles().equals(original);
+        });
 
-        List<String> queued = queueTitles();
-        assertEquals(EPISODES, queued.size());
-        assertTrue(queued.containsAll(titles(0, 1, 2, 3, 4)));
+        List<String> shuffled = queueTitles();
+        assertEquals(EPISODES, shuffled.size());
+        assertTrue(shuffled.containsAll(original));
     }
 
     @Test
-    public void smartShuffleSpreadsEpisodesOfTheSameFeed() throws Exception {
+    public void smartShuffleSpreadsEpisodesOfTheSameFeedAndKeepsEachFeedInOrder() throws Exception {
         Feed other = fixture.subscribe("Other", 2);
         enqueue(0, 1, 2, 3);
         DBWriter.addQueueItem(context, other.getItemAtIndex(0), other.getItemAtIndex(1)).get();
+        String otherNewest = other.getItemAtIndex(0).getTitle();
+        String otherOldest = other.getItemAtIndex(1).getTitle();
 
         DBWriter.reorderQueue(SortOrder.SMART_SHUFFLE_OLD_NEW, true).get();
-
-        List<FeedItem> queued = DBReader.getQueue();
-        assertEquals(6, queued.size());
-        for (int i = 1; i < queued.size(); i++) {
-            assertFalse(queued.get(i).getFeedId() == other.getId() && queued.get(i - 1).getFeedId() == other.getId());
-        }
+        assertEquals(concat(concat(Collections.singletonList(otherOldest), titles(3, 2, 1, 0)),
+                Collections.singletonList(otherNewest)), queueTitles());
 
         DBWriter.reorderQueue(SortOrder.SMART_SHUFFLE_NEW_OLD, true).get();
-        assertEquals(6, DBReader.getQueue().size());
+        assertEquals(concat(concat(Collections.singletonList(otherNewest), titles(0, 1, 2, 3)),
+                Collections.singletonList(otherOldest)), queueTitles());
     }
 
     @Test

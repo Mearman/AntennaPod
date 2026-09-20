@@ -47,9 +47,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Creates, changes and deletes feeds through the database writers and reads them back.
- */
 @RunWith(AndroidJUnit4.class)
 public class FeedManagementDatabaseTest {
     private static final long DAY_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -287,15 +284,31 @@ public class FeedManagementDatabaseTest {
         return titles(DBReader.getNavDrawerData(null, order, counter, Feed.STATE_SUBSCRIBED).feeds);
     }
 
+    private Feed subscribeWithNewestEpisodeAt(String title, int episodes, int playState, long newestMillis)
+            throws Exception {
+        Feed hosted = fixture.newFeed(title, episodes, playState);
+        for (int i = 0; i < episodes; i++) {
+            hosted.getItemAtIndex(i).setPubDate(new Date(newestMillis - i * DAY_MILLIS));
+        }
+        hosted.setDownloadUrl(fixture.hostFeed(hosted));
+        return fixture.subscribe(hosted);
+    }
+
     @Test
     public void navigationDrawerOrdersFeedsByTheChosenCriterion() throws Exception {
-        createCounterFeeds();
+        long now = System.currentTimeMillis();
+        subscribeWithNewestEpisodeAt("Alpha", 1, FeedItem.NEW, now - 10 * DAY_MILLIS);
+        subscribeWithNewestEpisodeAt("Bravo", 2, FeedItem.PLAYED, now);
+        Feed charlie = subscribeWithNewestEpisodeAt("Charlie", 3, FeedItem.NEW, now - 20 * DAY_MILLIS);
+        DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(charlie.getItemAtIndex(0))).get();
 
-        assertEquals(Arrays.asList("Busy", "Calm", "Done"), drawerOrder(FeedOrder.COUNTER, FeedCounter.SHOW_NEW));
-        assertEquals(Arrays.asList("Busy", "Calm", "Done"),
+        assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"),
                 drawerOrder(FeedOrder.ALPHABETICAL, FeedCounter.SHOW_NONE));
-        assertEquals("Done", drawerOrder(FeedOrder.MOST_PLAYED, FeedCounter.SHOW_NONE).get(0));
-        assertEquals(3, drawerOrder(FeedOrder.MOST_RECENT_EPISODE, FeedCounter.SHOW_NONE).size());
+        assertEquals(Arrays.asList("Charlie", "Alpha", "Bravo"), drawerOrder(FeedOrder.COUNTER, FeedCounter.SHOW_NEW));
+        assertEquals(Arrays.asList("Bravo", "Charlie", "Alpha"),
+                drawerOrder(FeedOrder.MOST_PLAYED, FeedCounter.SHOW_NONE));
+        assertEquals(Arrays.asList("Bravo", "Alpha", "Charlie"),
+                drawerOrder(FeedOrder.MOST_RECENT_EPISODE, FeedCounter.SHOW_NONE));
     }
 
     @Test
