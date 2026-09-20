@@ -211,6 +211,17 @@ public class DbUpgraderTest {
     }
 
     @Test
+    public void upgradeRecordsThatDownloadedMediaWithoutPictureHasNone() {
+        createVersionOneSchema();
+        legacyDb.execSQL("INSERT INTO FeedMedia (id, downloaded, position, file_url)"
+                + " VALUES (1, 1, 0, '/storage/plain.mp3')");
+
+        upgradeFromVersionOne();
+
+        assertEquals("0", scalar("SELECT has_embedded_picture FROM FeedMedia WHERE id = 1"));
+    }
+
+    @Test
     public void upgradeInvertsSavedFeedFilters() {
         createSchemaBeforeFilterMigration();
         legacyDb.execSQL("INSERT INTO Feeds (id, title, hide) VALUES (1, 'one', 'played,queued')");
