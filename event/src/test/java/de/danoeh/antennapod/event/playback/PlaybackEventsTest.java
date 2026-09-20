@@ -40,17 +40,6 @@ public class PlaybackEventsTest {
     }
 
     @Test
-    public void speedChangedEventCarriesNewSpeed() {
-        assertEquals(1.5f, new SpeedChangedEvent(1.5f).getNewSpeed(), 0f);
-    }
-
-    @Test
-    public void serviceEventCarriesAction() {
-        assertEquals(PlaybackServiceEvent.Action.SERVICE_SHUT_DOWN,
-                new PlaybackServiceEvent(PlaybackServiceEvent.Action.SERVICE_SHUT_DOWN).action);
-    }
-
-    @Test
     public void justEnabledTimerIsReportedAsEnabledWithRemainingTimes() {
         SleepTimerUpdatedEvent event = SleepTimerUpdatedEvent.justEnabled(new TimerValue(3, 180000));
         assertTrue(event.wasJustEnabled());

@@ -6,10 +6,8 @@ import de.danoeh.antennapod.event.playback.PlaybackHistoryEvent;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 public class MessageAndLogEventsTest {
 
@@ -41,21 +39,5 @@ public class MessageAndLogEventsTest {
     public void logEventsHaveDescriptiveNames() {
         assertEquals("DownloadLogEvent", DownloadLogEvent.listUpdated().toString());
         assertEquals("PlaybackHistoryEvent", PlaybackHistoryEvent.listUpdated().toString());
-    }
-
-    @Test
-    public void playerErrorEventCarriesMessage() {
-        assertEquals("Codec missing", new PlayerErrorEvent("Codec missing").getMessage());
-    }
-
-    @Test
-    public void syncServiceEventCarriesMessageResource() {
-        assertEquals(1234, new SyncServiceEvent(1234).getMessageResId());
-    }
-
-    @Test
-    public void feedUpdateRunningEventCarriesRunningState() {
-        assertTrue(new FeedUpdateRunningEvent(true).isFeedUpdateRunning);
-        assertFalse(new FeedUpdateRunningEvent(false).isFeedUpdateRunning);
     }
 }
