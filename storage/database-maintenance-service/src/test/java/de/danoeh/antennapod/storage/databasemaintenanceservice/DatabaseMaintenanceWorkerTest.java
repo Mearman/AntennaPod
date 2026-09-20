@@ -12,6 +12,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerFactory;
 import androidx.work.WorkerParameters;
+import androidx.work.testing.SynchronousExecutor;
 import androidx.work.testing.TestWorkerBuilder;
 import androidx.work.testing.WorkManagerTestInitHelper;
 import de.danoeh.antennapod.ui.notifications.NotificationUtils;
@@ -48,6 +49,7 @@ public class DatabaseMaintenanceWorkerTest {
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
         Configuration configuration = new Configuration.Builder()
+                .setExecutor(new SynchronousExecutor())
                 .setWorkerFactory(new WorkerFactory() {
                     @Override
                     public ListenableWorker createWorker(@NonNull Context appContext,
