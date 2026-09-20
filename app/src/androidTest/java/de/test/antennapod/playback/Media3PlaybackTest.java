@@ -5,6 +5,7 @@ import androidx.test.filters.LargeTest;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.FeedMedia;
+import de.danoeh.antennapod.model.feed.FeedPreferences;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.playback.base.MediaItemAdapter;
 import de.danoeh.antennapod.playback.service.PlaybackService;
@@ -161,6 +162,25 @@ public class Media3PlaybackTest extends Media3ServiceTest {
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory() != null
                         && DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory().getTime() > 0);
+    }
+
+    @Test
+    public void testFinishedEpisodeIsDeletedWhenTheFeedAsksForIt() throws Exception {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        FeedPreferences preferences = media.getItem().getFeed().getPreferences();
+        preferences.setAutoDeleteAction(FeedPreferences.AutoDeleteAction.ALWAYS);
+        DBWriter.setFeedPreferences(preferences).get();
+        File file = new File(media.getLocalFileUrl());
+        assertTrue(file.exists());
+
+        play(media);
+        awaitCurrentMedia(media);
+
+        Awaitility.await("finished episode deleted from the device")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> !DBReader.getFeedMedia(media.getId()).isDownloaded());
+        assertFalse("The downloaded file is removed", file.exists());
+        assertTrue(DBReader.getFeedItem(media.getItem().getId()).isPlayed());
     }
 
     @Test
