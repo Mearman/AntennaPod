@@ -5,5 +5,66 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.spotbugs) apply false
     id 'checkstyle'
+    id 'jacoco'
     alias(libs.plugins.ktlint) apply false
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
+}
+
+tasks.register('coverageReport', JacocoReport) {
+    group = "verification"
+    def suite = project.findProperty("coverageSuite")
+    def suiteName = suite ?: "all"
+    def reportDir = layout.buildDirectory.dir("reports/coverage/${suiteName}")
+    def executionPatterns = ["coverage/**/*.exec", "outputs/code_coverage/**/*.ec"]
+    if (suite == "e2e") {
+        executionPatterns = ["outputs/code_coverage/**/*.ec"]
+    } else if (suite != null) {
+        executionPatterns = ["coverage/${suite}/*.exec"]
+    }
+
+    classDirectories.from(subprojects.collect { module ->
+        fileTree("${module.projectDir}/build/intermediates/javac") {
+            include "debug/**/*.class", "playDebug/**/*.class"
+            exclude "**/R.class", "**/R\$*.class", "**/BuildConfig.class"
+        }
+    })
+    sourceDirectories.from(subprojects.collect { module ->
+        files("${module.projectDir}/src/main/java", "${module.projectDir}/src/play/java")
+    })
+    executionData.from(subprojects.collect { module ->
+        fileTree("${module.projectDir}/build") { include executionPatterns }
+    })
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+        xml.outputLocation = reportDir.map { it.file("jacoco.xml") }
+        html.outputLocation = reportDir.map { it.dir("html") }
+    }
+
+    doFirst {
+        if (executionData.isEmpty()) {
+            throw new GradleException("No coverage execution data found for suite '${suiteName}'")
+        }
+    }
+
+    doLast {
+        def slurper = new groovy.xml.XmlSlurper()
+        slurper.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        def counters = slurper.parse(reports.xml.outputLocation.get().asFile).counter
+        def percentage = { String type ->
+            def counter = counters.find { it.@type == type }
+            def covered = counter.@covered.toInteger()
+            def total = covered + counter.@missed.toInteger()
+            String.format("%.1f%%", 100.0 * covered / total)
+        }
+        def summary = layout.buildDirectory.file("reports/coverage/summary.md").get().asFile
+        def rows = summary.exists() ? summary.readLines().drop(2).findAll { !it.startsWith("| ${suiteName} |") } : []
+        rows << "| ${suiteName} | ${percentage("LINE")} | ${percentage("BRANCH")} |".toString()
+        summary.text = (["| Suite | Lines | Branches |", "| --- | --- | --- |"] + rows).join("\n") + "\n"
+    }
 }

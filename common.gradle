@@ -24,6 +24,8 @@ android {
         }
         debug {
             resValue "string", "app_name", "AntennaPod Debug"
+            enableUnitTestCoverage = project.hasProperty("coverage")
+            enableAndroidTestCoverage = project.hasProperty("coverage")
         }
     }
 
@@ -49,6 +51,10 @@ android {
         if (JavaVersion.current() >= JavaVersion.VERSION_22) {
             options.compilerArgs.add("-Xlint:-dangling-doc-comments")
         }
+    }
+
+    testCoverage {
+        jacocoVersion = libs.versions.jacoco.get()
     }
 
     testOptions {
@@ -85,6 +91,17 @@ tasks.withType(Test).configureEach {
         events "skipped", "passed", "failed"
         showStandardStreams true
         displayGranularity 2
+    }
+}
+
+if (project.hasProperty("coverage")) {
+    tasks.withType(Test).configureEach {
+        doFirst {
+            def suite = project.findProperty("coverageSuite") ?: "unit"
+            jacoco.destinationFile = project.layout.buildDirectory.file("coverage/${suite}/${name}.exec").get().asFile
+            jacoco.includeNoLocationClasses = true
+            jacoco.excludes = ["jdk.internal.*"]
+        }
     }
 }
 
