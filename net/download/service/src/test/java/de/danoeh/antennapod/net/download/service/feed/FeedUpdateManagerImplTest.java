@@ -3,6 +3,9 @@ package de.danoeh.antennapod.net.download.service.feed;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.view.ContextThemeWrapper;
+import android.widget.TextView;
+import androidx.appcompat.app.AlertDialog;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
@@ -22,6 +25,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
+import org.robolectric.shadows.ShadowDialog;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowNetworkInfo;
 
 import java.util.ArrayList;
@@ -234,5 +239,97 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
         assertTrue(messages.isEmpty());
         verify(workManager, times(2))
                 .enqueueUniqueWork(eq(WORK_ID_MANUAL), eq(ExistingWorkPolicy.REPLACE), any(OneTimeWorkRequest.class));
+    }
+
+    private Context themedContext() {
+        return new ContextThemeWrapper(context, com.google.android.material.R.style.Theme_Material3_DayNight);
+    }
+
+    private AlertDialog showMobileRefreshDialog(Feed feed) {
+        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_MOBILE);
+
+        manager.runOnceOrAsk(themedContext(), feed);
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertNotNull(dialog);
+        assertTrue(dialog.isShowing());
+        return dialog;
+    }
+
+    @Test
+    public void runOnceOrAskOnMobileNetworkAsksBeforeRefreshing() {
+        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+
+        TextView title = dialog.findViewById(androidx.appcompat.R.id.alertTitle);
+        TextView message = dialog.findViewById(android.R.id.message);
+        assertEquals(context.getString(R.string.feed_refresh_title), title.getText().toString());
+        assertEquals(context.getString(R.string.confirm_mobile_feed_refresh_dialog_message),
+                message.getText().toString());
+        verify(workManager, never()).enqueueUniqueWork(any(String.class), any(ExistingWorkPolicy.class),
+                any(OneTimeWorkRequest.class));
+    }
+
+    @Test
+    public void confirmingMobileRefreshOnceStartsRefreshWithoutChangingPreference() {
+        Feed feed = feedWithUniqueId();
+        AlertDialog dialog = showMobileRefreshDialog(feed);
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(feed.getId(), captureManualRequest().getWorkSpec().input
+                .getLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, -1));
+        assertFalse(UserPreferences.isAllowMobileFeedRefresh());
+    }
+
+    @Test
+    public void confirmingMobileRefreshAlwaysStoresPreferenceAndStartsRefresh() {
+        Feed feed = feedWithUniqueId();
+        AlertDialog dialog = showMobileRefreshDialog(feed);
+
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).performClick();
+        ShadowLooper.idleMainLooper();
+
+        assertTrue(UserPreferences.isAllowMobileFeedRefresh());
+        assertEquals(feed.getId(), captureManualRequest().getWorkSpec().input
+                .getLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, -1));
+    }
+
+    @Test
+    public void decliningMobileRefreshReportsRefreshNotRunning() {
+        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+        ShadowLooper.idleMainLooper();
+
+        FeedUpdateRunningEvent sticky = EventBus.getDefault().getStickyEvent(FeedUpdateRunningEvent.class);
+        assertNotNull(sticky);
+        assertFalse(sticky.isFeedUpdateRunning);
+        verify(workManager, never()).enqueueUniqueWork(any(String.class), any(ExistingWorkPolicy.class),
+                any(OneTimeWorkRequest.class));
+    }
+
+    @Test
+    public void dismissingMobileRefreshDialogReportsRefreshNotRunning() {
+        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+
+        dialog.cancel();
+        ShadowLooper.idleMainLooper();
+
+        FeedUpdateRunningEvent sticky = EventBus.getDefault().getStickyEvent(FeedUpdateRunningEvent.class);
+        assertNotNull(sticky);
+        assertFalse(sticky.isFeedUpdateRunning);
+    }
+
+    @Test
+    public void mobileRefreshIsAllowedWithoutAskingOnceThePreferenceIsSet() {
+        UserPreferences.setAllowMobileFeedRefresh(true);
+        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_MOBILE);
+        Feed feed = feedWithUniqueId();
+
+        manager.runOnceOrAsk(themedContext(), feed);
+
+        assertEquals(feed.getId(), captureManualRequest().getWorkSpec().input
+                .getLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, -1));
     }
 }
