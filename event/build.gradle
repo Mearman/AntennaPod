@@ -5,6 +5,10 @@ apply from: "../common.gradle"
 
 android {
     namespace "de.danoeh.antennapod.event"
+
+    defaultConfig {
+        missingDimensionStrategy "market", "play"
+    }
 }
 
 dependencies {
@@ -12,4 +16,13 @@ dependencies {
     implementation libs.androidx.core
 
     annotationProcessor libs.androidx.annotation
+
+    testImplementation project(':net:download:service-interface')
+    testImplementation project(':storage:database')
+    testImplementation project(':storage:preferences')
+    testImplementation project(':net:sync:service-interface')
+    testImplementation libs.junit
+    testImplementation libs.eventbus
+    testImplementation libs.androidx.test.core
+    testImplementation libs.robolectric
 }
