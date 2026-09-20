@@ -53,6 +53,7 @@ import java.util.Map;
 
 public class SyncService extends Worker {
     public static final String TAG = "SyncService";
+    private static final long FEED_UPDATE_POLL_INTERVAL_MS = 1000;
 
     private static boolean currentlyActive = false;
     private final SynchronizationQueueStorage synchronizationQueueStorage;
@@ -120,12 +121,15 @@ public class SyncService extends Worker {
                 if (event == null || !event.isFeedUpdateRunning) {
                     return;
                 }
-                //noinspection BusyWait
-                Thread.sleep(1000);
+                pauseBeforeCheckingFeedUpdateAgain();
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    /* package-private */ void pauseBeforeCheckingFeedUpdateAgain() throws InterruptedException {
+        Thread.sleep(FEED_UPDATE_POLL_INTERVAL_MS);
     }
 
     private boolean someFeedWasNotRefreshedYet() {

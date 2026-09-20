@@ -34,6 +34,34 @@ public class HostnameParserTest {
         assertHostname(new HostnameParser("https://example.com:42/a"), "https", 42, "example.com", "/a");
     }
 
+    @Test
+    public void testInternationalisedHostIsConvertedToPunycode() {
+        assertHostname(new HostnameParser("https://m\u00fcnchen.example"), "https", 443, "xn--mnchen-3ya.example", "");
+    }
+
+    @Test
+    public void testHostWithTooLongLabelIsReplacedByPlaceholder() {
+        String tooLongLabel = "a".repeat(64);
+
+        assertHostname(new HostnameParser(tooLongLabel + ".example"), "https", 443, "invalid-hostname", "");
+    }
+
+    @Test
+    public void testEmptyInputFallsBackToHttpsOnDefaultPort() {
+        HostnameParser parser = new HostnameParser("");
+
+        assertEquals("https", parser.scheme);
+        assertEquals(443, parser.port);
+        assertEquals("", parser.host);
+    }
+
+    @Test
+    public void testUnmatchableInputWithTooLongLabelIsReplacedByPlaceholder() {
+        HostnameParser parser = new HostnameParser("/" + "a".repeat(64));
+
+        assertEquals("invalid-hostname", parser.host);
+    }
+
     private void assertHostname(HostnameParser parser, String scheme, int port, String host, String subfolder) {
         assertEquals(scheme, parser.scheme);
         assertEquals(port, parser.port);

@@ -14,4 +14,7 @@ dependencies {
     annotationProcessor libs.androidx.annotation
     implementation libs.rxandroid
     implementation libs.rxjava
+
+    testImplementation libs.junit
+    testImplementation libs.robolectric
 }

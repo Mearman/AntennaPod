@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
 }
 apply from: "../../../common.gradle"
+apply from: "../../../mockitoAgent.gradle"
 
 android {
     namespace "de.danoeh.antennapod.net.sync.wearinterface"
@@ -15,4 +16,5 @@ dependencies {
 
     testImplementation libs.junit
     testImplementation libs.robolectric
+    testImplementation libs.mockito.core
 }
