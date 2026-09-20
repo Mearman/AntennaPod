@@ -2,10 +2,10 @@ package de.danoeh.antennapod.net.download.service.feed;
 
 import android.Manifest;
 import android.app.Application;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import androidx.work.Data;
 import androidx.work.ForegroundInfo;
 import androidx.work.ListenableWorker;
@@ -26,9 +26,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.robolectric.shadows.ShadowNetworkInfo;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +34,6 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -387,9 +384,7 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
     public void refreshIsDeferredWhileOffline() {
         serve(Map.of("/feed.xml", rssResponse(rss("Remote Title", "First"))));
         Feed feed = saveFeed(newFeed("Local Title", url("/feed.xml")));
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+        setNoNetwork();
 
         ListenableWorker.Result result = runWorker(new Data.Builder()
                 .putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build());
@@ -403,11 +398,7 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
     public void automaticRefreshOnMobileNetworkIsDeferredUnlessAllowed() {
         serve(Map.of("/feed.xml", rssResponse(rss("Remote Title", "First"))));
         Feed feed = saveFeed(newFeed("Local Title", url("/feed.xml")));
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(ShadowNetworkInfo.newInstance(
-                NetworkInfo.DetailedState.CONNECTED, ConnectivityManager.TYPE_MOBILE, 0, true,
-                NetworkInfo.State.CONNECTED));
+        setNetwork(ConnectivityManager.TYPE_MOBILE);
         Data input = new Data.Builder().putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build();
 
         assertEquals(ListenableWorker.Result.retry(), runWorker(input));
@@ -432,11 +423,22 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
         refreshSingle(feed);
 
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        assertEquals(2, shadowOf(manager).getAllNotifications().size());
-        List<String> texts = shadowOf(manager).getAllNotifications().stream()
-                .map(notification -> String.valueOf(shadowOf(notification).getContentText()))
+        List<Notification> notifications = shadowOf(manager).getAllNotifications();
+        assertEquals(2, notifications.size());
+        List<Notification> summaries = notifications.stream()
+                .filter(notification -> (notification.flags & Notification.FLAG_GROUP_SUMMARY) != 0)
                 .collect(Collectors.toList());
-        assertTrue(texts.toString(), texts.stream().anyMatch(text -> text.contains("Remote Title")));
+        List<Notification> episodeNotifications = notifications.stream()
+                .filter(notification -> (notification.flags & Notification.FLAG_GROUP_SUMMARY) == 0)
+                .collect(Collectors.toList());
+        assertEquals(1, summaries.size());
+        assertEquals(context.getString(R.string.new_episode_notification_group_text),
+                shadowOf(summaries.get(0)).getContentTitle().toString());
+        assertEquals(1, episodeNotifications.size());
+        assertEquals(context.getResources().getQuantityString(R.plurals.new_episode_notification_title, 2),
+                shadowOf(episodeNotifications.get(0)).getContentTitle().toString());
+        assertEquals(context.getResources().getQuantityString(R.plurals.new_episode_notification_message, 2, 2,
+                "Remote Title"), shadowOf(episodeNotifications.get(0)).getContentText().toString());
     }
 
     @Test
@@ -474,17 +476,18 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
     }
 
     @Test
-    public void foregroundInfoDescribesRefreshInProgress() throws Exception {
+    public void foregroundInfoShowsOngoingRefreshNotification() throws Exception {
         ForegroundInfo info = new FeedUpdateWorker(context,
                 workerParameters(new Data.Builder().build(), 0)).getForegroundInfoAsync().get();
 
-        assertNotNull(info.getNotification());
-        assertEquals(R.id.notification_updating_feeds,
-                info.getNotificationId());
+        assertEquals(R.id.notification_updating_feeds, info.getNotificationId());
+        assertEquals(context.getString(R.string.download_notification_title_feeds),
+                shadowOf(info.getNotification()).getContentTitle().toString());
+        assertTrue((info.getNotification().flags & Notification.FLAG_ONGOING_EVENT) != 0);
     }
 
     @Test
-    public void refreshCollectsResultsForEveryFeedOfAFullRun() {
+    public void failingFeedDoesNotPreventOtherFeedsOfTheSameRunFromUpdating() {
         serve(Map.of(
                 "/a.xml", rssResponse(rss("A Remote", "One")),
                 "/b.xml", new MockResponse().setResponseCode(500),
@@ -499,6 +502,8 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
         assertEquals("A Remote", reload(a).getTitle());
         assertEquals("C Remote", reload(c).getTitle());
         assertTrue(reload(b).hasLastUpdateFailed());
-        assertEquals(Collections.emptyList(), DBReader.getFeedDownloadLog(a.getId(), 10));
+        List<DownloadResult> log = DBReader.getFeedDownloadLog(b.getId(), 10);
+        assertEquals(1, log.size());
+        assertEquals(DownloadError.ERROR_HTTP_DATA_ERROR, log.get(0).getReason());
     }
 }
