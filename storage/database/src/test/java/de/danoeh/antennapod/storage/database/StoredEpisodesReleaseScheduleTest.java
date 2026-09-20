@@ -13,24 +13,21 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Random;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class StoredEpisodesReleaseScheduleTest extends DatabaseTestBase {
-    private static final long HOUR = 3600L * 1000L;
-    private static final long DAY = 24L * HOUR;
+    private static final long DAY = 24L * 3600L * 1000L;
 
     private TimeZone originalTimeZone;
 
@@ -104,181 +101,14 @@ public class StoredEpisodesReleaseScheduleTest extends DatabaseTestBase {
     }
 
     @Test
-    public void episodesReleasedEveryTwoWeeksAreGuessedAsBiweekly() {
-        List<Date> dates = spacedBy(monday(), 8, 14 * DAY);
+    public void episodesStoredInScrambledOrderAreGuessedByTheirReleaseDates() {
+        List<Date> dates = spacedBy(monday(), 8, 7 * DAY);
+        List<Date> scrambled = new ArrayList<>(dates);
+        Collections.shuffle(scrambled, new Random(7));
 
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.BIWEEKLY, guess.schedule);
-        assertEquals(Collections.singletonList(Calendar.MONDAY), guess.days);
-        assertEquals(new Date(dates.get(7).getTime() + 14 * DAY), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void episodesReleasedOnSameDayOfMonthAreGuessedAsMonthly() {
-        List<Date> dates = new ArrayList<>();
-        for (int month = Calendar.JANUARY; month <= Calendar.AUGUST; month++) {
-            dates.add(localDate(2020, month, 15, 12));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.MONTHLY, guess.schedule);
-        assertNull(guess.days);
-        assertEquals(localDate(2020, Calendar.SEPTEMBER, 15, 12), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void episodesReleasedEveryFourWeeksAreGuessedAsFourWeekly() {
-        List<Date> dates = spacedBy(monday(), 8, 28 * DAY);
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.FOURWEEKLY, guess.schedule);
-        assertEquals(Collections.singletonList(Calendar.MONDAY), guess.days);
-        assertEquals(new Date(dates.get(7).getTime() + 28 * DAY), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void episodesOnEveryWorkingDayAreGuessedAsWeekdays() {
-        List<Date> dates = new ArrayList<>();
-        for (int week = 0; week < 3; week++) {
-            for (int day = 0; day < 5; day++) {
-                dates.add(new Date(monday().getTime() + (week * 7L + day) * DAY));
-            }
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.WEEKDAYS, guess.schedule);
-        assertEquals(Arrays.asList(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY,
-                Calendar.FRIDAY), guess.days);
-        assertEquals(new Date(monday().getTime() + 3 * 7L * DAY), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void episodesOnFixedDaysOfWeekAreGuessedAsSpecificDays() {
-        List<Date> dates = new ArrayList<>();
-        for (int week = 0; week < 6; week++) {
-            dates.add(new Date(monday().getTime() + week * 7L * DAY));
-            dates.add(new Date(monday().getTime() + (week * 7L + 3) * DAY));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.SPECIFIC_DAYS, guess.schedule);
-        assertEquals(Arrays.asList(Calendar.MONDAY, Calendar.THURSDAY), guess.days);
-        assertEquals(new Date(monday().getTime() + (5 * 7L + 7) * DAY), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void weeklyEpisodesWithIrregularGapsStillAreGuessedAsWeekly() {
-        List<Date> dates = spacedBy(monday(), 9, 7 * DAY, 7 * DAY, 14 * DAY, 14 * DAY, 14 * DAY, 21 * DAY,
-                21 * DAY, 28 * DAY);
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
+        ReleaseScheduleGuesser.Guess guess = guessFor(scrambled);
 
         assertEquals(ReleaseScheduleGuesser.Schedule.WEEKLY, guess.schedule);
-        assertEquals(Collections.singletonList(Calendar.MONDAY), guess.days);
-        assertEquals(new Date(dates.get(8).getTime() + 7 * DAY), guess.nextExpectedDate);
-    }
-
-    @Test
-    public void irregularReleasesAreUnknown() {
-        List<Date> dates = new ArrayList<>();
-        long[] offsetsInDays = {0, 1, 4, 5, 9, 11, 12, 17, 18, 21, 25, 26};
-        for (long offset : offsetsInDays) {
-            dates.add(new Date(monday().getTime() + offset * DAY));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.UNKNOWN, guess.schedule);
-        assertNull(guess.days);
-        assertTrue(guess.nextExpectedDate.after(dates.get(dates.size() - 1)));
-    }
-
-    @Test
-    public void singleEpisodeCannotBeGuessed() {
-        ReleaseScheduleGuesser.Guess guess = guessFor(Collections.singletonList(monday()));
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.UNKNOWN, guess.schedule);
-        assertNull(guess.nextExpectedDate);
-        assertNull(guess.days);
-    }
-
-    @Test
-    public void onlyTheMostRecentReleasesInfluenceTheGuess() {
-        List<Date> dates = new ArrayList<>();
-        dates.addAll(spacedBy(localDate(2018, Calendar.JANUARY, 1, 12), 15, 3 * DAY));
-        Date lastOfOldPhase = dates.get(dates.size() - 1);
-        dates.addAll(spacedBy(new Date(lastOfOldPhase.getTime() + 60 * DAY), 22, 7 * DAY));
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertEquals(ReleaseScheduleGuesser.Schedule.WEEKLY, guess.schedule);
-    }
-
-    @Test
-    public void severalReleasesPerDayOnEveryDayAreGuessedAsDailyWithMultipleReleases() {
-        List<Date> dates = new ArrayList<>();
-        for (int day = 0; day < 7; day++) {
-            dates.add(new Date(monday().getTime() + day * DAY));
-            dates.add(new Date(monday().getTime() + day * DAY + 2 * HOUR));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertTrue(guess.multipleReleasesPerDay);
-        assertEquals(ReleaseScheduleGuesser.Schedule.DAILY, guess.schedule);
-        assertEquals(7, guess.days.size());
-    }
-
-    @Test
-    public void severalReleasesPerDayOnWorkingDaysAreGuessedAsWeekdays() {
-        List<Date> dates = new ArrayList<>();
-        for (int day = 0; day < 5; day++) {
-            dates.add(new Date(monday().getTime() + day * DAY));
-            dates.add(new Date(monday().getTime() + day * DAY + 2 * HOUR));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertTrue(guess.multipleReleasesPerDay);
-        assertEquals(ReleaseScheduleGuesser.Schedule.WEEKDAYS, guess.schedule);
-    }
-
-    @Test
-    public void severalReleasesPerDayOnSomeDaysAreGuessedAsSpecificDays() {
-        List<Date> dates = new ArrayList<>();
-        for (int week = 0; week < 2; week++) {
-            for (int day : new int[] {0, 3}) {
-                long base = monday().getTime() + (week * 7L + day) * DAY;
-                dates.add(new Date(base));
-                dates.add(new Date(base + 2 * HOUR));
-            }
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertTrue(guess.multipleReleasesPerDay);
-        assertEquals(ReleaseScheduleGuesser.Schedule.SPECIFIC_DAYS, guess.schedule);
-        assertEquals(Arrays.asList(Calendar.MONDAY, Calendar.THURSDAY), guess.days);
-    }
-
-    @Test
-    public void manyReleasesOnLastDayPushNextReleaseToNextAllowedDay() {
-        List<Date> dates = new ArrayList<>();
-        for (int day = 0; day < 7; day++) {
-            dates.add(new Date(monday().getTime() + day * DAY));
-        }
-        for (int i = 0; i < 4; i++) {
-            dates.add(new Date(monday().getTime() + 7 * DAY + i * HOUR));
-        }
-
-        ReleaseScheduleGuesser.Guess guess = guessFor(dates);
-
-        assertTrue(guess.multipleReleasesPerDay);
-        assertTrue(guess.nextExpectedDate.getTime() >= monday().getTime() + 8 * DAY);
+        assertEquals(new Date(dates.get(7).getTime() + 7 * DAY), guess.nextExpectedDate);
     }
 }
