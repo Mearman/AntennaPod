@@ -1,0 +1,8 @@
+{
+  "version": "1.2.0",
+  "chapters": [
+    {"startTime": 0, "title": "Cold open"},
+    {"startTime": 95, "title": "Interview", "url": "https://example.com/interview", "img": "https://example.com/interview.jpg"},
+    {"startTime": 3600, "title": "Credits"}
+  ]
+}

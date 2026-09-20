@@ -14,6 +14,7 @@ import java.util.Locale;
 
 public class MediaFixtures {
     public static final String AUDIO_ASSET = "3sec.mp3";
+    public static final String LONG_AUDIO_ASSET = "30sec.mp3";
 
     private static final int ID3_HEADER_LENGTH = 10;
     private static final int ID3_SYNCSAFE_BITS = 7;
@@ -61,12 +62,21 @@ public class MediaFixtures {
     }
 
     public static byte[] plainAudio() throws IOException {
-        byte[] mp3 = TestAssets.readBytes(AUDIO_ASSET);
+        return plainAudio(AUDIO_ASSET);
+    }
+
+    public static byte[] plainAudio(String asset) throws IOException {
+        byte[] mp3 = TestAssets.readBytes(asset);
         int tagLength = ID3_HEADER_LENGTH + readSyncsafe(mp3, ID3_SIZE_OFFSET);
         return Arrays.copyOfRange(mp3, tagLength, mp3.length);
     }
 
     public static byte[] mp3WithChapters(int version, List<ChapterSpec> chapters, String comment)
+            throws IOException {
+        return mp3WithChapters(AUDIO_ASSET, version, chapters, comment);
+    }
+
+    public static byte[] mp3WithChapters(String asset, int version, List<ChapterSpec> chapters, String comment)
             throws IOException {
         ByteArrayOutputStream frames = new ByteArrayOutputStream();
         frames.write(id3Frame(version, "TIT2", textPayload("Tagged episode")));
@@ -77,7 +87,7 @@ public class MediaFixtures {
         for (int i = 0; i < chapters.size(); i++) {
             frames.write(id3Frame(version, "CHAP", chapterPayload(version, "chp" + i, chapters.get(i))));
         }
-        return concat(id3Tag(version, frames.toByteArray()), plainAudio());
+        return concat(id3Tag(version, frames.toByteArray()), plainAudio(asset));
     }
 
     public static byte[] mp3WithCustomComment(String comment) throws IOException {
