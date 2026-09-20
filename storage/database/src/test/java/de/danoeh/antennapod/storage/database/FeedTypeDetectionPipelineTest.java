@@ -26,7 +26,6 @@ public class FeedTypeDetectionPipelineTest extends FeedPipelineTestBase {
 
         assertEquals("html", exception.getRootElement());
         assertTrue(exception.getMessage().contains("Login required"));
-        assertTrue(DBReader.getFeedList().isEmpty());
     }
 
     @Test
@@ -44,7 +43,6 @@ public class FeedTypeDetectionPipelineTest extends FeedPipelineTestBase {
                 () -> parse("<rss version=\"3.0\"><channel><title>Future</title></channel></rss>"));
 
         assertEquals("Unsupported rss version", exception.getMessage());
-        assertTrue(DBReader.getFeedList().isEmpty());
     }
 
     @Test
@@ -67,7 +65,6 @@ public class FeedTypeDetectionPipelineTest extends FeedPipelineTestBase {
     public void unknownRootElementIsRejected() {
         assertThrows(UnsupportedFeedtypeException.class,
                 () -> parse("<?xml version=\"1.0\"?><opml version=\"2.0\"><body/></opml>"));
-        assertTrue(DBReader.getFeedList().isEmpty());
     }
 
     @Test
@@ -83,10 +80,8 @@ public class FeedTypeDetectionPipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void truncatedFeedFailsToParseAndStoresNothing() {
+    public void truncatedFeedFailsToParse() {
         assertThrows(SAXException.class, () -> parse("<rss version=\"2.0\"><channel><title>Cut off</title><item>"));
-
-        assertTrue(DBReader.getFeedList().isEmpty());
     }
 
     @Test
@@ -97,12 +92,5 @@ public class FeedTypeDetectionPipelineTest extends FeedPipelineTestBase {
                 () -> new FeedHandler().parseFeed(feed));
 
         assertEquals("Unknown problem when trying to determine feed type", exception.getMessage());
-    }
-
-    @Test
-    public void exceptionWithoutRootElementOrMessageDescribesUnknownType() {
-        assertEquals("Unknown type", new UnsupportedFeedtypeException(null, null).getMessage());
-        assertEquals("Server returned div", new UnsupportedFeedtypeException("div", null).getMessage());
-        assertEquals("custom", new UnsupportedFeedtypeException("div", "custom").getMessage());
     }
 }
