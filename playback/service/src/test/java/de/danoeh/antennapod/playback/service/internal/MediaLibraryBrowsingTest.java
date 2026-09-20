@@ -13,6 +13,8 @@ import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.playback.base.MediaItemAdapter;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
+import io.reactivex.rxjava3.plugins.RxJavaPlugins;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,18 +26,17 @@ import org.robolectric.RuntimeEnvironment;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,10 +62,11 @@ public class MediaLibraryBrowsingTest {
 
     @After
     public void tearDown() {
+        RxJavaPlugins.reset();
         PlaybackTestDatabase.tearDown();
     }
 
-    private <T> T await(java.util.concurrent.Future<T> future) {
+    private <T> T await(Future<T> future) {
         try {
             return future.get(5, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -188,13 +190,12 @@ public class MediaLibraryBrowsingTest {
 
     @Test
     public void browsingAnUnknownShelfFails() {
-        try {
-            children("nonsense");
-            fail("Expected browsing an unknown shelf to fail");
-        } catch (AssertionError e) {
-            assertTrue(e.getCause() instanceof ExecutionException);
-            assertTrue(e.getCause().getCause() instanceof IllegalArgumentException);
-        }
+        Future<LibraryResult<ImmutableList<MediaItem>>> result =
+                callback.onGetChildren(session, browser, "nonsense", 0, 100, null);
+
+        ExecutionException thrown = assertThrows(ExecutionException.class,
+                () -> result.get(5, TimeUnit.SECONDS));
+        assertTrue(thrown.getCause() instanceof IllegalArgumentException);
     }
 
     @Test
@@ -238,16 +239,27 @@ public class MediaLibraryBrowsingTest {
 
     @Test
     public void aSearchRequestTellsTheBrowserHowManyResultsAreWaiting() {
-        callback.onSearch(session, browser, "Main Episode", null);
+        RxJavaPlugins.setIoSchedulerHandler(scheduler -> Schedulers.trampoline());
 
-        verify(session, timeout(5000)).notifySearchResultChanged(eq(browser), eq("Main Episode"), eq(3), any());
+        await(callback.onSearch(session, browser, "Main Episode", null));
+
+        verify(session).notifySearchResultChanged(eq(browser), eq("Main Episode"), eq(3), any());
     }
 
     @Test
-    public void anEmptySearchRequestReportsNoResultsWithoutTouchingTheDatabase() {
+    public void aSearchRequestThatMatchesNothingTellsTheBrowserThereAreNoResults() {
+        RxJavaPlugins.setIoSchedulerHandler(scheduler -> Schedulers.trampoline());
+
+        await(callback.onSearch(session, browser, "no such episode", null));
+
+        verify(session).notifySearchResultChanged(eq(browser), eq("no such episode"), eq(0), any());
+    }
+
+    @Test
+    public void anEmptySearchRequestReportsNoResultsStraightAway() {
         LibraryResult<Void> result = await(callback.onSearch(session, browser, "", null));
 
-        assertNotNull(result);
+        assertEquals(LibraryResult.RESULT_SUCCESS, result.resultCode);
         verify(session).notifySearchResultChanged(eq(browser), eq(""), eq(0), any());
     }
 
@@ -284,6 +296,6 @@ public class MediaLibraryBrowsingTest {
 
         assertTrue(result.mediaItems.isEmpty());
         assertEquals(4200, result.startPositionMs);
-        assertFalse(result.startIndex != 0);
+        assertEquals(0, result.startIndex);
     }
 }
