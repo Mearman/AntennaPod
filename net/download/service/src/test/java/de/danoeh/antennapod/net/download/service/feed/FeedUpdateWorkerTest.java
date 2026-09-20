@@ -5,6 +5,7 @@ import android.app.Application;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import androidx.work.Data;
 import androidx.work.ForegroundInfo;
 import androidx.work.ListenableWorker;
@@ -25,6 +26,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.robolectric.shadows.ShadowNetworkInfo;
 
 import java.util.Collections;
 import java.util.List;
@@ -395,6 +397,25 @@ public class FeedUpdateWorkerTest extends DownloadIntegrationTestBase {
         assertEquals(ListenableWorker.Result.retry(), result);
         assertEquals(0, server.getRequestCount());
         verify(AutoDownloadManager.getInstance(), never()).autodownloadUndownloadedItems(any());
+    }
+
+    @Test
+    public void automaticRefreshOnMobileNetworkIsDeferredUnlessAllowed() {
+        serve(Map.of("/feed.xml", rssResponse(rss("Remote Title", "First"))));
+        Feed feed = saveFeed(newFeed("Local Title", url("/feed.xml")));
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        shadowOf(connectivityManager).setActiveNetworkInfo(ShadowNetworkInfo.newInstance(
+                NetworkInfo.DetailedState.CONNECTED, ConnectivityManager.TYPE_MOBILE, 0, true,
+                NetworkInfo.State.CONNECTED));
+        Data input = new Data.Builder().putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build();
+
+        assertEquals(ListenableWorker.Result.retry(), runWorker(input));
+        assertEquals(0, server.getRequestCount());
+
+        UserPreferences.setAllowMobileFeedRefresh(true);
+        assertEquals(ListenableWorker.Result.success(), runWorker(input));
+        assertEquals(1, server.getRequestCount());
     }
 
     @Test
