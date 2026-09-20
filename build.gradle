@@ -26,6 +26,10 @@ tasks.register('coverageReport', JacocoReport) {
         scope == null || (module.path != ":playback:cast"
                 && logicModules.any { module.path == it || module.path.startsWith("${it}:") })
     }
+    def legacyPlaybackClasses = ["LocalPSMP", "ExoPlayerWrapper", "PlaybackServiceNotificationBuilder",
+            "PlaybackServiceTaskManager", "PlaybackServiceStateManager", "PlaybackVolumeUpdater", "WearMediaSession",
+            "MediaButtonReceiver", "QuickSettingsTileService", "PlaybackServiceInterface", "PlaybackService",
+            "PlaybackServiceMediaPlayer"]
     def suiteName = (suite ?: "all") + (scope == null ? "" : " (${scope})")
     def reportDir = layout.buildDirectory.dir("reports/coverage/${suiteName.replace(' ', '-').replace('(', '').replace(')', '')}")
     def minimum = project.findProperty("coverageMinimum")
@@ -40,6 +44,9 @@ tasks.register('coverageReport', JacocoReport) {
         fileTree("${module.projectDir}/build/intermediates/javac") {
             include "debug/**/*.class", "playDebug/**/*.class"
             exclude "**/R.class", "**/R\$*.class", "**/BuildConfig.class", "**/databinding/**", "**/DataBinderMapperImpl*.class", "**/BR.class"
+            if (scope != null) {
+                legacyPlaybackClasses.each { legacy -> exclude "**/${legacy}.class", "**/${legacy}\$*.class" }
+            }
         }
     })
     sourceDirectories.from(scopedModules.collect { module ->
