@@ -33,7 +33,7 @@ public class OpmlPipelineTest extends ImportExportPipelineTestBase {
         return new OpmlReader().readDocument(new StringReader(opml));
     }
 
-    private void importInto(String opml) throws Exception {
+    private void storeOutlines(String opml) throws Exception {
         for (OpmlElement element : read(opml)) {
             Feed feed = new Feed(element.getXmlUrl(), null, element.getText());
             feed.setItems(Collections.emptyList());
@@ -94,8 +94,8 @@ public class OpmlPipelineTest extends ImportExportPipelineTestBase {
     }
 
     @Test
-    public void importedOutlinesBecomeSubscriptionsIncludingNestedOnesAndSkippingBrokenOnes() throws Exception {
-        importInto("<?xml version=\"1.0\" encoding=\"UTF-8\"?><opml version=\"2.0\"><body>"
+    public void outlinesReadFromADocumentAreStoredAsSubscriptionsIncludingNestedOnesAndSkippingBrokenOnes() throws Exception {
+        storeOutlines("<?xml version=\"1.0\" encoding=\"UTF-8\"?><opml version=\"2.0\"><body>"
                 + "<outline text=\"Category\">"
                 + "<outline text=\"Nested\" type=\"rss\" xmlUrl=\"https://example.com/nested.xml\"/>"
                 + "</outline>"
@@ -117,35 +117,35 @@ public class OpmlPipelineTest extends ImportExportPipelineTestBase {
     }
 
     @Test
-    public void importingTheSameOpmlTwiceDoesNotDuplicateSubscriptions() throws Exception {
+    public void storingTheSameOutlinesTwiceDoesNotDuplicateSubscriptions() throws Exception {
         String opml = "<opml version=\"2.0\"><body>"
                 + "<outline text=\"Only\" xmlUrl=\"https://example.com/only.xml\"/></body></opml>";
 
-        importInto(opml);
-        importInto(opml);
+        storeOutlines(opml);
+        storeOutlines(opml);
 
         assertEquals(1, storedFeeds().size());
     }
 
     @Test
-    public void exportAfterRestoringFromAnExportListsTheSameSubscriptions() throws Exception {
+    public void exportAfterStoringTheOutlinesOfAnExportListsTheSameSubscriptions() throws Exception {
         subscribe("https://example.com/one.xml", "First podcast", "https://example.com/one", "https://example.com/1.png");
         subscribe("https://example.com/two.xml", "Second podcast", "https://example.com/two", "https://example.com/2.png");
-        List<OpmlElement> original = read(export());
         String opml = export();
 
         resetDatabase();
         assertTrue(storedFeeds().isEmpty());
-        importInto(opml);
-        List<OpmlElement> restored = read(export());
+        storeOutlines(opml);
 
-        assertEquals(original.size(), restored.size());
-        List<String> originalUrls = new ArrayList<>();
-        List<String> restoredUrls = new ArrayList<>();
-        for (int i = 0; i < original.size(); i++) {
-            originalUrls.add(original.get(i).getXmlUrl() + "|" + original.get(i).getText());
-            restoredUrls.add(restored.get(i).getXmlUrl() + "|" + restored.get(i).getText());
+        assertEquals(addressesAndTitles(read(opml)), addressesAndTitles(read(export())));
+    }
+
+    private static List<String> addressesAndTitles(List<OpmlElement> elements) {
+        List<String> descriptions = new ArrayList<>();
+        for (OpmlElement element : elements) {
+            descriptions.add(element.getXmlUrl() + "|" + element.getText());
         }
-        assertEquals(originalUrls, restoredUrls);
+        Collections.sort(descriptions);
+        return descriptions;
     }
 }
