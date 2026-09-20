@@ -1,29 +1,21 @@
 package de.danoeh.antennapod.net.download.service.feed.remote;
 
-import android.content.Context;
-import androidx.test.platform.app.InstrumentationRegistry;
 import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.download.DownloadRequest;
 import de.danoeh.antennapod.model.download.DownloadResult;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedMedia;
-import de.danoeh.antennapod.net.common.AntennapodHttpClient;
+import de.danoeh.antennapod.net.download.service.DownloadIntegrationTestBase;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
 import okio.Buffer;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
 import org.robolectric.shadows.ShadowStatFs;
 
 import java.io.ByteArrayOutputStream;
@@ -46,47 +38,19 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
-@RunWith(RobolectricTestRunner.class)
-public class HttpDownloaderTest {
+public class HttpDownloaderTest extends DownloadIntegrationTestBase {
     private static final int BLOCK_SIZE = 4096;
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-    private MockWebServer server;
     private File destination;
 
     @Before
-    public void setUp() throws Exception {
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        UserPreferences.init(context);
+    public void setUp() {
         registerFreeSpace(1_000_000);
-        AntennapodHttpClient.setCacheDirectory(temporaryFolder.newFolder("http-cache"));
-        AntennapodHttpClient.reinit();
-        server = new MockWebServer();
-        server.start();
         destination = new File(temporaryFolder.getRoot(), "download.bin");
-    }
-
-    @After
-    public void tearDown() throws IOException {
-        server.shutdown();
     }
 
     private void registerFreeSpace(int freeBlocks) {
         ShadowStatFs.registerStats(UserPreferences.getDataFolder(null), freeBlocks, freeBlocks, freeBlocks);
-    }
-
-    private static byte[] bytes(int length) {
-        byte[] data = new byte[length];
-        for (int i = 0; i < length; i++) {
-            data[i] = (byte) (i % 251);
-        }
-        return data;
-    }
-
-    private static MockResponse binaryResponse(byte[] body) {
-        return new MockResponse().setBody(new Buffer().write(body)).addHeader("Content-Type", "audio/mpeg");
     }
 
     private DownloadRequest mediaRequest(String path) {
@@ -121,7 +85,7 @@ public class HttpDownloaderTest {
     @Test
     public void successfulMediaDownloadWritesBodyAndReportsSize() throws Exception {
         byte[] body = bytes(50_000);
-        server.enqueue(binaryResponse(body));
+        server.enqueue(audioResponse(body));
         DownloadRequest request = mediaRequest("/episode.mp3");
 
         Downloader downloader = run(request);
@@ -137,7 +101,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void downloaderResultCarriesRequestIdentity() {
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         Downloader downloader = run(mediaRequest("/episode.mp3"));
 
@@ -148,7 +112,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void mediaRequestDisablesTransparentCompressionAndCaching() throws Exception {
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         run(mediaRequest("/episode.mp3"));
 
@@ -274,7 +238,7 @@ public class HttpDownloaderTest {
     public void resumeSendsRangeHeaderAndAppendsToExistingFile() throws Exception {
         byte[] full = bytes(2000);
         Files.write(destination.toPath(), Arrays.copyOfRange(full, 0, 1000));
-        server.enqueue(binaryResponse(Arrays.copyOfRange(full, 1000, 2000)).setResponseCode(206)
+        server.enqueue(audioResponse(Arrays.copyOfRange(full, 1000, 2000)).setResponseCode(206)
                 .addHeader("Content-Range", "bytes 1000-1999/2000"));
         DownloadRequest request = mediaRequest("/episode.mp3");
 
@@ -292,7 +256,7 @@ public class HttpDownloaderTest {
     @Test
     public void resumeWithLastModifiedSendsIfRangeHeader() throws Exception {
         Files.write(destination.toPath(), bytes(100));
-        server.enqueue(binaryResponse(bytes(100)));
+        server.enqueue(audioResponse(bytes(100)));
         DownloadRequest request = new DownloadRequest(destination.getAbsolutePath(),
                 server.url("/episode.mp3").toString(), "Episode", 1, FeedMedia.FEEDFILETYPE_FEEDMEDIA,
                 "\"etag-1\"", null, null, false, null, true);
@@ -308,7 +272,7 @@ public class HttpDownloaderTest {
     public void resumeWhereServerIgnoresRangeRestartsFromBeginning() throws Exception {
         byte[] full = bytes(3000);
         Files.write(destination.toPath(), Arrays.copyOfRange(full, 0, 1000));
-        server.enqueue(binaryResponse(full));
+        server.enqueue(audioResponse(full));
         DownloadRequest request = mediaRequest("/episode.mp3");
 
         Downloader downloader = run(request);
@@ -321,7 +285,7 @@ public class HttpDownloaderTest {
     @Test
     public void emptyExistingFileDoesNotSendRangeHeader() throws Exception {
         assertTrue(destination.createNewFile());
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         run(mediaRequest("/episode.mp3"));
 
@@ -341,7 +305,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void truncatedBodyIsReportedAsWrongSize() {
-        server.enqueue(binaryResponse(bytes(20_000)).setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY));
+        server.enqueue(audioResponse(bytes(20_000)).setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY));
         DownloadRequest request = mediaRequest("/episode.mp3");
 
         Downloader downloader = run(request);
@@ -385,7 +349,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void cancelledBeforeStartEndsCancelledWithoutBody() {
-        server.enqueue(binaryResponse(bytes(50_000)));
+        server.enqueue(audioResponse(bytes(50_000)));
         Downloader downloader = new HttpDownloader(mediaRequest("/episode.mp3"));
         downloader.cancel();
 
@@ -400,7 +364,7 @@ public class HttpDownloaderTest {
     @Test
     public void insufficientFreeSpaceFailsBeforeReadingBody() {
         registerFreeSpace(1);
-        server.enqueue(binaryResponse(bytes(2 * BLOCK_SIZE)));
+        server.enqueue(audioResponse(bytes(2 * BLOCK_SIZE)));
 
         Downloader downloader = run(mediaRequest("/episode.mp3"));
 
@@ -411,7 +375,7 @@ public class HttpDownloaderTest {
     @Test
     public void downloadOfExactlyAvailableSpaceSucceeds() {
         registerFreeSpace(2);
-        server.enqueue(binaryResponse(bytes(2 * BLOCK_SIZE)));
+        server.enqueue(audioResponse(bytes(2 * BLOCK_SIZE)));
 
         Downloader downloader = run(mediaRequest("/episode.mp3"));
 
@@ -421,7 +385,7 @@ public class HttpDownloaderTest {
     @Test
     public void permanentRedirectIsRecordedAsNewUrl() {
         server.enqueue(new MockResponse().setResponseCode(301).addHeader("Location", server.url("/new.mp3")));
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         Downloader downloader = run(mediaRequest("/old.mp3"));
 
@@ -432,7 +396,7 @@ public class HttpDownloaderTest {
     @Test
     public void permanentRedirectStatus308IsRecordedAsNewUrl() {
         server.enqueue(new MockResponse().setResponseCode(308).addHeader("Location", server.url("/new.mp3")));
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         Downloader downloader = run(mediaRequest("/old.mp3"));
 
@@ -443,7 +407,7 @@ public class HttpDownloaderTest {
     public void temporaryRedirectIsFollowedWithoutRecordingNewUrl() throws Exception {
         byte[] body = bytes(64);
         server.enqueue(new MockResponse().setResponseCode(302).addHeader("Location", server.url("/temp.mp3")));
-        server.enqueue(binaryResponse(body));
+        server.enqueue(audioResponse(body));
 
         Downloader downloader = run(mediaRequest("/old.mp3"));
 
@@ -457,7 +421,7 @@ public class HttpDownloaderTest {
         byte[] body = bytes(64);
         server.enqueue(new MockResponse().setResponseCode(302).addHeader("Location", server.url("/second")));
         server.enqueue(new MockResponse().setResponseCode(302).addHeader("Location", server.url("/third")));
-        server.enqueue(binaryResponse(body));
+        server.enqueue(audioResponse(body));
 
         Downloader downloader = run(mediaRequest("/first"));
 
@@ -481,7 +445,7 @@ public class HttpDownloaderTest {
             @Override
             public MockResponse dispatch(RecordedRequest recordedRequest) {
                 if (expectedHeader.equals(recordedRequest.getHeader("Authorization"))) {
-                    return binaryResponse(body);
+                    return audioResponse(body);
                 }
                 return new MockResponse().setResponseCode(401).addHeader("WWW-Authenticate", "Basic realm=\"feed\"");
             }
@@ -582,7 +546,7 @@ public class HttpDownloaderTest {
                     return new MockResponse().setResponseCode(302).addHeader("Location", server.url("/protected"));
                 }
                 if ("Basic dXNlcjpwYXNz".equals(recordedRequest.getHeader("Authorization"))) {
-                    return binaryResponse(body);
+                    return audioResponse(body);
                 }
                 return new MockResponse().setResponseCode(401);
             }
@@ -595,11 +559,12 @@ public class HttpDownloaderTest {
     }
 
     @Test
-    public void connectionRefusedOnLoopbackIsReportedAsBlocked() throws Exception {
+    public void connectionFailureMentioningLoopbackAddressIsReportedAsBlocked() throws Exception {
         String loopbackUrl = server.url("/episode.mp3").newBuilder().host("127.0.0.1").build().toString();
         DownloadRequest request = new DownloadRequest(destination.getAbsolutePath(), loopbackUrl, "Episode", 1,
                 FeedMedia.FEEDFILETYPE_FEEDMEDIA, null, null, null, false, null, true);
-        server.shutdown();
+        server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST));
+        server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST));
 
         Downloader downloader = run(request);
 
@@ -609,7 +574,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void destinationInMissingDirectoryReportsIoError() {
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
         File missingDirectory = new File(temporaryFolder.getRoot(), "missing/dir/file.bin");
         DownloadRequest request = new DownloadRequest(missingDirectory.getAbsolutePath(),
                 server.url("/episode.mp3").toString(), "Episode", 1, FeedMedia.FEEDFILETYPE_FEEDMEDIA,
@@ -635,7 +600,7 @@ public class HttpDownloaderTest {
     @Test
     public void sourceWithUnencodedSpaceIsEncodedAndDownloaded() throws Exception {
         byte[] body = bytes(10);
-        server.enqueue(binaryResponse(body));
+        server.enqueue(audioResponse(body));
         DownloadRequest request = new DownloadRequest(destination.getAbsolutePath(),
                 server.url("/").toString() + "my episode.mp3", "Episode", 1, FeedMedia.FEEDFILETYPE_FEEDMEDIA,
                 null, null, null, false, null, true);
@@ -649,7 +614,7 @@ public class HttpDownloaderTest {
 
     @Test
     public void factoryCreatesHttpDownloaderForHttpSources() {
-        server.enqueue(binaryResponse(bytes(10)));
+        server.enqueue(audioResponse(bytes(10)));
 
         Downloader downloader = new DefaultDownloaderFactory().create(mediaRequest("/episode.mp3"));
 
