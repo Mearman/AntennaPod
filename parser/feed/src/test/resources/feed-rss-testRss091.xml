@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="0.91">
+    <channel>
+        <title>Old channel</title>
+        <link>http://example.com</link>
+        <description>Old description</description>
+        <item>
+            <title>Old item</title>
+            <link>http://example.com/old</link>
+            <enclosure url="http://example.com/old.mp3" length="100000" type="audio/mpeg"/>
+        </item>
+    </channel>
+</rss>
