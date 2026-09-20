@@ -322,8 +322,10 @@ public class FeedRefreshTest {
         assertEquals(pageTwoUrl, feed.getNextPageLink());
         assertEquals(15, feed.getItems().size());
 
-        onView(withId(R.id.recyclerView)).perform(RecyclerViewActions.scrollToPosition(14));
-        waitForViewGlobally(withText(R.string.load_next_page_label), FeedRobot.UI_TIMEOUT_MS);
+        FeedRobot.awaitAssertion(() -> {
+            onView(withId(R.id.recyclerView)).perform(RecyclerViewActions.scrollToPosition(14));
+            onView(withText(R.string.load_next_page_label)).check(matches(isDisplayed()));
+        });
         onView(withText(R.string.load_next_page_label)).perform(click());
 
         Awaitility.await().atMost(FeedRobot.DB_TIMEOUT_SECONDS, TimeUnit.SECONDS)
