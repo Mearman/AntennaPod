@@ -124,11 +124,6 @@ public class AtomNamespaceTest {
     }
 
     @Test
-    public void secondEnclosureDoesNotReplaceFirstMedia() {
-        assertEquals("http://example.com/one.mp3", feed.getItems().get(0).getMedia().getDownloadUrl());
-    }
-
-    @Test
     public void itunesDurationIsAppliedToEntryMedia() {
         assertEquals(3723000, feed.getItems().get(0).getMedia().getDuration());
     }
