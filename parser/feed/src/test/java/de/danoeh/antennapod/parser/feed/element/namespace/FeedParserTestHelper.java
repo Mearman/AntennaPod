@@ -27,16 +27,9 @@ public abstract class FeedParserTestHelper {
      */
     @NonNull
     static Feed runFeedParser(@NonNull File feedFile) throws Exception {
-        FeedHandler handler = new FeedHandler();
-        Feed parsedFeed = new Feed("http://example.com/feed", null);
-        parsedFeed.setLocalFileUrl(feedFile.getAbsolutePath());
-        handler.parseFeed(parsedFeed);
-        return parsedFeed;
+        return runFeedHandler(feedFile).feed;
     }
 
-    /**
-     * Runs the feed parser on the given file and returns the full parser result.
-     */
     @NonNull
     static FeedHandlerResult runFeedHandler(@NonNull File feedFile) throws Exception {
         FeedHandler handler = new FeedHandler();
