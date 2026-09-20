@@ -25,6 +25,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.LoadControl;
 import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackParameters;
@@ -101,10 +102,7 @@ public class ExoPlayerWrapper {
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS);
         loadControl.setBackBuffer((int) TimeUnit.MINUTES.toMillis(5), true);
         trackSelector = new DefaultTrackSelector(context);
-        exoPlayer = new ExoPlayer.Builder(context, new DefaultRenderersFactory(context))
-                .setTrackSelector(trackSelector)
-                .setLoadControl(loadControl.build())
-                .build();
+        exoPlayer = newExoPlayer(trackSelector, loadControl.build());
         exoPlayer.setSeekParameters(SeekParameters.EXACT);
         exoPlayer.addListener(new Player.Listener() {
             @Override
@@ -161,6 +159,13 @@ public class ExoPlayerWrapper {
         simpleCache = new SimpleCache(new File(context.getCacheDir(), "streaming"),
                 new LeastRecentlyUsedCacheEvictor(100 * 1024 * 1024), new StandaloneDatabaseProvider(context));
         initLoudnessEnhancer(exoPlayer.getAudioSessionId());
+    }
+
+    ExoPlayer newExoPlayer(DefaultTrackSelector selector, LoadControl loadControl) {
+        return new ExoPlayer.Builder(context, new DefaultRenderersFactory(context))
+                .setTrackSelector(selector)
+                .setLoadControl(loadControl)
+                .build();
     }
 
     ExoPlayer getExoPlayer() {
