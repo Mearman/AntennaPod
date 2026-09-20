@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowLooper;
@@ -33,9 +34,11 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -211,9 +214,19 @@ public class LocalPSMPListenerTest {
 
         psmp.shutdown();
 
-        verify(player, times(2)).setOnCompletionListener(any());
-        verify(player, times(2)).setOnErrorListener(any());
-        verify(player).release();
+        ArgumentCaptor<Runnable> completionCaptor = ArgumentCaptor.forClass(Runnable.class);
+        InOrder inOrder = inOrder(player);
+        inOrder.verify(player, times(2)).setOnCompletionListener(completionCaptor.capture());
+        inOrder.verify(player).release();
+
+        ArgumentCaptor<Consumer<String>> errorCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(player, times(2)).setOnErrorListener(errorCaptor.capture());
+
+        completionCaptor.getAllValues().get(1).run();
+        errorCaptor.getAllValues().get(1).accept("Connection reset");
+
+        verify(callback, never()).episodeFinishedPlayback();
+        assertNull(EventBus.getDefault().getStickyEvent(PlayerErrorEvent.class));
     }
 
     @Test
@@ -232,7 +245,7 @@ public class LocalPSMPListenerTest {
         play(true);
         focusListener().onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT);
 
-        ShadowLooper.idleMainLooper(30, java.util.concurrent.TimeUnit.SECONDS);
+        ShadowLooper.shadowMainLooper().runToEndOfTasks();
 
         assertEquals(PlayerStatus.PAUSED, psmp.getPlayerStatus());
     }
