@@ -50,8 +50,8 @@ public class FeedRobot {
     public static void addFeedByUrl(String url) {
         onView(withId(R.id.addViaUrlButton)).perform(scrollTo(), click());
         onView(withId(R.id.textInput)).perform(replaceText(url));
-        onView(withText(R.string.confirm_label)).perform(scrollTo(), click());
         Espresso.closeSoftKeyboard();
+        onView(withText(R.string.confirm_label)).perform(scrollTo(), click());
     }
 
     public static void subscribeToPreviewedFeed() {
