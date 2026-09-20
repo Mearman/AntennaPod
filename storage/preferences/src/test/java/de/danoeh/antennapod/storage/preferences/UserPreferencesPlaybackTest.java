@@ -118,11 +118,23 @@ public class UserPreferencesPlaybackTest {
     }
 
     @Test
-    public void headsetAndBluetoothDefaults() {
+    public void headsetAndBluetoothSettingsDefaultAndFollowStoredValues() {
         assertTrue(UserPreferences.isPauseOnHeadsetDisconnect());
         assertTrue(UserPreferences.isUnpauseOnHeadsetReconnect());
         assertFalse(UserPreferences.isUnpauseOnBluetoothReconnect());
         assertTrue(UserPreferences.shouldPauseForFocusLoss());
+
+        prefs.edit()
+                .putBoolean(UserPreferences.PREF_PAUSE_ON_HEADSET_DISCONNECT, false)
+                .putBoolean(UserPreferences.PREF_UNPAUSE_ON_HEADSET_RECONNECT, false)
+                .putBoolean(UserPreferences.PREF_UNPAUSE_ON_BLUETOOTH_RECONNECT, true)
+                .putBoolean(UserPreferences.PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS, false)
+                .commit();
+
+        assertFalse(UserPreferences.isPauseOnHeadsetDisconnect());
+        assertFalse(UserPreferences.isUnpauseOnHeadsetReconnect());
+        assertTrue(UserPreferences.isUnpauseOnBluetoothReconnect());
+        assertFalse(UserPreferences.shouldPauseForFocusLoss());
     }
 
     @Test
@@ -135,16 +147,38 @@ public class UserPreferencesPlaybackTest {
     }
 
     @Test
-    public void skipAndFavoriteKeepEpisodeByDefault() {
+    public void skipAndFavoriteKeepEpisodeByDefaultAndCanBeChangedIndependently() {
         assertTrue(UserPreferences.shouldSkipKeepEpisode());
         assertTrue(UserPreferences.shouldFavoriteKeepEpisode());
+
+        prefs.edit().putBoolean(UserPreferences.PREF_SKIP_KEEPS_EPISODE, false).commit();
+
+        assertFalse(UserPreferences.shouldSkipKeepEpisode());
+        assertTrue(UserPreferences.shouldFavoriteKeepEpisode());
+
+        prefs.edit().putBoolean(UserPreferences.PREF_FAVORITE_KEEPS_EPISODE, false).commit();
+
+        assertFalse(UserPreferences.shouldFavoriteKeepEpisode());
     }
 
     @Test
-    public void autoDeleteIsDisabledByDefault() {
+    public void autoDeleteIsDisabledByDefaultAndEachOptionIsStoredIndependently() {
         assertFalse(UserPreferences.isAutoDelete());
         assertFalse(UserPreferences.isAutoDeleteLocal());
         assertFalse(UserPreferences.shouldDeleteRemoveFromQueue());
+
+        prefs.edit().putBoolean(UserPreferences.PREF_AUTO_DELETE, true).commit();
+
+        assertTrue(UserPreferences.isAutoDelete());
+        assertFalse(UserPreferences.isAutoDeleteLocal());
+        assertFalse(UserPreferences.shouldDeleteRemoveFromQueue());
+
+        prefs.edit().putBoolean("prefAutoDeleteLocal", true).commit();
+        assertTrue(UserPreferences.isAutoDeleteLocal());
+        assertFalse(UserPreferences.shouldDeleteRemoveFromQueue());
+
+        prefs.edit().putBoolean(UserPreferences.PREF_DELETE_REMOVES_FROM_QUEUE, true).commit();
+        assertTrue(UserPreferences.shouldDeleteRemoveFromQueue());
     }
 
     @Test
@@ -166,8 +200,12 @@ public class UserPreferencesPlaybackTest {
     }
 
     @Test
-    public void timeRespectsSpeedIsDisabledByDefault() {
+    public void timeRespectsSpeedIsDisabledByDefaultAndFollowsStoredValue() {
         assertFalse(UserPreferences.timeRespectsSpeed());
+
+        prefs.edit().putBoolean("prefPlaybackTimeRespectsSpeed", true).commit();
+
+        assertTrue(UserPreferences.timeRespectsSpeed());
     }
 
     @Test
@@ -205,8 +243,12 @@ public class UserPreferencesPlaybackTest {
     }
 
     @Test
-    public void downloadedEpisodesAreEnqueuedByDefault() {
+    public void downloadedEpisodesAreEnqueuedByDefaultAndFollowStoredValue() {
         assertTrue(UserPreferences.enqueueDownloadedEpisodes());
+
+        prefs.edit().putBoolean("prefEnqueueDownloaded", false).commit();
+
+        assertFalse(UserPreferences.enqueueDownloadedEpisodes());
     }
 
     @Test
