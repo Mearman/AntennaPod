@@ -188,6 +188,13 @@ public class DownloadTestFixture {
         DBWriter.setFeedMedia(media).get();
     }
 
+    public void setDurationAndSize(FeedItem item, int duration, long size) throws Exception {
+        FeedMedia media = DBReader.getFeedMedia(item.getMedia().getId());
+        media.setDuration(duration);
+        media.setSize(size);
+        DBWriter.setFeedMedia(media).get();
+    }
+
     public void markPlayed(FeedItem item, long playedAtMillis) throws Exception {
         DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(item)).get();
         DBWriter.addItemToPlaybackHistory(item.getMedia(), new Date(playedAtMillis)).get();
