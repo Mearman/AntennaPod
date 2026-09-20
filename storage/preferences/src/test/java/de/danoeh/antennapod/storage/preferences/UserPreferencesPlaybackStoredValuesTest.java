@@ -19,17 +19,29 @@ import static org.junit.Assert.assertTrue;
 public class UserPreferencesPlaybackStoredValuesTest extends StoredPreferencesTestBase {
 
     @Test
-    public void headsetAndBluetoothBehaviourDefaultsCanBeSwitchedThroughStoredFlags() {
+    public void pauseOnHeadsetDisconnectIsOnUntilTheStoredFlagTurnsItOff() {
         assertTrue(UserPreferences.isPauseOnHeadsetDisconnect());
-        assertTrue(UserPreferences.isUnpauseOnHeadsetReconnect());
-        assertFalse(UserPreferences.isUnpauseOnBluetoothReconnect());
 
-        stored.edit().putBoolean(UserPreferences.PREF_PAUSE_ON_HEADSET_DISCONNECT, false)
-                .putBoolean(UserPreferences.PREF_UNPAUSE_ON_HEADSET_RECONNECT, false)
-                .putBoolean(UserPreferences.PREF_UNPAUSE_ON_BLUETOOTH_RECONNECT, true).commit();
+        stored.edit().putBoolean(UserPreferences.PREF_PAUSE_ON_HEADSET_DISCONNECT, false).commit();
 
         assertFalse(UserPreferences.isPauseOnHeadsetDisconnect());
+    }
+
+    @Test
+    public void unpauseOnHeadsetReconnectIsOnUntilTheStoredFlagTurnsItOff() {
+        assertTrue(UserPreferences.isUnpauseOnHeadsetReconnect());
+
+        stored.edit().putBoolean(UserPreferences.PREF_UNPAUSE_ON_HEADSET_RECONNECT, false).commit();
+
         assertFalse(UserPreferences.isUnpauseOnHeadsetReconnect());
+    }
+
+    @Test
+    public void unpauseOnBluetoothReconnectIsOffUntilTheStoredFlagTurnsItOn() {
+        assertFalse(UserPreferences.isUnpauseOnBluetoothReconnect());
+
+        stored.edit().putBoolean(UserPreferences.PREF_UNPAUSE_ON_BLUETOOTH_RECONNECT, true).commit();
+
         assertTrue(UserPreferences.isUnpauseOnBluetoothReconnect());
     }
 
@@ -58,26 +70,56 @@ public class UserPreferencesPlaybackStoredValuesTest extends StoredPreferencesTe
     }
 
     @Test
-    public void episodeRetentionFlagsFollowTheStoredValues() {
+    public void skippingKeepsTheEpisodeUntilTheStoredFlagTurnsItOff() {
         assertTrue(UserPreferences.shouldSkipKeepEpisode());
-        assertTrue(UserPreferences.shouldFavoriteKeepEpisode());
-        assertFalse(UserPreferences.isAutoDelete());
-        assertFalse(UserPreferences.isAutoDeleteLocal());
-        assertFalse(UserPreferences.shouldDeleteRemoveFromQueue());
-        assertFalse(UserPreferences.shouldDownloadsButtonActionPlay());
 
-        stored.edit().putBoolean(UserPreferences.PREF_SKIP_KEEPS_EPISODE, false)
-                .putBoolean(UserPreferences.PREF_FAVORITE_KEEPS_EPISODE, false)
-                .putBoolean(UserPreferences.PREF_AUTO_DELETE, true)
-                .putBoolean("prefAutoDeleteLocal", true)
-                .putBoolean(UserPreferences.PREF_DELETE_REMOVES_FROM_QUEUE, true)
-                .putBoolean(UserPreferences.PREF_DOWNLOADS_BUTTON_ACTION, true).commit();
+        stored.edit().putBoolean(UserPreferences.PREF_SKIP_KEEPS_EPISODE, false).commit();
 
         assertFalse(UserPreferences.shouldSkipKeepEpisode());
+    }
+
+    @Test
+    public void favoritesKeepTheEpisodeUntilTheStoredFlagTurnsItOff() {
+        assertTrue(UserPreferences.shouldFavoriteKeepEpisode());
+
+        stored.edit().putBoolean(UserPreferences.PREF_FAVORITE_KEEPS_EPISODE, false).commit();
+
         assertFalse(UserPreferences.shouldFavoriteKeepEpisode());
+    }
+
+    @Test
+    public void autoDeleteFollowsTheStoredFlag() {
+        assertFalse(UserPreferences.isAutoDelete());
+
+        stored.edit().putBoolean(UserPreferences.PREF_AUTO_DELETE, true).commit();
+
         assertTrue(UserPreferences.isAutoDelete());
+    }
+
+    @Test
+    public void autoDeleteOfLocalEpisodesFollowsTheStoredFlag() {
+        assertFalse(UserPreferences.isAutoDeleteLocal());
+
+        stored.edit().putBoolean("prefAutoDeleteLocal", true).commit();
+
         assertTrue(UserPreferences.isAutoDeleteLocal());
+    }
+
+    @Test
+    public void deletingRemovesFromTheQueueOnlyWhenTheStoredFlagIsSet() {
+        assertFalse(UserPreferences.shouldDeleteRemoveFromQueue());
+
+        stored.edit().putBoolean(UserPreferences.PREF_DELETE_REMOVES_FROM_QUEUE, true).commit();
+
         assertTrue(UserPreferences.shouldDeleteRemoveFromQueue());
+    }
+
+    @Test
+    public void downloadsButtonPlaysOnlyWhenTheStoredFlagIsSet() {
+        assertFalse(UserPreferences.shouldDownloadsButtonActionPlay());
+
+        stored.edit().putBoolean(UserPreferences.PREF_DOWNLOADS_BUTTON_ACTION, true).commit();
+
         assertTrue(UserPreferences.shouldDownloadsButtonActionPlay());
     }
 
@@ -91,7 +133,7 @@ public class UserPreferencesPlaybackStoredValuesTest extends StoredPreferencesTe
     }
 
     @Test
-    public void playbackSpeedIsStoredAsTextAndReadBackAsFloat() {
+    public void playbackSpeedDefaultsToNormalSpeedWithTheDefaultSpeedChoices() {
         assertEquals(1.0f, UserPreferences.getPlaybackSpeed(), 0.0001f);
 
         UserPreferences.setPlaybackSpeed(1.75f);
@@ -155,29 +197,41 @@ public class UserPreferencesPlaybackStoredValuesTest extends StoredPreferencesTe
     }
 
     @Test
-    public void skipIntervalsAreStoredAsIntegers() {
+    public void fastForwardIntervalIsStoredAsAnInteger() {
         assertEquals(30, UserPreferences.getFastForwardSecs());
-        assertEquals(10, UserPreferences.getRewindSecs());
 
         UserPreferences.setFastForwardSecs(45);
-        UserPreferences.setRewindSecs(5);
 
         assertEquals(45, stored.getInt("prefFastForwardSecs", 0));
-        assertEquals(5, stored.getInt("prefRewindSecs", 0));
         assertEquals(45, UserPreferences.getFastForwardSecs());
+    }
+
+    @Test
+    public void rewindIntervalIsStoredAsAnInteger() {
+        assertEquals(10, UserPreferences.getRewindSecs());
+
+        UserPreferences.setRewindSecs(5);
+
+        assertEquals(5, stored.getInt("prefRewindSecs", 0));
         assertEquals(5, UserPreferences.getRewindSecs());
     }
 
     @Test
-    public void queueLockAndStreamingPreferenceRoundTrip() {
+    public void queueLockIsStoredWhenChanged() {
         assertFalse(UserPreferences.isQueueLocked());
-        assertFalse(UserPreferences.isStreamOverDownload());
 
         UserPreferences.setQueueLocked(true);
-        UserPreferences.setStreamOverDownload(true);
 
         assertTrue(stored.getBoolean("prefQueueLocked", false));
         assertTrue(UserPreferences.isQueueLocked());
+    }
+
+    @Test
+    public void streamingOverDownloadIsStoredWhenChanged() {
+        assertFalse(UserPreferences.isStreamOverDownload());
+
+        UserPreferences.setStreamOverDownload(true);
+
         assertTrue(stored.getBoolean(UserPreferences.PREF_STREAM_OVER_DOWNLOAD, false));
         assertTrue(UserPreferences.isStreamOverDownload());
     }
