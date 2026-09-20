@@ -79,13 +79,22 @@ public class DbWriterEpisodeStateTest extends DatabaseTestBase {
     }
 
     @Test
-    public void markItemsPlayedResetsPositionOfMediaOnlyWhenItemHasMedia() {
+    public void markItemsPlayedWithPositionResetHandlesItemsWithAndWithoutMedia() {
         Feed feed = storeFeed("feed");
+        FeedItem withMedia = storeItem(feed, "with media");
+        withMedia.getMedia().setPosition(4000);
+        await(DBWriter.setFeedMedia(withMedia.getMedia()));
+        FeedItem other = storeItem(feed, "other");
+        other.getMedia().setPosition(3000);
+        await(DBWriter.setFeedMedia(other.getMedia()));
         FeedItem withoutMedia = storeItemWithoutMedia(feed, "text only", 1000);
 
-        await(DBWriter.markItemsPlayed(FeedItem.PLAYED, true, Collections.singletonList(withoutMedia)));
+        await(DBWriter.markItemsPlayed(FeedItem.PLAYED, true, Arrays.asList(withoutMedia, withMedia)));
 
         assertEquals(FeedItem.PLAYED, DBReader.getFeedItem(withoutMedia.getId()).getPlayState());
+        assertEquals(FeedItem.PLAYED, DBReader.getFeedItem(withMedia.getId()).getPlayState());
+        assertEquals(0, DBReader.getFeedItem(withMedia.getId()).getMedia().getPosition());
+        assertEquals(3000, DBReader.getFeedItem(other.getId()).getMedia().getPosition());
     }
 
     @Test
@@ -172,11 +181,16 @@ public class DbWriterEpisodeStateTest extends DatabaseTestBase {
     }
 
     @Test
-    public void favoriteWritesWithoutItemsChangeNothing() {
+    public void favoriteWritesWithoutItemsLeaveExistingFavoritesAlone() {
+        Feed feed = storeFeed("feed");
+        FeedItem favorite = storeItem(feed, "favorite");
+        await(DBWriter.addFavoriteItems(Collections.singletonList(favorite)));
+        events.clear();
+
         await(DBWriter.addFavoriteItems(Collections.emptyList()));
         await(DBWriter.removeFavoriteItems(Collections.emptyList()));
 
-        assertTrue(favorites().isEmpty());
+        assertEquals(Collections.singletonList("favorite"), titles(favorites()));
     }
 
     @Test
@@ -470,13 +484,22 @@ public class DbWriterEpisodeStateTest extends DatabaseTestBase {
     }
 
     @Test
-    public void setMediaDownloadInformationIgnoresMediaThatWasNeverStored() {
-        FeedMedia unsaved = new FeedMedia(null, "https://example.com/unsaved.mp3", 10, "audio/mpeg");
+    public void mediaWriteForMediaThatWasNeverStoredChangesNoStoredMedia() {
+        Feed feed = storeFeed("feed");
+        FeedItem item = storeItem(feed, "item");
+        FeedMedia unsaved = new FeedMedia(item, "https://example.com/unsaved.mp3", 10, "audio/mpeg");
+        unsaved.setPosition(999);
+        unsaved.setLocalFileUrl("/downloads/unsaved.mp3");
 
         await(DBWriter.setMediaDownloadInformation(unsaved));
         await(DBWriter.setFeedMediaPlaybackInformation(unsaved));
 
         assertEquals(0, unsaved.getId());
+        FeedMedia stored = DBReader.getFeedItem(item.getId()).getMedia();
+        assertEquals("https://example.com/media/item.mp3", stored.getDownloadUrl());
+        assertNull(stored.getLocalFileUrl());
+        assertEquals(0, stored.getPosition());
+        assertEquals(1, DBReader.getTotalEpisodeCount(new FeedItemFilter(FeedItemFilter.HAS_MEDIA)));
     }
 
     @Test

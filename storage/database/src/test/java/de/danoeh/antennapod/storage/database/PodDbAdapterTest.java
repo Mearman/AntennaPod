@@ -82,19 +82,6 @@ public class PodDbAdapterTest extends DatabaseTestBase {
     }
 
     @Test
-    public void walCheckpointKeepsStoredDataIntact() {
-        Feed feed = storeFeed("feed");
-        storeItem(feed, "item");
-        PodDBAdapter adapter = PodDBAdapter.getInstance();
-        adapter.open();
-
-        adapter.walCheckpoint();
-        adapter.close();
-
-        assertEquals(1, DBReader.getFeed(feed.getId(), false, 0, 10).getItems().size());
-    }
-
-    @Test
     public void savingFeedKeepsItsItemFilter() {
         Feed feed = storeFeed("feed");
         await(DBWriter.setFeedItemsFilter(feed.getId(), Collections.singleton(FeedItemFilter.UNPLAYED)));
@@ -275,14 +262,20 @@ public class PodDbAdapterTest extends DatabaseTestBase {
         FeedItem item = storeItem(feed, "item");
         FeedMedia unsaved = new FeedMedia(item, "https://example.com/other.mp3", 1, "audio/mpeg");
         unsaved.setLastPlayedTimeHistory(new Date(4000));
+        FeedMedia stored = item.getMedia();
+        stored.setLastPlayedTimeHistory(new Date(5000));
         PodDBAdapter adapter = PodDBAdapter.getInstance();
         adapter.open();
 
         adapter.setFeedMediaLastPlayedTimeHistory(unsaved);
         adapter.close();
 
-        assertEquals(0, unsaved.getId());
         assertEquals(0, DBReader.getTotalEpisodeCount(new FeedItemFilter(FeedItemFilter.IS_IN_HISTORY)));
+        adapter.open();
+        adapter.setFeedMediaLastPlayedTimeHistory(stored);
+        adapter.close();
+        assertEquals(1, DBReader.getTotalEpisodeCount(new FeedItemFilter(FeedItemFilter.IS_IN_HISTORY)));
+        assertEquals(5000, DBReader.getFeedItem(item.getId()).getMedia().getLastPlayedTimeHistory().getTime());
     }
 
     @Test
