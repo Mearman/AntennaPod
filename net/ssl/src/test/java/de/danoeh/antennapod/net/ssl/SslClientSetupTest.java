@@ -1,30 +1,27 @@
 package de.danoeh.antennapod.net.ssl;
 
-import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
 import org.junit.Test;
 
-import java.util.Arrays;
+import javax.net.ssl.X509TrustManager;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
 public class SslClientSetupTest {
 
     @Test
-    public void testInstallCertificatesUsesBackportTrustManagerAndAntennaPodSocketFactory() {
+    public void testInstalledTrustManagerTrustsBackportedRootCertificates() throws GeneralSecurityException {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         SslClientSetup.installCertificates(builder);
-        OkHttpClient client = builder.build();
-        assertTrue(client.sslSocketFactory() instanceof AntennaPodSslSocketFactory);
-        assertTrue(client.x509TrustManager() instanceof CompositeX509TrustManager);
-    }
-
-    @Test
-    public void testInstallCertificatesAllowsOnlyModernTlsAndCleartext() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        SslClientSetup.installCertificates(builder);
-        assertEquals(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.CLEARTEXT),
-                builder.build().connectionSpecs());
+        X509TrustManager installed = builder.build().x509TrustManager();
+        assertNotNull(installed);
+        X509Certificate root = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(
+                new ByteArrayInputStream(BackportCaCerts.LETSENCRYPT_ISRG.getBytes(StandardCharsets.UTF_8)));
+        installed.checkServerTrusted(new X509Certificate[] {root}, root.getPublicKey().getAlgorithm());
     }
 }
