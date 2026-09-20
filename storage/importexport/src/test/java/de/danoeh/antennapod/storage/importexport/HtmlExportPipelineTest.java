@@ -13,7 +13,9 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -67,49 +69,65 @@ public class HtmlExportPipelineTest extends ImportExportPipelineTestBase {
         assertFalse(html.contains("Not kept"));
     }
 
+    private static List<String> feedSections(String html) {
+        List<String> sections = new ArrayList<>(List.of(html.split(Pattern.quote("<li><div>"))));
+        sections.remove(0);
+        return sections;
+    }
+
+    private static FeedItem episodeTitled(Feed feed, String title) {
+        for (FeedItem item : DBReader.getFeedItemList(feed, FeedItemFilter.unfiltered(), SortOrder.DATE_NEW_OLD, 0,
+                Integer.MAX_VALUE)) {
+            if (title.equals(item.getTitle())) {
+                return item;
+            }
+        }
+        throw new AssertionError("No stored episode titled " + title);
+    }
+
     @Test
     public void favoritesPageGroupsFavoriteEpisodesUnderTheirFeed() throws Exception {
         Feed first = subscribe("https://example.com/one.xml", "First podcast", "https://example.com/one",
                 "https://example.com/1.png", "Alpha", "Beta");
         Feed second = subscribe("https://example.com/two.xml", "Second podcast", "https://example.com/two",
                 "https://example.com/2.png", "Gamma");
-        List<FeedItem> firstItems = DBReader.getFeedItemList(first, FeedItemFilter.unfiltered(),
-                SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE);
-        List<FeedItem> secondItems = DBReader.getFeedItemList(second, FeedItemFilter.unfiltered(),
-                SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE);
-        DBWriter.addFavoriteItems(List.of(secondItems.get(0), firstItems.get(0), firstItems.get(1)));
+        DBWriter.addFavoriteItems(List.of(episodeTitled(second, "Gamma"), episodeTitled(first, "Alpha"),
+                episodeTitled(first, "Beta")));
         DBWriter.tearDownTests();
 
         String html = exportFavorites();
 
         assertTrue(html.contains("<title>AntennaPod Favorites</title>"));
-        int firstFeed = html.indexOf("First podcast");
-        int secondFeed = html.indexOf("Second podcast");
-        assertTrue(firstFeed >= 0 && firstFeed < secondFeed);
-        int alpha = html.indexOf("Alpha");
-        int beta = html.indexOf("Beta");
-        int gamma = html.indexOf("Gamma");
-        assertTrue(firstFeed < beta && firstFeed < alpha);
-        assertTrue(beta < alpha);
-        assertTrue(secondFeed < gamma);
-        assertTrue(alpha < secondFeed && beta < secondFeed);
-        assertTrue(html.contains("<a href=\"https://example.com/two/episode-0\">Website</a>"));
-        assertTrue(html.contains("<a href=\"https://example.com/two.xml/episode-0.mp3\">Media</a>"));
+        List<String> sections = feedSections(html);
+        assertEquals(2, sections.size());
+        String firstSection = sections.get(0);
+        String secondSection = sections.get(1);
+        assertTrue(firstSection.contains("https://example.com/1.png"));
+        assertTrue(firstSection.contains("First podcast"));
+        assertTrue(firstSection.contains("Alpha<br>"));
+        assertTrue(firstSection.contains("Beta<br>"));
+        assertTrue(firstSection.indexOf("Beta<br>") < firstSection.indexOf("Alpha<br>"));
+        assertFalse(firstSection.contains("Gamma"));
+        assertTrue(secondSection.contains("https://example.com/2.png"));
+        assertTrue(secondSection.contains("Second podcast"));
+        assertTrue(secondSection.contains("Gamma<br>"));
+        assertFalse(secondSection.contains("Alpha"));
+        assertFalse(secondSection.contains("Beta"));
+        assertTrue(secondSection.contains("href=\"https://example.com/two/episode-0\""));
+        assertTrue(secondSection.contains("href=\"https://example.com/two.xml/episode-0.mp3\""));
     }
 
     @Test
     public void favoritesPageOnlyContainsEpisodesMarkedAsFavorite() throws Exception {
         Feed feed = subscribe("https://example.com/one.xml", "First podcast", "https://example.com/one",
                 "https://example.com/1.png", "Chosen", "Ignored");
-        List<FeedItem> items = DBReader.getFeedItemList(feed, FeedItemFilter.unfiltered(),
-                SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE);
-        DBWriter.toggleFavoriteItem(items.get(0));
+        DBWriter.toggleFavoriteItem(episodeTitled(feed, "Chosen"));
         DBWriter.tearDownTests();
 
         String html = exportFavorites();
 
-        assertTrue(html.contains(items.get(0).getTitle()));
-        assertFalse(html.contains(items.get(1).getTitle()));
+        assertTrue(html.contains("Chosen<br>"));
+        assertFalse(html.contains("Ignored"));
         assertEquals(1, favorites().size());
     }
 
