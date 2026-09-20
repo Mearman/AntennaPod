@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>Channel</title>
+        <dc:date>2001-01-01T00:00:00Z</dc:date>
+        <item>
+            <title>Dublin Core date</title>
+            <pubDate>Thu, 01 Jan 1970 00:01:00 +0000</pubDate>
+            <dc:date>1970-01-01T00:05:00Z</dc:date>
+            <dc:creator>Someone</dc:creator>
+            <description>Short</description>
+            <content:encoded>Much longer encoded content</content:encoded>
+        </item>
+        <item>
+            <title>Encoded shorter than description</title>
+            <description>A description that is quite long indeed</description>
+            <content:encoded>Tiny</content:encoded>
+        </item>
+    </channel>
+</rss>
