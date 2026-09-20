@@ -2,6 +2,8 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
 import android.media.AudioManager;
+import android.view.SurfaceHolder;
+import androidx.preference.PreferenceManager;
 import androidx.test.core.app.ApplicationProvider;
 import de.danoeh.antennapod.event.PlayerErrorEvent;
 import de.danoeh.antennapod.model.feed.Feed;
@@ -790,6 +792,78 @@ public class LocalPSMPTest {
         psmp.setVolume(1.0f, 1.0f);
 
         verify(player).setVolume(0.2f, 0.2f);
+    }
+
+    @Test
+    public void theVideoSizeIsMeasuredWhenVideoMediaIsPrepared() {
+        when(player.getVideoWidth()).thenReturn(1280);
+        when(player.getVideoHeight()).thenReturn(720);
+
+        playStreaming(feedMedia(1, "video/mp4", null, 0, 0, VolumeAdaptionSetting.OFF), false, true);
+
+        assertEquals(Integer.valueOf(1280), psmp.getVideoSize().first);
+        assertEquals(Integer.valueOf(720), psmp.getVideoSize().second);
+    }
+
+    @Test
+    public void reinitWithoutAnyMediaIsIgnored() {
+        psmp.reinit();
+
+        verify(player, never()).reset();
+        assertEquals(PlayerStatus.STOPPED, psmp.getPlayerStatus());
+    }
+
+    @Test
+    public void theVideoSurfaceIsHandedToThePlayer() {
+        SurfaceHolder surface = mock(SurfaceHolder.class);
+        playStreaming(feedMedia(1, "video/mp4", null, 0, 0, VolumeAdaptionSetting.OFF), false, false);
+
+        psmp.setVideoSurface(surface);
+
+        verify(player).setDisplay(surface);
+    }
+
+    @Test
+    public void duckingLowersTheVolumeWhenTheUserDoesNotWantToPause() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(UserPreferences.PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS, false).commit();
+        playStreaming(audioMedia(1), true, true);
+        AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        AudioManager.OnAudioFocusChangeListener listener =
+                Shadows.shadowOf(audioManager).getLastAudioFocusRequest().listener;
+
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK);
+
+        verify(player).setVolume(0.25f, 0.25f);
+        assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
+    }
+
+    @Test
+    public void stoppingWithoutEnteringTheStoppedStateReportsAPauseInstead() {
+        when(player.getCurrentPosition()).thenReturn(30000);
+        when(player.getDuration()).thenReturn(600000);
+        when(callback.shouldContinueToNextEpisode()).thenReturn(false);
+        FeedMedia media = audioMedia(1);
+        playStreaming(media, true, true);
+
+        psmp.stopPlayback(false);
+
+        verify(callback, never()).onPlaybackEnded(any(), anyBoolean());
+        verify(callback).onPlaybackPause(eq(media), eq(30000));
+    }
+
+    @Test
+    public void seekDeltaWithoutAKnownPositionDoesNotSeek() {
+        Playable playable = mock(Playable.class);
+        when(playable.getIdentifier()).thenReturn("id");
+        when(playable.getStreamUrl()).thenReturn(STREAM_URL);
+        when(playable.getMediaType()).thenReturn(MediaType.AUDIO);
+        when(playable.getPosition()).thenReturn(Playable.INVALID_TIME);
+        playStreaming(playable, false, false);
+
+        psmp.seekDelta(5000);
+
+        verify(player, never()).seekTo(anyInt());
     }
 
     @Test
