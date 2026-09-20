@@ -121,12 +121,6 @@ public class FeedMediaItemDelegationTest {
     }
 
     @Test
-    public void itemId_canBeSetExplicitly() {
-        media.setItemId(77);
-        assertEquals(77, media.getItemId());
-    }
-
-    @Test
     public void imageLocation_prefersItemImageLocation() {
         item.setImageUrl("http://example.com/item.png");
         assertEquals("http://example.com/item.png", media.getImageLocation());

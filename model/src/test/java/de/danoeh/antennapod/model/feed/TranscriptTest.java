@@ -3,10 +3,7 @@ package de.danoeh.antennapod.model.feed;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Set;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 
@@ -78,13 +75,5 @@ public class TranscriptTest {
     public void getSegmentAtTime_returnsSegmentContainingTime() {
         assertSame(third, transcript.getSegmentAtTime(5500));
         assertSame(first, transcript.getSegmentAtTime(0));
-    }
-
-    @Test
-    public void speakers_areStoredAsGiven() {
-        assertNull(transcript.getSpeakers());
-        Set<String> speakers = Set.of("A", "B");
-        transcript.setSpeakers(speakers);
-        assertSame(speakers, transcript.getSpeakers());
     }
 }

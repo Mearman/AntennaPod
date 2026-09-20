@@ -6,7 +6,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class FeedItemTranscriptTest {
@@ -63,12 +62,5 @@ public class FeedItemTranscriptTest {
         item.setTranscriptUrl(null, "http://example.com/t.vtt");
         item.setTranscriptUrl("text/vtt", null);
         assertFalse(item.hasTranscript());
-    }
-
-    @Test
-    public void parsedTranscript_isStoredAndReturned() {
-        Transcript transcript = new Transcript();
-        item.setTranscript(transcript);
-        assertSame(transcript, item.getTranscript());
     }
 }

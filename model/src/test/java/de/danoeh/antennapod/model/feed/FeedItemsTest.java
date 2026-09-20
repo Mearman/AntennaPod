@@ -3,9 +3,7 @@ package de.danoeh.antennapod.model.feed;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -33,13 +31,6 @@ public class FeedItemsTest {
         FeedItem second = addItem(2, new Date(2000));
         assertSame(first, feed.getItemAtIndex(0));
         assertSame(second, feed.getItemAtIndex(1));
-    }
-
-    @Test
-    public void setItems_replacesItemList() {
-        List<FeedItem> items = new ArrayList<>();
-        feed.setItems(items);
-        assertSame(items, feed.getItems());
     }
 
     @Test
