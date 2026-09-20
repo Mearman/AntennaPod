@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -247,12 +248,10 @@ public class MediaLibrarySessionCallbackBrowsingTest {
         dbReader.when(() -> DBReader.getEpisodes(anyInt(), anyInt(), any(), any()))
                 .thenReturn(Collections.emptyList());
 
-        try {
-            callback.onPlaybackResumption(session, controllerInfo).get();
-            fail("Expected the resumption request to fail");
-        } catch (InterruptedException | ExecutionException e) {
-            assertTrue(e instanceof ExecutionException);
-        }
+        ExecutionException failure = assertThrows(ExecutionException.class,
+                () -> callback.onPlaybackResumption(session, controllerInfo).get());
+
+        assertTrue(failure.getCause() instanceof NullPointerException);
     }
 
     @Test

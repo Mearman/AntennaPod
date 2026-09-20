@@ -118,14 +118,17 @@ public class ClockSleepTimerTest {
 
     @Test
     public void positionUpdateCountsElapsedTimeDownAndPublishesTheRemainder() {
+        long beforeStart = System.currentTimeMillis();
         timer.start(600000);
         events.clear();
 
         timer.playbackPositionUpdate(new PlaybackPositionEvent(1000, 300000));
+        long afterUpdate = System.currentTimeMillis();
 
+        long countedDown = 600000 - timer.getTimeLeft().getMillisValue();
         assertTrue(timer.isActive());
-        assertTrue(timer.getTimeLeft().getMillisValue() <= 600000);
-        assertTrue(timer.getTimeLeft().getMillisValue() > 590000);
+        assertTrue(countedDown >= 0);
+        assertTrue(countedDown <= afterUpdate - beforeStart);
         assertEquals(1, events.size());
         assertEquals(timer.getTimeLeft().getMillisValue(), events.get(0).getMillisTimeLeft());
     }
