@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+    <channel>
+        <title>Channel</title>
+        <link>http://example.com</link>
+        <description>Channel description</description>
+        <image><url>http://example.com/rss-image.png</url></image>
+        <itunes:image href="http://example.com/itunes-image.png"/>
+        <itunes:image href=""/>
+        <item>
+            <title>Described</title>
+            <guid></guid>
+            <description>Item description</description>
+            <enclosure url="http://example.com/a.mp3" length="abc" type="audio/mpeg"/>
+            <itunes:duration>1:30</itunes:duration>
+        </item>
+        <item>
+            <description>Only a description</description>
+            <guid>guid-two</guid>
+            <enclosure url="http://example.com/b.mp3" length="20000" type="audio/mpeg"/>
+            <enclosure url="http://example.com/c.mp3" length="30000" type="audio/mpeg"/>
+            <itunes:duration>not a duration</itunes:duration>
+        </item>
+        <item>
+            <title>Image enclosure only</title>
+            <enclosure url="http://example.com/cover.png" length="99999" type="image/png"/>
+            <itunes:duration>2:00</itunes:duration>
+        </item>
+        <item>
+            <title>No enclosure url</title>
+            <enclosure length="99999" type="audio/mpeg"/>
+        </item>
+        <item>
+            <title>Tiny enclosure</title>
+            <enclosure url="http://example.com/tiny.mp3" length="100" type="audio/mpeg"/>
+        </item>
+        <item>
+            <title>Future item</title>
+            <pubDate>Fri, 01 Jan 2999 00:00:00 +0000</pubDate>
+            <link>http://example.com/future</link>
+        </item>
+    </channel>
+</rss>
