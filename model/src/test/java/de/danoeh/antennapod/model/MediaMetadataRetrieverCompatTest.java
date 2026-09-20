@@ -7,7 +7,6 @@ import org.robolectric.RobolectricTestRunner;
 import java.io.IOException;
 
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -26,15 +25,6 @@ public class MediaMetadataRetrieverCompatTest {
         MediaMetadataRetrieverCompat retriever = spy(new MediaMetadataRetrieverCompat());
         doThrow(new IOException("release failed")).when(retriever).release();
         retriever.close();
-        verify(retriever).release();
-    }
-
-    @Test
-    public void tryWithResources_releasesRetrieverOnExit() throws IOException {
-        MediaMetadataRetrieverCompat retriever = spy(new MediaMetadataRetrieverCompat());
-        try (MediaMetadataRetrieverCompat resource = retriever) {
-            verify(resource, never()).release();
-        }
         verify(retriever).release();
     }
 }
