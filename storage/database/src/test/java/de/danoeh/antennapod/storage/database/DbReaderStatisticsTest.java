@@ -125,11 +125,13 @@ public class DbReaderStatisticsTest extends DatabaseTestBase {
     public void statisticsWithoutAnyPlaybackKeepDefaultOldestDate() {
         long before = System.currentTimeMillis();
         Feed feed = storeFeed("Unplayed");
-        storePlayedEpisode(feed, "unplayed", before, FeedItem.UNPLAYED, 1000, 0, 0);
+        storePlayedEpisode(feed, "unplayed", 1000, FeedItem.UNPLAYED, 1000, 0, 0);
 
         DBReader.StatisticsResult result = DBReader.getStatistics(false, 0, Long.MAX_VALUE);
+        long after = System.currentTimeMillis();
 
         assertTrue(result.oldestDate >= before);
+        assertTrue(result.oldestDate <= after);
     }
 
     @Test
