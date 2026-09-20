@@ -16,11 +16,9 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Edits the list of queue ids that the database reader hands out.
- */
 @RunWith(AndroidJUnit4.class)
 public class LongListTest {
     private static final int EPISODES = 5;
@@ -117,34 +115,16 @@ public class LongListTest {
     }
 
     @Test
-    public void accessOutsideTheListIsRejected() {
-        int rejected = 0;
-        try {
-            queueIds.get(EPISODES);
-        } catch (IndexOutOfBoundsException e) {
-            rejected++;
-        }
-        try {
-            queueIds.get(-1);
-        } catch (IndexOutOfBoundsException e) {
-            rejected++;
-        }
-        try {
-            queueIds.set(EPISODES, 1);
-        } catch (IndexOutOfBoundsException e) {
-            rejected++;
-        }
-        try {
-            queueIds.insert(EPISODES + 1, 1);
-        } catch (IndexOutOfBoundsException e) {
-            rejected++;
-        }
-        try {
-            queueIds.removeIndex(EPISODES);
-        } catch (IndexOutOfBoundsException e) {
-            rejected++;
-        }
+    public void readingOutsideTheListIsRejected() {
+        assertThrows(IndexOutOfBoundsException.class, () -> queueIds.get(EPISODES));
+        assertThrows(IndexOutOfBoundsException.class, () -> queueIds.get(-1));
+    }
 
-        assertEquals(5, rejected);
+    @Test
+    public void writingOutsideTheListIsRejected() {
+        assertThrows(IndexOutOfBoundsException.class, () -> queueIds.set(EPISODES, 1));
+        assertThrows(IndexOutOfBoundsException.class, () -> queueIds.insert(EPISODES + 1, 1));
+        assertThrows(IndexOutOfBoundsException.class, () -> queueIds.removeIndex(EPISODES));
+        assertEquals(EPISODES, queueIds.size());
     }
 }

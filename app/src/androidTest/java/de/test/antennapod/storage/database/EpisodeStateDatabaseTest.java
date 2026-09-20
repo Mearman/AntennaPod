@@ -32,9 +32,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Changes the state of episodes (played, favourite, history, download log) and reads it back from the database.
- */
 @RunWith(AndroidJUnit4.class)
 public class EpisodeStateDatabaseTest {
     private static final long HOUR_MILLIS = 3600 * 1000L;
@@ -214,10 +211,15 @@ public class EpisodeStateDatabaseTest {
     }
 
     @Test
-    public void deletingAMissingMediaDoesNothing() throws Exception {
+    public void deletingAMissingMediaLeavesDownloadedEpisodesAlone() throws Exception {
+        fixture.markDownloaded(feed.getItemAtIndex(2));
+        File file = new File(media(2).getLocalFileUrl());
+
         DBWriter.deleteFeedMediaOfItem(context, null).get();
 
         assertEquals(4, DBReader.getFeed(feed.getId(), false, 0, Integer.MAX_VALUE).getItems().size());
+        assertTrue(item(2).isDownloaded());
+        assertTrue(file.exists());
     }
 
     @Test
@@ -243,7 +245,12 @@ public class EpisodeStateDatabaseTest {
     }
 
     @Test
-    public void episodesWithoutChaptersHaveNone() throws Exception {
+    public void onlyEpisodesThatStoredChaptersHaveAny() throws Exception {
+        FeedItem edited = item(0);
+        edited.setChapters(Collections.singletonList(new Chapter(0, "Intro", null, null)));
+        DBWriter.setFeedItem(edited, false).get();
+
+        assertEquals(1, DBReader.loadChaptersOfFeedItem(item(0)).size());
         assertNull(DBReader.loadChaptersOfFeedItem(item(1)));
     }
 
