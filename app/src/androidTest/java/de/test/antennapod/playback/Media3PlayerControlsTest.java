@@ -2,14 +2,17 @@ package de.test.antennapod.playback;
 
 import androidx.test.filters.LargeTest;
 import de.danoeh.antennapod.R;
+import de.danoeh.antennapod.event.settings.VolumeAdaptionChangedEvent;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
+import de.danoeh.antennapod.model.feed.VolumeAdaptionSetting;
 import de.danoeh.antennapod.playback.base.RewindAfterPauseUtils;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.awaitility.Awaitility;
+import org.greenrobot.eventbus.EventBus;
 import org.junit.Test;
 
 import java.util.Date;
@@ -175,6 +178,43 @@ public class Media3PlayerControlsTest extends Media3ServiceTest {
         Awaitility.await("playback starts after the intro")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> position() == 8000);
+    }
+
+    @Test
+    public void testVolumeReductionOfTheFeedIsAppliedWhilePlaying() {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        long feedId = media.getItem().getFeed().getId();
+
+        play(media);
+        awaitCurrentMedia(media);
+        awaitReady();
+        Awaitility.await("playback starts at full volume")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> Media3TestUtils.getOnMain(controller()::getVolume) == 1.0f);
+
+        Media3TestUtils.runOnMain(() -> EventBus.getDefault().post(
+                new VolumeAdaptionChangedEvent(VolumeAdaptionSetting.HEAVY_REDUCTION, feedId)));
+
+        Awaitility.await("volume reduced for the feed")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> Media3TestUtils.getOnMain(controller()::getVolume)
+                        == VolumeAdaptionSetting.HEAVY_REDUCTION.getAdaptionFactor());
+    }
+
+    @Test
+    public void testDeletingTheFileOfTheRunningEpisodeStopsPlayback() throws Exception {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+
+        play(media);
+        awaitCurrentMedia(media);
+        awaitPlaying();
+        DBWriter.deleteFeedMediaOfItem(context, media).get();
+
+        Awaitility.await("playback stopped because the file is gone")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> PlaybackPreferences.getCurrentlyPlayingFeedMediaId()
+                        == PlaybackPreferences.NO_MEDIA_PLAYING);
+        assertFalse(DBReader.getFeedMedia(media.getId()).isDownloaded());
     }
 
     @Test
