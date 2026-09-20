@@ -138,6 +138,7 @@ dependencies {
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.hamcrest
     androidTestImplementation libs.hamcrest.library
+    androidTestImplementation libs.androidx.work.testing
 }
 
 if (project.hasProperty("antennaPodPlayPublisherCredentials")) {
