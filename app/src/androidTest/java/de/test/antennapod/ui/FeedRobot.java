@@ -3,7 +3,6 @@ package de.test.antennapod.ui;
 import android.view.View;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
-import androidx.test.espresso.NoMatchingRootException;
 import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.matcher.BoundedMatcher;
@@ -32,10 +31,8 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.RootMatchers.isDialog;
-import static androidx.test.espresso.matcher.RootMatchers.isPlatformPopup;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
-import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickBottomNavItem;
@@ -168,13 +165,11 @@ public class FeedRobot {
 
     public static void openFeedMenu(int titleRes) {
         awaitAssertion(() -> {
-            if (!isPopupOpen()) {
-                onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
-            }
+            onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
             try {
                 onView(withText(titleRes)).perform(click());
             } catch (NoMatchingViewException e) {
-                if (isPopupOpen()) {
+                if (!isOverflowReachable()) {
                     Espresso.pressBack();
                 }
                 throw e;
@@ -182,11 +177,11 @@ public class FeedRobot {
         });
     }
 
-    private static boolean isPopupOpen() {
+    private static boolean isOverflowReachable() {
         try {
-            onView(isRoot()).inRoot(isPlatformPopup()).check(matches(isDisplayed()));
+            onView(first(EspressoTestUtils.actionBarOverflow())).check(matches(isDisplayed()));
             return true;
-        } catch (NoMatchingRootException e) {
+        } catch (NoMatchingViewException e) {
             return false;
         }
     }
