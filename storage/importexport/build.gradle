@@ -35,4 +35,5 @@ dependencies {
     testImplementation libs.androidx.test.core
     testImplementation libs.robolectric
     testImplementation libs.mockito.core
+    testImplementation libs.androidx.work.testing
 }
