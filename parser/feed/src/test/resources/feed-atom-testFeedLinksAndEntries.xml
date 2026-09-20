@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xml:lang="de">
+    <id>urn:feed:main</id>
+    <title type="html">Tom &amp;amp; Jerry</title>
+    <subtitle>Feed subtitle</subtitle>
+    <logo>http://example.com/logo.png</logo>
+    <icon>http://example.com/icon.png</icon>
+    <author><name>Alice</name></author>
+    <author><name>Bob</name></author>
+    <link href="http://example.com/home"/>
+    <link rel="alternate" type="text/html" href="http://example.com/html"/>
+    <link rel="alternate" type="application/atom+xml" title="Atom Alt" href="http://example.com/alt.atom"/>
+    <link rel="alternate" type="application/rss+xml" href="http://example.com/alt.rss"/>
+    <link rel="archives" type="application/atom+xml" title="Archive" href="http://example.com/archive.atom"/>
+    <link rel="archives" type="application/rss+xml" href="http://example.com/archive.rss"/>
+    <link rel="archives" type="text/html" href="http://example.com/archive.html"/>
+    <link rel="payment" href="http://example.com/pay"/>
+    <link rel="next" href="http://example.com/page2"/>
+    <entry>
+        <id>urn:entry:1</id>
+        <title type="html">Tom &amp;amp; Jerry Returns</title>
+        <summary>Short summary</summary>
+        <content type="html">Longer content &amp;amp; more text</content>
+        <updated>1970-01-01T00:01:00Z</updated>
+        <link href="http://example.com/entry/1"/>
+        <link rel="enclosure" type="audio/mpeg" href="http://example.com/one.mp3" length="notanumber"/>
+        <link rel="enclosure" type="audio/mpeg" href="http://example.com/second.mp3" length="2048"/>
+        <link rel="payment" href="http://example.com/entry/pay"/>
+        <author><name>Carol</name></author>
+        <itunes:duration>01:02:03</itunes:duration>
+    </entry>
+    <entry>
+        <id>urn:entry:2</id>
+        <title>Entry Two</title>
+        <published>1970-01-01T00:05:00Z</published>
+        <updated>1970-01-01T00:09:00Z</updated>
+        <link rel="enclosure" type="image/png" href="http://example.com/cover.png"/>
+        <link rel="enclosure" type="application/x-unknown" href="http://example.com/blob" length="4096"/>
+        <link rel="alternate" href="http://example.com/entry/2"/>
+    </entry>
+    <entry>
+        <id>urn:entry:3</id>
+        <title>Entry Three</title>
+        <updated>2999-01-01T00:00:00Z</updated>
+    </entry>
+</feed>
