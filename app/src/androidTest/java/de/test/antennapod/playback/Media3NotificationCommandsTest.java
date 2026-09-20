@@ -54,6 +54,38 @@ public class Media3NotificationCommandsTest extends Media3ServiceTest {
     }
 
     @Test
+    public void testRewindButtonSeeksBackByTheConfiguredInterval() {
+        UserPreferences.setRewindSecs(5);
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        play(media);
+        awaitCurrentMedia(media);
+        awaitReady();
+        Media3TestUtils.runOnMain(() -> controller().seekTo(20000));
+        awaitPositionAtLeast(20000);
+
+        sendButton(context.getString(R.string.rewind_label));
+
+        Awaitility.await("seeked back by the configured interval")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> position() >= 14000 && position() <= 16000);
+    }
+
+    @Test
+    public void testFastForwardButtonSeeksForwardByTheConfiguredInterval() {
+        UserPreferences.setFastForwardSecs(7);
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        play(media);
+        awaitCurrentMedia(media);
+        awaitReady();
+
+        sendButton(context.getString(R.string.fast_forward_label));
+
+        Awaitility.await("seeked forward by the configured interval")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> position() >= 7000 && position() < 14000);
+    }
+
+    @Test
     public void testNotificationOnlyOffersTheConfiguredOptionalButtons() {
         UserPreferences.setFullNotificationButtons(
                 Collections.singletonList(UserPreferences.NOTIFICATION_BUTTON_PLAYBACK_SPEED));

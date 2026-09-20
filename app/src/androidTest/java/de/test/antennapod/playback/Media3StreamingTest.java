@@ -58,12 +58,15 @@ public class Media3StreamingTest extends Media3ServiceTest {
 
         play(media);
         awaitCurrentMedia(media);
-        awaitPositionAtLeast(2000);
+        awaitPositionAtLeast(6000);
         Media3TestUtils.runOnMain(controller()::pause);
 
         Awaitility.await("streamed position stored in the database")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> DBReader.getFeedMedia(media.getId()).getPosition() >= 2000);
+                .until(() -> DBReader.getFeedMedia(media.getId()).getPosition() > 0);
+        int storedPosition = DBReader.getFeedMedia(media.getId()).getPosition();
+        assertTrue("Stored position " + storedPosition + " is the one that was played",
+                storedPosition >= 2000);
         assertTrue("The duration of the streamed episode is known",
                 DBReader.getFeedMedia(media.getId()).getDuration() > 0);
     }

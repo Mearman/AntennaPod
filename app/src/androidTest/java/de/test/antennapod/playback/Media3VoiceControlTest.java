@@ -4,6 +4,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.session.MediaController;
 import androidx.test.filters.LargeTest;
 import de.danoeh.antennapod.model.feed.FeedItem;
+import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
@@ -11,7 +12,9 @@ import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -25,11 +28,22 @@ public class Media3VoiceControlTest extends Media3ServiceTest {
 
     @Test
     public void testVoiceSearchPlaysAMatchingEpisode() {
-        FeedItem item = DBReader.getQueue().get(3);
+        String query = DBReader.getQueue().get(3).getTitle();
+        List<FeedItem> matches = DBReader.searchFeedItems(0, query, FeedItemFilter.unfiltered());
+        assertFalse("The query matches at least one episode", matches.isEmpty());
+        List<Long> matchingMediaIds = new ArrayList<>();
+        for (FeedItem match : matches) {
+            if (match.getMedia() != null) {
+                matchingMediaIds.add(match.getMedia().getId());
+            }
+        }
 
-        playSearch(item.getTitle());
+        playSearch(query);
 
-        awaitCurrentMedia(item.getMedia());
+        Awaitility.await("an episode matching the query is playing")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> matchingMediaIds.contains(
+                        PlaybackPreferences.getCurrentlyPlayingFeedMediaId()));
         awaitPlaying();
     }
 
