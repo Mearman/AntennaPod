@@ -3,7 +3,9 @@ package de.danoeh.antennapod.system;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -11,20 +13,20 @@ import org.mockito.Mockito;
 import org.robolectric.RobolectricTestRunner;
 
 import java.io.File;
-import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mockConstruction;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
 public class CrashReportWriterTest {
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
     private File folderWithReport;
     private File folderWithoutReport;
     private MockedStatic<UserPreferences> userPreferences;
@@ -87,19 +89,23 @@ public class CrashReportWriterTest {
     }
 
     @Test
-    public void writingStoresStackTraceInReportFileAndClosesIt() {
-        useDataFolder(folderWithReport);
-        List<List<?>> constructorArguments = new ArrayList<>();
-        IllegalStateException exception = new IllegalStateException("boom");
-        try (MockedConstruction<PrintWriter> writers = mockConstruction(PrintWriter.class,
-                (writer, context) -> constructorArguments.add(context.arguments()))) {
-            CrashReportWriter.write(exception);
-            assertEquals(1, writers.constructed().size());
-            PrintWriter writer = writers.constructed().get(0);
-            verify(writer).println((Object) exception);
-            verify(writer).close();
-        }
-        assertEquals(List.of(new File(folderWithReport, "crash-report.log"), "UTF-8"), constructorArguments.get(0));
+    public void writingStoresStackTraceInReportFileThatCanBeReadBack() {
+        useDataFolder(temporaryFolder.getRoot());
+        CrashReportWriter.write(new IllegalStateException("boom"));
+        assertTrue(CrashReportWriter.getFile().exists());
+        String report = CrashReportWriter.read();
+        assertTrue(report.startsWith("java.lang.IllegalStateException: boom"));
+        assertTrue(report.contains(getClass().getName()));
+    }
+
+    @Test
+    public void writingReplacesEarlierReport() {
+        useDataFolder(temporaryFolder.getRoot());
+        CrashReportWriter.write(new IllegalStateException("first"));
+        CrashReportWriter.write(new IllegalArgumentException("second"));
+        String report = CrashReportWriter.read();
+        assertTrue(report.startsWith("java.lang.IllegalArgumentException: second"));
+        assertFalse(report.contains("first"));
     }
 
     @Test
