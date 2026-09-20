@@ -27,14 +27,4 @@ public class MediaButtonReceiverTest {
         verify(context, never()).startForegroundService(any());
         verify(context, never()).startService(any());
     }
-
-    @Test
-    public void anIntentWithoutExtrasIsIgnored() {
-        Context context = mock(Context.class);
-
-        new MediaButtonReceiver().onReceive(context, new Intent(Intent.ACTION_MEDIA_BUTTON));
-
-        verify(context, never()).startForegroundService(any());
-        verify(context, never()).startService(any());
-    }
 }

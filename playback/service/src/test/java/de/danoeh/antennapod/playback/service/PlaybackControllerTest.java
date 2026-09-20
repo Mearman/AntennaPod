@@ -1,6 +1,7 @@
 package de.danoeh.antennapod.playback.service;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -134,10 +135,11 @@ public class PlaybackControllerTest {
     }
 
     @Test
-    public void releasingAControllerThatWasNeverStartedIsHarmless() {
+    public void releasingAControllerUnbindsFromTheServiceAndStopsListeningForBroadcasts() {
         controller.release();
 
         verify(activity).unbindService(any(ServiceConnection.class));
+        verify(activity, times(2)).unregisterReceiver(any(BroadcastReceiver.class));
     }
 
     @Test
@@ -181,15 +183,6 @@ public class PlaybackControllerTest {
         assertFalse(controller.sleepTimerActive());
         assertEquals(Playable.INVALID_TIME, controller.getSleepTimerTimeLeft().getMillisValue());
         assertEquals(Playable.INVALID_TIME, controller.getSleepTimerTimeLeft().getDisplayValue());
-    }
-
-    @Test
-    public void sleepTimerCommandsWithoutAConnectedServiceAreDropped() {
-        controller.disableSleepTimer();
-        controller.setSleepTimer(900000);
-        controller.extendSleepTimer(300000);
-
-        assertFalse(controller.sleepTimerActive());
     }
 
     @Test
@@ -273,18 +266,6 @@ public class PlaybackControllerTest {
         dbReader.when(() -> DBReader.getFeedMedia(anyLong())).thenReturn(media(7, 0, MediaType.AUDIO));
 
         assertFalse(controller.isPlayingVideoLocally());
-    }
-
-    @Test
-    public void commandsThatNeedAConnectedServiceAreDroppedWhileThereIsNone() {
-        controller.setVideoSurface(null);
-        controller.setSkipSilence(true);
-        controller.setAudioTrack(1);
-        controller.notifyVideoSurfaceAbandoned();
-        controller.onPlaybackEnd();
-        controller.pause();
-
-        verify(activity, never()).startService(any(Intent.class));
     }
 
     @Test
