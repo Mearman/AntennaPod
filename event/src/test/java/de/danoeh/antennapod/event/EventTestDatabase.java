@@ -5,6 +5,8 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfaceStub;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueueStub;
 import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
@@ -18,16 +20,17 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
-final class EventTestDatabase {
+public final class EventTestDatabase {
     private EventTestDatabase() {
     }
 
-    static void setUp(Context context) {
+    public static void setUp(Context context) {
         UserPreferences.init(context);
         PlaybackPreferences.init(context);
         PodDBAdapter.init(context);
         PodDBAdapter.deleteDatabase();
         SynchronizationQueue.setInstance(new SynchronizationQueueStub());
+        DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
         AutoDownloadManager.setInstance(new AutoDownloadManager() {
             @Override
             public Future<?> autodownloadUndownloadedItems(Context ctx) {
@@ -42,11 +45,11 @@ final class EventTestDatabase {
         });
     }
 
-    static void tearDown() {
+    public static void tearDown() {
         PodDBAdapter.tearDownTests();
     }
 
-    static Feed storeFeed(Context context, String url, String title, int numItems) {
+    public static Feed storeFeed(Context context, String url, String title, int numItems) {
         Feed feed = new Feed(url, null, title);
         feed.setItems(new ArrayList<>());
         for (int i = 0; i < numItems; i++) {
@@ -60,7 +63,7 @@ final class EventTestDatabase {
         return FeedDatabaseWriter.updateFeed(context, feed, false);
     }
 
-    static List<FeedItem> itemsOf(Feed feed) {
+    public static List<FeedItem> itemsOf(Feed feed) {
         return feed.getItems();
     }
 }

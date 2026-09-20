@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -169,23 +170,43 @@ public class QueueEventDeliveryTest {
     }
 
     @Test
-    public void irreversibleRemovedCarriesTheItemAndNoPosition() {
-        QueueEvent event = QueueEvent.irreversibleRemoved(items.get(1));
+    public void deletingAQueuedEpisodeReportsItAsIrreversiblyRemoved()
+            throws ExecutionException, InterruptedException {
+        DBWriter.addQueueItem(context, items.get(0), items.get(1)).get();
+        recorder.clear();
 
+        DBWriter.deleteFeedItems(context, Collections.singletonList(items.get(1))).get();
+
+        QueueEvent event = recorder.single(QueueEvent.class);
         assertEquals(QueueEvent.Action.IRREVERSIBLE_REMOVED, event.action);
         assertEquals(items.get(1).getId(), event.item.getId());
         assertEquals(-1, event.position);
         assertNull(event.items);
+        List<FeedItem> queue = DBReader.getQueue();
+        assertEquals(1, queue.size());
+        assertEquals(items.get(0).getId(), queue.get(0).getId());
     }
 
     @Test
-    public void setQueueCarriesTheWholeListAndNoSingleItem() {
-        QueueEvent event = QueueEvent.setQueue(items);
+    public void movingEpisodesToTheBottomFirstAnnouncesTheQueueWithoutThem()
+            throws ExecutionException, InterruptedException {
+        DBWriter.addQueueItem(context, items.get(0), items.get(1), items.get(2)).get();
+        recorder.clear();
 
-        assertEquals(QueueEvent.Action.SET_QUEUE, event.action);
-        assertNull(event.item);
-        assertEquals(3, event.items.size());
-        assertEquals(-1, event.position);
+        DBWriter.moveQueueItemsToBottom(Collections.singletonList(items.get(0))).get();
+
+        List<QueueEvent> events = recorder.of(QueueEvent.class);
+        assertEquals(2, events.size());
+        assertEquals(QueueEvent.Action.SET_QUEUE, events.get(0).action);
+        assertNull(events.get(0).item);
+        assertEquals(-1, events.get(0).position);
+        assertEquals(QueueEvent.Action.MOVED, events.get(1).action);
+        assertEquals(items.get(0).getId(), events.get(1).item.getId());
+        assertEquals(2, events.get(1).position);
+        List<FeedItem> queue = DBReader.getQueue();
+        assertEquals(items.get(1).getId(), queue.get(0).getId());
+        assertEquals(items.get(2).getId(), queue.get(1).getId());
+        assertEquals(items.get(0).getId(), queue.get(2).getId());
     }
 
     @Test
