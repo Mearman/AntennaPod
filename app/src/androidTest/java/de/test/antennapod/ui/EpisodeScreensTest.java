@@ -46,6 +46,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static de.test.antennapod.EspressoTestUtils.performWhenReady;
 import static de.test.antennapod.EspressoTestUtils.waitForView;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static de.test.antennapod.NthMatcher.first;
@@ -96,17 +97,17 @@ public class EpisodeScreensTest {
     }
 
     private void onEpisode(int index, ViewAction action) {
-        onView(allOf(withId(R.id.recyclerView), isDisplayed())).perform(
-                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action));
+        performWhenReady(allOf(withId(R.id.recyclerView), isDisplayed()),
+                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action), VIEW_TIMEOUT_MILLIS);
     }
 
     private void chooseFromLongPressMenu(int index, int menuLabel) {
         onEpisode(index, longClick());
-        onView(allOf(withText(menuLabel), isDisplayed())).perform(click());
+        performWhenReady(allOf(withText(menuLabel), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
     private void confirmDialog() {
-        onView(allOf(withText(R.string.confirm_label), isDisplayed())).perform(click());
+        performWhenReady(allOf(withText(R.string.confirm_label), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
     @Test
@@ -115,8 +116,8 @@ public class EpisodeScreensTest {
         open(QueueFragment.TAG);
         waitForViewGlobally(withText(title(0)), VIEW_TIMEOUT_MILLIS);
 
-        onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
-        onView(allOf(withText(R.string.clear_queue_label), isDisplayed())).perform(click());
+        performWhenReady(first(EspressoTestUtils.actionBarOverflow()), click(), VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withText(R.string.clear_queue_label), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
         confirmDialog();
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> DBReader.getQueue().isEmpty());
@@ -150,7 +151,8 @@ public class EpisodeScreensTest {
         waitForViewGlobally(withText(title(1)), VIEW_TIMEOUT_MILLIS);
         waitForViewGlobally(withText(title(0)), VIEW_TIMEOUT_MILLIS);
 
-        onView(allOf(withContentDescription(R.string.clear_history_label), isDisplayed())).perform(click());
+        performWhenReady(allOf(withContentDescription(R.string.clear_history_label), isDisplayed()), click(),
+                VIEW_TIMEOUT_MILLIS);
         confirmDialog();
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
@@ -210,9 +212,11 @@ public class EpisodeScreensTest {
         open(StatisticsFragment.TAG);
         onView(isRoot()).perform(waitForView(withText(feed.getTitle()), VIEW_TIMEOUT_MILLIS));
 
-        onView(allOf(withText(R.string.years_statistics_label), isDescendantOfA(withId(R.id.sliding_tabs)))).perform(click());
-        onView(allOf(withText(R.string.subscriptions_label), isDescendantOfA(withId(R.id.sliding_tabs)))).perform(click());
-        onView(first(allOf(withText(feed.getTitle()), isDisplayed()))).perform(click());
+        performWhenReady(allOf(withText(R.string.years_statistics_label), isDescendantOfA(withId(R.id.sliding_tabs))),
+                click(), VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withText(R.string.subscriptions_label), isDescendantOfA(withId(R.id.sliding_tabs))),
+                click(), VIEW_TIMEOUT_MILLIS);
+        performWhenReady(first(allOf(withText(feed.getTitle()), isDisplayed())), click(), VIEW_TIMEOUT_MILLIS);
 
         waitForViewGlobally(withText(R.string.statistics_episodes_space), VIEW_TIMEOUT_MILLIS);
     }
@@ -223,8 +227,8 @@ public class EpisodeScreensTest {
         open(StatisticsFragment.TAG);
         onView(isRoot()).perform(waitForView(withText(feed.getTitle()), VIEW_TIMEOUT_MILLIS));
 
-        onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
-        onView(allOf(withText(R.string.statistics_reset_data), isDisplayed())).perform(click());
+        performWhenReady(first(EspressoTestUtils.actionBarOverflow()), click(), VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withText(R.string.statistics_reset_data), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
         confirmDialog();
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(

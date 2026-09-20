@@ -39,6 +39,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
+import static de.test.antennapod.EspressoTestUtils.performWhenReady;
 import static de.test.antennapod.EspressoTestUtils.waitForView;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.hamcrest.Matchers.allOf;
@@ -99,8 +100,8 @@ public class EpisodeListActionsTest {
     }
 
     private void onEpisode(int index, ViewAction action) {
-        onView(allOf(withId(R.id.recyclerView), isDisplayed())).perform(
-                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action));
+        performWhenReady(allOf(withId(R.id.recyclerView), isDisplayed()),
+                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action), VIEW_TIMEOUT_MILLIS);
     }
 
     private void clickSecondaryAction(int index) {
@@ -109,7 +110,7 @@ public class EpisodeListActionsTest {
 
     private void chooseFromLongPressMenu(int index, int menuLabel) {
         onEpisode(index, longClick());
-        onView(allOf(withText(menuLabel), isDisplayed())).perform(click());
+        performWhenReady(allOf(withText(menuLabel), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
     private void awaitSecondaryAction(int label) {

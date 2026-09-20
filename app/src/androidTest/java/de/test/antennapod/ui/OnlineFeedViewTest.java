@@ -28,6 +28,7 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static de.test.antennapod.EspressoTestUtils.performWhenReady;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
@@ -79,7 +80,7 @@ public class OnlineFeedViewTest {
         assertEquals(1, DBReader.getFeedList().size());
         assertEquals(Feed.STATE_NOT_SUBSCRIBED, DBReader.getFeedList().get(0).getState());
 
-        onView(allOf(withId(R.id.butSubscribe), isDisplayed())).perform(click());
+        performWhenReady(allOf(withId(R.id.butSubscribe), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
                 () -> DBReader.getFeedList().get(0).getState() == Feed.STATE_SUBSCRIBED);
@@ -136,7 +137,7 @@ public class OnlineFeedViewTest {
         open("https://antennapod.org/deeplink/subscribe");
 
         waitForViewGlobally(withText(R.string.null_value_podcast_error), VIEW_TIMEOUT_MILLIS);
-        onView(withText(android.R.string.ok)).perform(click());
+        performWhenReady(withText(android.R.string.ok), click(), VIEW_TIMEOUT_MILLIS);
 
         assertTrue(DBReader.getFeedList().isEmpty());
     }
@@ -174,10 +175,13 @@ public class OnlineFeedViewTest {
     }
 
     private void typeCredentials(String username, String password) {
-        onView(allOf(withId(R.id.usernameEditText), isDisplayed())).perform(replaceText(username));
-        onView(allOf(withId(R.id.passwordEditText), isDisplayed())).perform(replaceText(password),
-                closeSoftKeyboard());
-        onView(allOf(withText(R.string.confirm_label), isDisplayed())).perform(click());
+        performWhenReady(allOf(withId(R.id.usernameEditText), isDisplayed()), replaceText(username),
+                VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withId(R.id.passwordEditText), isDisplayed()), replaceText(password),
+                VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withId(R.id.passwordEditText), isDisplayed()), closeSoftKeyboard(),
+                VIEW_TIMEOUT_MILLIS);
+        performWhenReady(allOf(withText(R.string.confirm_label), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
     @Test

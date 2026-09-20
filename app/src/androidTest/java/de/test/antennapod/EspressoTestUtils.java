@@ -48,6 +48,21 @@ import static org.hamcrest.Matchers.not;
 
 public class EspressoTestUtils {
     /**
+     * Performs an action on a view once it exists in a root that has window focus, retrying until the timeout.
+     * Unlike a plain {@code onView(...).perform(...)} it survives popups and dialogs that need a while to appear
+     * or to take over the window focus on a slow device.
+     *
+     * @param viewMatcher The view to act on.
+     * @param action The action to perform on the matching view.
+     * @param timeoutMillis Maximum waiting period in milliseconds.
+     */
+    public static void performWhenReady(@NonNull Matcher<View> viewMatcher, @NonNull ViewAction action,
+                                        long timeoutMillis) {
+        Awaitility.await().atMost(timeoutMillis, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .untilAsserted(() -> onView(viewMatcher).perform(action));
+    }
+
+    /**
      * Perform action of waiting for a specific view id.
      * https://stackoverflow.com/a/49814995/
      * @param viewMatcher The view to wait for.
