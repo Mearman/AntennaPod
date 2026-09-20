@@ -18,9 +18,11 @@ import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfa
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
+import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
+import org.awaitility.Awaitility;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.junit.After;
@@ -33,6 +35,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -336,5 +340,51 @@ public class EpisodeDownloadWorkerTest extends DownloadIntegrationTestBase {
 
         assertEquals(ListenableWorker.Result.success(), result);
         assertTrue(DBReader.getFeedMedia(media.getId()).isDownloaded());
+    }
+
+    @Test
+    public void ongoingNotificationShowsProgressWhileDownloadingAndIsRemovedAfterwards() {
+        shadowOf((Application) context.getApplicationContext())
+                .grantPermissions(Manifest.permission.POST_NOTIFICATIONS);
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        AtomicReference<String> textWhileDownloading = new AtomicReference<>();
+        server.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) {
+                Awaitility.await().atMost(10, TimeUnit.SECONDS)
+                        .until(() -> shadowOf(manager).getNotification(R.id.notification_downloading) != null);
+                textWhileDownloading.set(shadowOf(shadowOf(manager).getNotification(R.id.notification_downloading))
+                        .getContentText().toString());
+                return audioResponse(bytes(1000));
+            }
+        });
+        FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
+
+        ListenableWorker.Result result = runWorker(media, 0);
+
+        assertEquals(ListenableWorker.Result.success(), result);
+        assertEquals("Episode One (0%)", textWhileDownloading.get());
+        assertNull(shadowOf(manager).getNotification(R.id.notification_downloading));
+    }
+
+    @Test
+    public void stoppingWorkerDuringDownloadEndsSuccessfullyWithoutMarkingMediaDownloaded() throws Exception {
+        FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
+        EpisodeDownloadWorker worker = workerFor(media, 0);
+        server.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) {
+                worker.onStopped();
+                return audioResponse(bytes(50_000));
+            }
+        });
+
+        ListenableWorker.Result result = worker.doWork();
+        DBWriter.tearDownTests();
+
+        assertEquals(ListenableWorker.Result.success(), result);
+        assertFalse(DBReader.getFeedMedia(media.getId()).isDownloaded());
+        assertTrue(DBReader.getDownloadLog().isEmpty());
+        assertTrue(messages.isEmpty());
     }
 }
