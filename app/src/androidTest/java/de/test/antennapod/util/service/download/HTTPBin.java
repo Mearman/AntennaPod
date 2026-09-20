@@ -42,11 +42,6 @@ import de.danoeh.antennapod.BuildConfig;
  * /basic-auth/username/password: Basic auth with username and password
  * /gzip/n:      Send gzipped data of size n bytes
  * /files/id:     Accesses the file with the specified ID (this has to be added first via serveFile).
- *                Supports range requests, ETag and If-None-Match.
- * /basic-auth-file/username/password/id: Serves the file with the specified ID if the credentials match.
- * /moved/code/id: Answers with the redirect status code, pointing to the file with the specified ID.
- * /stall/id:     Serves half of the file, then waits until releaseStalled is called.
- * /truncated/id: Announces more bytes than the file has and then closes the connection.
  */
 public class HTTPBin extends NanoHTTPD {
     private static final String TAG = "HTTPBin";
@@ -58,7 +53,8 @@ public class HTTPBin extends NanoHTTPD {
 
     private final List<File> servedFiles;
     private final List<RecordedRequest> requests = new CopyOnWriteArrayList<>();
-    private final CountDownLatch stalled = new CountDownLatch(1);
+    private final Object stalledLock = new Object();
+    private int stalledResponses = 0;
     private final CountDownLatch stallGate = new CountDownLatch(1);
 
     public HTTPBin() {
@@ -66,9 +62,6 @@ public class HTTPBin extends NanoHTTPD {
         this.servedFiles = new ArrayList<>();
     }
 
-    /**
-     * A request that reached the server. Header names are lower case.
-     */
     public static class RecordedRequest {
         public final String method;
         public final String uri;
@@ -95,16 +88,20 @@ public class HTTPBin extends NanoHTTPD {
         return matching;
     }
 
-    /**
-     * Waits until a response of /stall/id has delivered half of its body.
-     */
-    public boolean awaitStalled(long timeout, TimeUnit unit) throws InterruptedException {
-        return stalled.await(timeout, unit);
+    public boolean awaitStalled(int responses, long timeout, TimeUnit unit) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        synchronized (stalledLock) {
+            while (stalledResponses < responses) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) {
+                    return false;
+                }
+                TimeUnit.NANOSECONDS.timedWait(stalledLock, remaining);
+            }
+            return true;
+        }
     }
 
-    /**
-     * Lets all stalled responses continue. Later /stall/id requests are not delayed anymore.
-     */
     public void releaseStalled() {
         stallGate.countDown();
     }
@@ -149,7 +146,6 @@ public class HTTPBin extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         Response response = serveRequest(session);
-        // The server keeps request headers of earlier requests on the same connection, so every request needs its own
         response.addHeader("Connection", "close");
         return response;
     }
@@ -368,16 +364,13 @@ public class HTTPBin extends NanoHTTPD {
         return response;
     }
 
-    /**
-     * Delivers at most length bytes of the source. Announces announcedLength bytes as available and, if stallAfter
-     * is not negative, waits at that offset until the stall gate is opened.
-     */
     private class ServedStream extends InputStream {
         private final InputStream source;
         private final long length;
         private final long announcedLength;
         private final long stallAfter;
         private long delivered = 0;
+        private boolean reportedStall = false;
 
         ServedStream(InputStream source, long length, long announcedLength, long stallAfter) {
             this.source = source;
@@ -401,7 +394,7 @@ public class HTTPBin extends NanoHTTPD {
             long allowed = length - delivered;
             if (stallAfter >= 0) {
                 if (delivered >= stallAfter) {
-                    stalled.countDown();
+                    reportStall();
                     try {
                         stallGate.await();
                     } catch (InterruptedException e) {
@@ -416,6 +409,17 @@ public class HTTPBin extends NanoHTTPD {
                 delivered += count;
             }
             return count;
+        }
+
+        private void reportStall() {
+            if (reportedStall) {
+                return;
+            }
+            reportedStall = true;
+            synchronized (stalledLock) {
+                stalledResponses++;
+                stalledLock.notifyAll();
+            }
         }
 
         @Override

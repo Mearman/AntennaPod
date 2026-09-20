@@ -31,9 +31,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Starts and cancels episode downloads through the download service interface and lets WorkManager run them.
- */
 @RunWith(AndroidJUnit4.class)
 public class DownloadServiceInterfaceTest {
     private static final String PREF_ENQUEUE_DOWNLOADED = "prefEnqueueDownloaded";
@@ -126,8 +123,10 @@ public class DownloadServiceInterfaceTest {
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> activeDownloads() == 0);
 
         downloads.download(context, item(0));
+        downloads.download(context, item(1));
 
-        assertEquals(0, activeDownloads());
+        DownloadTestFixture.awaitDownloaded(media(1));
+        Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> activeDownloads() == 0);
         assertEquals(1, fixture.requestsFor(media(0).getDownloadUrl()).size());
     }
 
@@ -176,7 +175,7 @@ public class DownloadServiceInterfaceTest {
     public void cancelDiscardsThePartialFileAndTheQueueEntry() throws Exception {
         pointMediaAtStall(0);
         downloads.downloadNow(context, item(0), true);
-        assertTrue(fixture.server().awaitStalled(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(fixture.server().awaitStalled(1, TIMEOUT_SECONDS, TimeUnit.SECONDS));
         awaitPartialFile(0);
         File partial = new File(media(0).getLocalFileUrl());
         assertEquals(1, DBReader.getQueue().size());
@@ -197,7 +196,7 @@ public class DownloadServiceInterfaceTest {
         pointMediaAtStall(1);
         downloads.downloadNow(context, item(0), true);
         downloads.downloadNow(context, item(1), true);
-        assertTrue(fixture.server().awaitStalled(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(fixture.server().awaitStalled(2, TIMEOUT_SECONDS, TimeUnit.SECONDS));
         assertEquals(2, activeDownloads());
 
         downloads.cancelAll(context);
@@ -211,7 +210,7 @@ public class DownloadServiceInterfaceTest {
     public void slowDownloadCompletesOnceTheServerContinues() throws Exception {
         pointMediaAtStall(0);
         downloads.downloadNow(context, item(0), true);
-        assertTrue(fixture.server().awaitStalled(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(fixture.server().awaitStalled(1, TIMEOUT_SECONDS, TimeUnit.SECONDS));
         awaitPartialFile(0);
         assertFalse(media(0).isDownloaded());
 

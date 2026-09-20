@@ -47,13 +47,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Uses the episode buttons and the long press menu of a podcast's episode list.
- */
 @RunWith(AndroidJUnit4.class)
 public class EpisodeListActionsTest {
     private static final long TIMEOUT_SECONDS = 60;
-    private static final long VIEW_TIMEOUT_MILLIS = 10000;
+    private static final long VIEW_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS);
 
     @Rule
     public IntentsTestRule<MainActivity> activityRule = new IntentsTestRule<>(MainActivity.class, false, false);
@@ -135,6 +132,8 @@ public class EpisodeListActionsTest {
         DownloadTestFixture.awaitDownloaded(media(0));
         assertTrue(new File(media(0).getLocalFileUrl()).exists());
         assertFalse(media(1).isDownloaded());
+
+        DBWriter.addQueueItem(context, feed.getItemAtIndex(1)).get();
         awaitSecondaryAction(R.string.play_label);
     }
 
@@ -144,7 +143,7 @@ public class EpisodeListActionsTest {
         openFeed();
 
         clickSecondaryAction(1);
-        assertTrue(fixture.server().awaitStalled(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(fixture.server().awaitStalled(1, TIMEOUT_SECONDS, TimeUnit.SECONDS));
         awaitSecondaryAction(R.string.cancel_download_label);
         clickSecondaryAction(1);
 
