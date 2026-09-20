@@ -6,6 +6,8 @@ import org.robolectric.RobolectricTestRunner;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -200,5 +202,42 @@ public class UrlCheckerTest {
         assertFalse(UrlChecker.urlEquals("https://www.example.com/?id=42&a=b", "https://www.example.com/?id=43&a=b"));
         assertFalse(UrlChecker.urlEquals("https://example.com/podcast%25test", "https://example.com/podcast test"));
         assertFalse(UrlChecker.urlEquals("antennapod_local:abc", "https://example.com/"));
+    }
+
+    @Test
+    public void testPcastProtocolWithoutSlashesIsRemoved() {
+        assertEquals("http://example.com", UrlChecker.prepareUrl("pcast:example.com"));
+    }
+
+    @Test
+    public void testIsDeeplinkWithoutUrlIsTrueWhenQueryParameterIsMissing() {
+        assertTrue(UrlChecker.isDeeplinkWithoutUrl("https://antennapod.org/deeplink/subscribe"));
+        assertTrue(UrlChecker.isDeeplinkWithoutUrl("https://ANTENNAPOD.org/Deeplink/Subscribe?other=1"));
+    }
+
+    @Test
+    public void testIsDeeplinkWithoutUrlIsFalseWhenUrlParameterIsPresent() {
+        assertFalse(UrlChecker.isDeeplinkWithoutUrl(
+                "https://antennapod.org/deeplink/subscribe?url=http%3A%2F%2Fexample.com"));
+    }
+
+    @Test
+    public void testIsDeeplinkWithoutUrlIsFalseForOtherUrls() {
+        assertFalse(UrlChecker.isDeeplinkWithoutUrl("https://example.com/feed"));
+    }
+
+    @Test
+    public void testContainsUrlUsesUrlEqualityInsteadOfStringEquality() {
+        assertTrue(UrlChecker.containsUrl(
+                Arrays.asList("https://other.example.org/feed", "https://Example.com/feed/"),
+                "http://example.com/feed"));
+    }
+
+    @Test
+    public void testContainsUrlIsFalseWhenNoEntryMatches() {
+        assertFalse(UrlChecker.containsUrl(
+                Arrays.asList("https://example.com/feed", "https://example.com/other"),
+                "https://example.com/third"));
+        assertFalse(UrlChecker.containsUrl(Collections.emptyList(), "https://example.com/feed"));
     }
 }
