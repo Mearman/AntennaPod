@@ -12,6 +12,7 @@ import java.util.Random;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedCounter;
 import de.danoeh.antennapod.model.feed.FeedItem;
@@ -31,6 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
 import org.robolectric.ParameterizedRobolectricTestRunner;
@@ -70,6 +72,7 @@ public class DbReaderTest {
         }
     }
 
+    @Category(IntegrationTest.class)
     @RunWith(RobolectricTestRunner.class)
     public static class SingleTests extends TestBase {
         @Test
@@ -525,6 +528,7 @@ public class DbReaderTest {
 
     }
 
+    @Category(IntegrationTest.class)
     @RunWith(ParameterizedRobolectricTestRunner.class)
     public static class PlaybackHistoryTest extends TestBase {
 

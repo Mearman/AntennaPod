@@ -5,10 +5,12 @@ import android.content.Context;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
@@ -17,6 +19,7 @@ import de.danoeh.antennapod.model.feed.Feed;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class FeedCursorMapperTest {
     private PodDBAdapter adapter;

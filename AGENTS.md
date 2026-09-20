@@ -19,6 +19,7 @@ Several functional areas follow a service-interface/service split: the interface
 - `:event` - EventBus events used for cross-component communication throughout the app
 - `:model` - Core data classes such as `Feed`, `FeedItem`, `FeedMedia`, and `Chapter`
 - `:system` - System integration utilities such as crash reporting, package utilities, and thread utilities
+- `:test-categories` - JUnit categories used to group the JVM unit tests
 - `:net:common` - General network-related utilities shared across net modules
 - `:net:discovery` - Podcast search and discovery APIs
 - `:net:download:service-interface` - Interface for starting the download service, allowing other modules to trigger downloads without depending on the implementation

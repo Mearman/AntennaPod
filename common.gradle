@@ -77,6 +77,8 @@ dependencies {
     // align all versions of kotlin transitive dependencies, see
     // https://youtrack.jetbrains.com/issue/KT-55297/kotlin-stdlib-should-declare-constraints-on-kotlin-stdlib-jdk8-and-kotlin-stdlib-jdk7
     implementation platform(libs.kotlin.bom)
+
+    testImplementation project(':test-categories')
 }
 
 tasks.withType(Test).configureEach {
@@ -85,6 +87,20 @@ tasks.withType(Test).configureEach {
         events "skipped", "passed", "failed"
         showStandardStreams true
         displayGranularity 2
+    }
+    def testGroup = project.findProperty("testGroup")
+    if (testGroup == "unit") {
+        useJUnit {
+            excludeCategories "de.danoeh.antennapod.test.categories.IntegrationTest"
+        }
+        failOnNoDiscoveredTests = false
+    } else if (testGroup == "integration") {
+        useJUnit {
+            includeCategories "de.danoeh.antennapod.test.categories.IntegrationTest"
+        }
+        failOnNoDiscoveredTests = false
+    } else if (testGroup != null) {
+        throw new GradleException("Unknown testGroup '${testGroup}', expected 'unit' or 'integration'")
     }
 }
 

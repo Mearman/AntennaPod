@@ -4,6 +4,7 @@ import android.content.Context;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.session.MediaSession;
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -17,6 +18,7 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
@@ -28,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class MediaLibrarySessionCallbackTest {
     private static final String EPISODE_TITLE = "Episode Title";
