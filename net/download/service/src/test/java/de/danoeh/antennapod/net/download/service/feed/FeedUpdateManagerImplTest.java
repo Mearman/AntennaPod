@@ -242,7 +242,8 @@ public class FeedUpdateManagerImplTest {
         manager.runOnceOrAsk(context, feed);
 
         assertTrue(messages.isEmpty());
-        assertEquals(feed.getId(), manualRequest().getWorkSpec().input.getLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, -1));
+        long requestedFeedId = manualRequest().getWorkSpec().input.getLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, -1);
+        assertEquals(feed.getId(), requestedFeedId);
     }
 
     private AlertDialog showMobileRefreshDialog() {
