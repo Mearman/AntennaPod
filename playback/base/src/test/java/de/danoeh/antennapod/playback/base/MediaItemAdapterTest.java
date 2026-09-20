@@ -54,7 +54,8 @@ public class MediaItemAdapterTest {
     }
 
     private FeedMedia downloadedMedia() {
-        FeedMedia media = new FeedMedia(MEDIA_ID, item, 0, 0, 1000, "audio/mpeg", LOCAL_FILE, STREAM_URL, 1, null, 0, 0);
+        FeedMedia media = new FeedMedia(MEDIA_ID, item, 0, 0, 1000, "audio/mpeg", LOCAL_FILE, STREAM_URL, 1,
+                null, 0, 0);
         item.setMedia(media);
         return media;
     }
