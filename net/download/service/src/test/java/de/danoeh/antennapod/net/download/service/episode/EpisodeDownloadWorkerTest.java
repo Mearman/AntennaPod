@@ -45,6 +45,7 @@ import java.util.UUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -68,6 +69,7 @@ public class EpisodeDownloadWorkerTest {
     private FeedMedia media;
     private DownloadRequest downloadRequest;
     private DownloadResult handlerStatus;
+    private final List<List<?>> handlerArguments = new ArrayList<>();
 
     public static class Subscriber {
         private final List<MessageEvent> messages;
@@ -100,8 +102,10 @@ public class EpisodeDownloadWorkerTest {
                 .thenAnswer(invocation -> new DownloadRequestBuilder(DESTINATION, media));
         factory = Mockito.mockConstruction(DefaultDownloaderFactory.class, (mock, ctx) ->
                 Mockito.when(mock.create(any(DownloadRequest.class))).thenReturn(downloader));
-        completionHandler = Mockito.mockConstruction(MediaDownloadedHandler.class, (mock, ctx) ->
-                Mockito.when(mock.getUpdatedStatus()).thenReturn(handlerStatus));
+        completionHandler = Mockito.mockConstruction(MediaDownloadedHandler.class, (mock, ctx) -> {
+            handlerArguments.add(ctx.arguments());
+            Mockito.when(mock.getUpdatedStatus()).thenReturn(handlerStatus);
+        });
         Mockito.when(downloader.getDownloadRequest()).thenReturn(downloadRequest);
     }
 
@@ -167,11 +171,17 @@ public class EpisodeDownloadWorkerTest {
     @Test
     public void successfulDownloadIsHandledAndLogged() {
         Mockito.when(downloader.call()).thenReturn(downloader);
-        downloaderReturns(new DownloadResult(TITLE, MEDIA_ID, FeedMedia.FEEDFILETYPE_FEEDMEDIA, true,
-                DownloadError.SUCCESS, null));
+        DownloadResult downloaded = new DownloadResult(TITLE, MEDIA_ID, FeedMedia.FEEDFILETYPE_FEEDMEDIA, true,
+                DownloadError.SUCCESS, null);
+        downloaderReturns(downloaded);
 
         assertEquals(ListenableWorker.Result.success(), worker(0).doWork());
 
+        assertEquals(1, handlerArguments.size());
+        assertSame(downloaded, handlerArguments.get(0).get(1));
+        DownloadRequest handledRequest = (DownloadRequest) handlerArguments.get(0).get(2);
+        assertEquals(media.getDownloadUrl(), handledRequest.getSource());
+        assertEquals(DESTINATION, handledRequest.getDestination());
         Mockito.verify(completionHandler.constructed().get(0)).run();
         writer.verify(() -> DBWriter.addDownloadStatus(handlerStatus));
     }
