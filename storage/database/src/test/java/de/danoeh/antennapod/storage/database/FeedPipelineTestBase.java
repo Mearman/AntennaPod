@@ -65,7 +65,15 @@ public abstract class FeedPipelineTestBase {
     }
 
     protected FeedHandlerResult parse(String document, Charset charset) throws Exception {
-        Feed feed = new Feed(FEED_URL, null);
+        return parse(document, charset, FEED_URL);
+    }
+
+    protected FeedHandlerResult parse(String document, String feedUrl) throws Exception {
+        return parse(document, StandardCharsets.UTF_8, feedUrl);
+    }
+
+    private FeedHandlerResult parse(String document, Charset charset, String feedUrl) throws Exception {
+        Feed feed = new Feed(feedUrl, null);
         feed.setLocalFileUrl(writeDocument(document, charset).getAbsolutePath());
         return new FeedHandler().parseFeed(feed);
     }
