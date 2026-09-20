@@ -13,6 +13,7 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.awaitility.Awaitility;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -28,6 +29,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -185,9 +187,8 @@ public class SyncServiceEpisodeActionsTest extends SyncServiceTestBase {
 
         assertEquals(Result.success(), runSync());
 
-        DBWriter.tearDownTests();
-        assertTrue(DBReader.getQueue().isEmpty());
-        assertTrue(storedMedia().getItem().isPlayed());
+        Awaitility.await().atMost(5, TimeUnit.SECONDS)
+                .until(() -> DBReader.getQueue().isEmpty() && storedMedia().getItem().isPlayed());
     }
 
     @Test
