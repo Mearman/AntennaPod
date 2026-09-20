@@ -2,6 +2,7 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.app.Notification;
 import android.content.Context;
+import android.support.v4.media.session.MediaSessionCompat;
 import de.danoeh.antennapod.model.feed.Chapter;
 import de.danoeh.antennapod.model.playback.Playable;
 import de.danoeh.antennapod.playback.base.PlayerStatus;
@@ -179,6 +180,46 @@ public class PlaybackServiceNotificationBuilderTest {
         Notification notification = builder.build();
 
         assertEquals("00:30:00", notification.extras.getString(Notification.EXTRA_SUB_TEXT));
+    }
+
+    @Test
+    public void anEpisodeWhoseArtworkCannotBeFetchedIsShownWithoutACachedIcon() {
+        Playable playable = playable("Feed title", "Episode title");
+        when(playable.getImageLocation()).thenReturn("http://example.com/cover.jpg");
+        builder.setPlayable(playable);
+
+        builder.loadIcon();
+
+        assertFalse(builder.isIconCached());
+        assertNull(builder.getCachedIcon());
+    }
+
+    @Test
+    public void theNotificationIsTiedToTheMediaSessionItWasGiven() {
+        builder.setPlayable(playable("Feed title", "Episode title"));
+        builder.setPlayerStatus(PlayerStatus.PLAYING);
+        assertNull(builder.build().extras.getParcelable(Notification.EXTRA_MEDIA_SESSION));
+
+        MediaSessionCompat session = new MediaSessionCompat(context, "PlaybackServiceNotificationBuilderTest");
+        builder.setMediaSessionToken(session.getSessionToken());
+
+        assertNotNull(builder.build().extras.getParcelable(Notification.EXTRA_MEDIA_SESSION));
+        session.release();
+    }
+
+    @Test
+    @Config(sdk = 25)
+    public void olderVersionsStartThePlaybackServiceAsAPlainServiceFromTheButtons() {
+        UserPreferences.setFullNotificationButtons(
+                Collections.singletonList(UserPreferences.NOTIFICATION_BUTTON_NEXT_CHAPTER));
+        builder.setPlayable(playableWithChapters());
+        builder.setPlayerStatus(PlayerStatus.PLAYING);
+
+        Notification notification = builder.build();
+
+        assertEquals(4, notification.actions.length);
+        assertNotNull(notification.actions[0].actionIntent);
+        assertNotNull(notification.actions[3].actionIntent);
     }
 
     private static Playable playable(String feedTitle, String episodeTitle) {

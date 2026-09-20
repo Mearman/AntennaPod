@@ -2,6 +2,7 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Bundle;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.datasource.DataSpec;
@@ -12,6 +13,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy;
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy;
+import de.danoeh.antennapod.playback.base.MediaItemAdapter;
 import de.danoeh.antennapod.playback.service.R;
 import org.junit.Before;
 import org.junit.Test;
@@ -116,6 +118,35 @@ public class ExoPlayerUtilsTest {
         MediaItem item = new MediaItem.Builder()
                 .setUri(Uri.fromFile(new File(context.getCacheDir(), "episode.mp3")))
                 .setMediaId("7")
+                .build();
+
+        MediaSource source = factory.createMediaSource(item);
+
+        assertEquals("7", source.getMediaItem().mediaId);
+    }
+
+    @Test
+    public void aStreamedEpisodeIsPlayedThroughTheStreamingCache() {
+        ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
+        MediaItem item = new MediaItem.Builder()
+                .setUri(Uri.parse("http://example.com/e.mp3"))
+                .setMediaId("7")
+                .build();
+
+        MediaSource source = factory.createMediaSource(item);
+
+        assertEquals("7", source.getMediaItem().mediaId);
+    }
+
+    @Test
+    public void aStreamFromAPrivateFeedCarriesItsAuthorizationHeader() {
+        ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
+        Bundle requestExtras = new Bundle();
+        requestExtras.putString(MediaItemAdapter.KEY_AUTHORIZATION_HEADER, "Basic dXNlcjpwYXNz");
+        MediaItem item = new MediaItem.Builder()
+                .setUri(Uri.parse("http://example.com/e.mp3"))
+                .setMediaId("7")
+                .setRequestMetadata(new MediaItem.RequestMetadata.Builder().setExtras(requestExtras).build())
                 .build();
 
         MediaSource source = factory.createMediaSource(item);
