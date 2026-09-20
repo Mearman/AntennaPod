@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -161,7 +161,7 @@ public class FeedAutoDownloadTest {
                 episode("first", "Opted out one", "Mon, 02 Jan 2023 10:00:00 +0000", "00:20:00"));
         Feed optedOut = subscribe(optedOutUrl);
         Espresso.pressBack();
-        waitForViewGlobally(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
         Feed following = subscribe(publishFeed(FEED_PATH, "Following Global",
                 episode("second", "Following one", "Mon, 02 Jan 2023 10:00:00 +0000", "00:20:00")));
         configure(optedOut, FeedPreferences.AutoDownloadSetting.DISABLED, new FeedFilter());

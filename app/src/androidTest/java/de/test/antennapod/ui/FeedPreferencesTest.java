@@ -51,7 +51,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.isNotChecked;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickBottomNavItem;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -114,7 +114,7 @@ public class FeedPreferencesTest {
 
     private void refreshFromFeedScreen() throws Exception {
         Espresso.pressBack();
-        waitForViewGlobally(withId(R.id.butShowSettings), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.butShowSettings), FeedRobot.UI_TIMEOUT_MS);
         FeedRobot.refreshFromMenu();
     }
 
@@ -151,7 +151,7 @@ public class FeedPreferencesTest {
         FeedRobot.subscribeByUrl(otherUrl);
         FeedRobot.awaitFeed(otherUrl);
         Espresso.pressBack();
-        waitForViewGlobally(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
         Feed feed = subscribeToFeed(EPISODE_A);
         FeedRobot.openFeedSettings();
         FeedRobot.clickSetting(R.string.keep_updated);
@@ -194,7 +194,7 @@ public class FeedPreferencesTest {
         assertEquals("Preferences Feed", FeedRobot.reload(feed).getFeedTitle());
 
         FeedRobot.clickSetting(R.string.rename_feed_label);
-        waitForViewGlobally(withId(R.id.textInput), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.textInput), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.textInput)).check(matches(withText("My own name")));
         onView(withId(R.id.textInput)).perform(replaceText("Something else"));
         onView(withText(R.string.reset)).inRoot(isDialog()).perform(click());
@@ -212,7 +212,7 @@ public class FeedPreferencesTest {
         FeedRobot.openFeedSettings();
 
         FeedRobot.clickSetting(R.string.feed_tags_label);
-        waitForViewGlobally(withId(R.id.newTagEditText), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.newTagEditText), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.newTagEditText)).perform(replaceText("Comedy"));
         onView(allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(R.id.newTagTextInput))))
                 .perform(click());
@@ -222,7 +222,7 @@ public class FeedPreferencesTest {
         FeedRobot.awaitCondition(() -> preferences(feed).getTags().contains("Comedy")
                 && preferences(feed).getTags().contains("News"));
         clickBottomNavItem(R.string.subscriptions_label_short);
-        waitForViewGlobally(allOf(withId(R.id.tag_chip), withText("Comedy")), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.tag_chip), withText("Comedy")), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.tag_chip), withText("News"))).check(matches(isDisplayed()));
     }
 
@@ -236,7 +236,7 @@ public class FeedPreferencesTest {
         FeedRobot.openFeedSettings();
 
         FeedRobot.clickSetting(R.string.feed_tags_label);
-        waitForViewGlobally(withText("Temporary"), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText("Temporary"), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(instanceOf(Chip.class), withText("Temporary"))).perform(clickCloseIcon());
         FeedRobot.confirmDialog(android.R.string.ok);
 
@@ -250,7 +250,7 @@ public class FeedPreferencesTest {
         FeedRobot.openFeedSettings();
 
         FeedRobot.clickSetting(R.string.playback_speed);
-        waitForViewGlobally(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.useGlobalCheckbox)).check(matches(isChecked()));
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
         onView(withId(R.id.skipSilenceFeed)).perform(click());
@@ -261,7 +261,7 @@ public class FeedPreferencesTest {
         assertTrue(preferences(feed).getFeedPlaybackSpeed() > 0);
 
         FeedRobot.clickSetting(R.string.playback_speed);
-        waitForViewGlobally(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.useGlobalCheckbox)).check(matches(isNotChecked()));
         onView(withId(R.id.skipSilenceFeed)).check(matches(isChecked()));
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
@@ -278,7 +278,7 @@ public class FeedPreferencesTest {
         FeedRobot.openFeedSettings();
 
         FeedRobot.clickSetting(R.string.playback_speed);
-        waitForViewGlobally(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
         FeedRobot.confirmDialog(android.R.string.ok);
 
@@ -291,7 +291,7 @@ public class FeedPreferencesTest {
         FeedRobot.openFeedSettings();
 
         FeedRobot.clickSetting(R.string.pref_feed_skip);
-        waitForViewGlobally(withId(R.id.etxtSkipIntro), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.etxtSkipIntro), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.etxtSkipIntro)).perform(replaceText("12"));
         onView(withId(R.id.etxtSkipEnd)).perform(replaceText("7"));
         FeedRobot.confirmTypedDialog(R.string.confirm_label);
@@ -300,7 +300,7 @@ public class FeedPreferencesTest {
         assertEquals(7, preferences(feed).getFeedSkipEnding());
 
         FeedRobot.clickSetting(R.string.pref_feed_skip);
-        waitForViewGlobally(withId(R.id.etxtSkipIntro), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.etxtSkipIntro), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.etxtSkipIntro)).check(matches(withText("12")));
         onView(withId(R.id.etxtSkipIntro)).perform(replaceText(""));
         onView(withId(R.id.etxtSkipEnd)).perform(replaceText(""));
@@ -406,7 +406,7 @@ public class FeedPreferencesTest {
         FeedRobot.awaitCondition(() -> preferences(feed).isAutoDownload(false));
 
         FeedRobot.clickSetting(R.string.episode_filters_label);
-        waitForViewGlobally(withId(R.id.includeRadio), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.includeRadio), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.includeRadio)).check(matches(isChecked()));
         addFilterTerm("Interview");
         addFilterTerm("Special edition");
@@ -421,7 +421,7 @@ public class FeedPreferencesTest {
         assertEquals(5 * 60, filter.getMinimalDurationFilter());
 
         FeedRobot.clickSetting(R.string.episode_filters_label);
-        waitForViewGlobally(withText("Interview"), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText("Interview"), FeedRobot.UI_TIMEOUT_MS);
         onView(withText("Special edition")).check(matches(isDisplayed()));
         onView(withId(R.id.durationCheckBox)).check(matches(isChecked()));
         onView(withId(R.id.episodeFilterDurationText)).check(matches(withText("5")));
@@ -436,7 +436,7 @@ public class FeedPreferencesTest {
         FeedRobot.awaitCondition(() -> preferences(feed).isAutoDownload(false));
 
         FeedRobot.clickSetting(R.string.episode_filters_label);
-        waitForViewGlobally(withId(R.id.excludeRadio), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.excludeRadio), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.excludeRadio)).perform(click());
         addFilterTerm("Trailer");
         FeedRobot.confirmTypedDialog(R.string.confirm_label);

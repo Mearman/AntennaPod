@@ -3,6 +3,7 @@ package de.test.antennapod.ui;
 import android.view.View;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
+import androidx.test.espresso.NoMatchingRootException;
 import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.matcher.BoundedMatcher;
@@ -31,12 +32,13 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.RootMatchers.isDialog;
+import static androidx.test.espresso.matcher.RootMatchers.isPlatformPopup;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickBottomNavItem;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static de.test.antennapod.NthMatcher.first;
 import static org.hamcrest.Matchers.allOf;
 
@@ -55,9 +57,9 @@ public class FeedRobot {
     }
 
     public static void subscribeToPreviewedFeed() {
-        waitForViewGlobally(withText(R.string.subscribe_label), UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText(R.string.subscribe_label), UI_TIMEOUT_MS);
         onView(withText(R.string.subscribe_label)).perform(click());
-        waitForViewGlobally(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
     }
 
     public static void subscribeByUrl(String url) {
@@ -73,14 +75,14 @@ public class FeedRobot {
     }
 
     public static void assertPreviewHeader(String title, String author) {
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText(title)), UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText(title)), UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.txtvAuthor), withText(author))).check(matches(isDisplayed()));
     }
 
     public static void openFeedSettings() {
-        waitForViewGlobally(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
         onView(withId(R.id.butShowSettings)).perform(click());
-        waitForViewGlobally(withText(R.string.keep_updated), UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText(R.string.keep_updated), UI_TIMEOUT_MS);
     }
 
     public static void clickSetting(int titleRes) {
@@ -102,12 +104,17 @@ public class FeedRobot {
     }
 
     public static void confirmDialog(int buttonTextRes) {
-        onView(withText(buttonTextRes)).inRoot(isDialog()).perform(click());
+        awaitAssertion(() -> onView(withText(buttonTextRes)).inRoot(isDialog()).perform(click()));
     }
 
     public static void confirmTypedDialog(int buttonTextRes) {
         Espresso.closeSoftKeyboard();
         confirmDialog(buttonTextRes);
+    }
+
+    public static void waitUntilDisplayed(Matcher<View> viewMatcher, long timeoutMillis) {
+        Awaitility.await().atMost(timeoutMillis, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .untilAsserted(() -> onView(viewMatcher).check(matches(isDisplayed())));
     }
 
     public static void awaitAssertion(ThrowingRunnable assertion) {
@@ -161,14 +168,27 @@ public class FeedRobot {
 
     public static void openFeedMenu(int titleRes) {
         awaitAssertion(() -> {
-            onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
+            if (!isPopupOpen()) {
+                onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
+            }
             try {
                 onView(withText(titleRes)).perform(click());
             } catch (NoMatchingViewException e) {
-                Espresso.pressBack();
+                if (isPopupOpen()) {
+                    Espresso.pressBack();
+                }
                 throw e;
             }
         });
+    }
+
+    private static boolean isPopupOpen() {
+        try {
+            onView(isRoot()).inRoot(isPlatformPopup()).check(matches(isDisplayed()));
+            return true;
+        } catch (NoMatchingRootException e) {
+            return false;
+        }
     }
 
     public static void refreshFromMenu() throws Exception {

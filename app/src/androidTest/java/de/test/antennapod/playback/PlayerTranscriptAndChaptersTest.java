@@ -59,7 +59,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
@@ -141,7 +141,7 @@ public class PlayerTranscriptAndChaptersTest {
 
     private void startPlayback(Feed feed) {
         FeedItem item = FeedRobot.itemByGuid(FeedRobot.reload(feed), "episode");
-        waitForViewGlobally(allOf(withId(R.id.secondaryActionButton), isDisplayed(), anyOf(
+        waitUntilDisplayed(allOf(withId(R.id.secondaryActionButton), isDisplayed(), anyOf(
                 withContentDescription(R.string.play_label), withContentDescription(R.string.stream_label))),
                 PLAYER_TIMEOUT_MS);
         onView(withId(R.id.recyclerView)).perform(RecyclerViewActions.actionOnItem(
@@ -151,20 +151,20 @@ public class PlayerTranscriptAndChaptersTest {
     }
 
     private void openPlayer() {
-        waitForViewGlobally(allOf(withId(R.id.fragmentLayout), isDisplayed()), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.fragmentLayout), isDisplayed()), PLAYER_TIMEOUT_MS);
         onView(allOf(withId(R.id.fragmentLayout), isDisplayed())).perform(click());
-        waitForViewGlobally(allOf(withId(R.id.txtvEpisodeTitle), withText("Playable episode")), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvEpisodeTitle), withText("Playable episode")), PLAYER_TIMEOUT_MS);
     }
 
     private void openPlayerMenu() {
         Matcher<View> overflow = allOf(withContentDescription("More options"),
                 isDescendantOfA(withId(R.id.playerContent)), isDisplayed());
-        waitForViewGlobally(overflow, PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(overflow, PLAYER_TIMEOUT_MS);
         onView(overflow).perform(click());
     }
 
     private void openChapterList() {
-        waitForViewGlobally(allOf(withId(R.id.chapterButton), isDisplayed()), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.chapterButton), isDisplayed()), PLAYER_TIMEOUT_MS);
         onView(allOf(withId(R.id.chapterButton), isDisplayed())).perform(click());
     }
 
@@ -211,8 +211,8 @@ public class PlayerTranscriptAndChaptersTest {
     }
 
     private void assertTranscriptShows(String text, String speaker) {
-        waitForViewGlobally(withText(containsString(text)), PLAYER_TIMEOUT_MS);
-        waitForViewGlobally(withText(containsString(speaker)), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(withText(containsString(text)), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(withText(containsString(speaker)), PLAYER_TIMEOUT_MS);
     }
 
     @Test
@@ -286,7 +286,7 @@ public class PlayerTranscriptAndChaptersTest {
         openPlayer();
         openPlayerMenu();
 
-        waitForViewGlobally(withText(R.string.open_podcast), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(withText(R.string.open_podcast), PLAYER_TIMEOUT_MS);
         onView(withText(R.string.show_transcript)).check(doesNotExist());
     }
 
@@ -299,7 +299,7 @@ public class PlayerTranscriptAndChaptersTest {
         openPlayer();
         openChapterList();
 
-        waitForViewGlobally(withText("File chapter one"), PLAYER_TIMEOUT_MS);
+        waitUntilDisplayed(withText("File chapter one"), PLAYER_TIMEOUT_MS);
         onView(withText("File chapter two")).check(matches(isDisplayed()));
         onView(withText("https://example.com/file-two")).check(matches(isDisplayed()));
     }

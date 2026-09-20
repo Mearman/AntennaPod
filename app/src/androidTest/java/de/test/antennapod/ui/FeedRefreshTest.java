@@ -33,7 +33,7 @@ import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -110,7 +110,7 @@ public class FeedRefreshTest {
         publishLive(feed("Live Feed", EPISODE_A, EPISODE_B, EPISODE_C));
         FeedRobot.refreshFromMenu();
 
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText("Episode C")), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText("Episode C")), FeedRobot.UI_TIMEOUT_MS);
         Feed refreshed = FeedRobot.reload(feed);
         assertEquals(3, refreshed.getItems().size());
         assertTrue(FeedRobot.itemByGuid(refreshed, "c").isNew());

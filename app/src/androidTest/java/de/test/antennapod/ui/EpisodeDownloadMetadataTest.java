@@ -40,7 +40,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -407,7 +407,7 @@ public class EpisodeDownloadMetadataTest {
         Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !DBReader.getDownloadLog().isEmpty());
         DownloadResult result = DBReader.getDownloadLog().get(0);
         assertFalse(result.isSuccessful());
-        waitForViewGlobally(withId(R.id.recyclerView), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.recyclerView), FeedRobot.UI_TIMEOUT_MS);
         return result;
     }
 }

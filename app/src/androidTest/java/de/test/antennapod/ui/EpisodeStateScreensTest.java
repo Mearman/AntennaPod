@@ -37,7 +37,7 @@ import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 
 @RunWith(AndroidJUnit4.class)
@@ -105,7 +105,7 @@ public class EpisodeStateScreensTest {
     }
 
     private void assertListed(String title) {
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText(title), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText(title), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
     }
 
     private void assertNotListed(String title) {
@@ -133,7 +133,7 @@ public class EpisodeStateScreensTest {
         DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Arrays.asList(item("alpha"), item("bravo"),
                 item("charlie"))).get();
         openScreen(InboxFragment.TAG);
-        waitForViewGlobally(withText(R.string.no_inbox_head_label), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText(R.string.no_inbox_head_label), FeedRobot.UI_TIMEOUT_MS);
 
         DBWriter.markItemsPlayed(FeedItem.NEW, false, Collections.singletonList(item("bravo"))).get();
 
@@ -144,7 +144,7 @@ public class EpisodeStateScreensTest {
     @Test
     public void favoritesListEpisodesWhileTheyAreMarked() throws Exception {
         openScreen(FavoritesFragment.TAG);
-        waitForViewGlobally(withText(R.string.no_fav_episodes_head_label), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withText(R.string.no_fav_episodes_head_label), FeedRobot.UI_TIMEOUT_MS);
 
         DBWriter.addFavoriteItems(Arrays.asList(item("alpha"), item("charlie"))).get();
 

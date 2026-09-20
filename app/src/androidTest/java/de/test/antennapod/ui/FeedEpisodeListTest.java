@@ -37,7 +37,7 @@ import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
@@ -262,36 +262,36 @@ public class FeedEpisodeListTest {
     @Test
     public void searchFindsEpisodesOfTheFeedByTitleAndDescription() {
         onView(withId(R.id.action_search)).perform(click());
-        waitForViewGlobally(withId(R.id.search_src_text), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.search_src_text), FeedRobot.UI_TIMEOUT_MS);
 
         onView(withId(R.id.search_src_text)).perform(replaceText("quantum"));
 
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText("Bravo"), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText("Bravo"), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.recyclerView), isDisplayed())).check(matches(FeedRobot.hasItemCount(1)));
 
         onView(withId(R.id.search_src_text)).perform(replaceText("Alpha"));
 
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText("Alpha"), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText("Alpha"), isDisplayed()), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.recyclerView), isDisplayed())).check(matches(FeedRobot.hasItemCount(1)));
     }
 
     @Test
     public void searchWithoutMatchReportsNoResults() {
         onView(withId(R.id.action_search)).perform(click());
-        waitForViewGlobally(withId(R.id.search_src_text), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.search_src_text), FeedRobot.UI_TIMEOUT_MS);
 
         onView(withId(R.id.search_src_text)).perform(replaceText("zzzzzz"));
 
         String expected = InstrumentationRegistry.getInstrumentation().getTargetContext()
                 .getString(R.string.no_results_for_query, "zzzzzz");
-        waitForViewGlobally(allOf(withId(R.id.emptyViewTitle), withText(expected)), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(allOf(withId(R.id.emptyViewTitle), withText(expected)), FeedRobot.UI_TIMEOUT_MS);
     }
 
     @Test
     public void feedInfoShowsDescriptionAddressAndDeduplicatedFundingLinks() {
         onView(withId(R.id.butShowInfo)).perform(click());
 
-        waitForViewGlobally(withId(R.id.descriptionLabel), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.descriptionLabel), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.descriptionLabel)).check(matches(withText("Everything about the list")));
         onView(withId(R.id.urlLabel)).check(matches(withText(server.getBaseUrl() + FEED_PATH)));
         String support = InstrumentationRegistry.getInstrumentation().getTargetContext()
@@ -326,7 +326,7 @@ public class FeedEpisodeListTest {
         FeedRobot.openFeedMenu(R.string.remove_archive_feed_label);
         onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click());
 
-        waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText("List Feed"), isDisplayed()),
+        waitUntilDisplayed(allOf(withId(R.id.txtvTitle), withText("List Feed"), isDisplayed()),
                 FeedRobot.UI_TIMEOUT_MS);
         assertEquals(1, DBReader.getFeedList().size());
     }

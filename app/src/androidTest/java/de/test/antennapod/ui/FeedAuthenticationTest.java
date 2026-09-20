@@ -35,7 +35,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
-import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
+import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -110,7 +110,7 @@ public class FeedAuthenticationTest {
     }
 
     private void enterCredentials(String user, String password) {
-        waitForViewGlobally(withId(R.id.usernameEditText), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.usernameEditText), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.usernameEditText)).perform(replaceText(user));
         onView(withId(R.id.passwordEditText)).perform(replaceText(password));
         FeedRobot.confirmTypedDialog(R.string.confirm_label);
@@ -165,7 +165,7 @@ public class FeedAuthenticationTest {
         FeedRobot.awaitDialogText(R.string.authentication_notification_title);
         FeedRobot.confirmDialog(R.string.cancel_label);
 
-        waitForViewGlobally(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.addViaUrlButton), FeedRobot.UI_TIMEOUT_MS);
         assertTrue(DBReader.getFeedList().isEmpty());
     }
 
