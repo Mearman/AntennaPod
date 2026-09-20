@@ -12,4 +12,6 @@ dependencies {
     implementation libs.androidx.core
 
     annotationProcessor libs.androidx.annotation
+
+    testImplementation libs.junit
 }
