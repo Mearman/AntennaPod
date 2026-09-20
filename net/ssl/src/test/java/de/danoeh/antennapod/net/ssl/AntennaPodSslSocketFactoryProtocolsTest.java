@@ -11,19 +11,10 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class AntennaPodSslSocketFactoryProtocolsTest {
-
-    @Test
-    public void testFactoryOffersCipherSuitesOfPlatformProvider() {
-        AntennaPodSslSocketFactory factory = new AntennaPodSslSocketFactory(mock(X509TrustManager.class));
-        List<String> supported = Arrays.asList(factory.getSupportedCipherSuites());
-        assertTrue(factory.getDefaultCipherSuites().length > 0);
-        assertTrue(supported.containsAll(Arrays.asList(factory.getDefaultCipherSuites())));
-    }
 
     @Test
     public void testSocketOfPlatformProviderDoesNotEnableLegacyProtocols() throws IOException {

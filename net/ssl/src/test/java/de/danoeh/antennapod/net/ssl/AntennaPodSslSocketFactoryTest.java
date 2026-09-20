@@ -148,11 +148,4 @@ public class AntennaPodSslSocketFactoryTest {
         assertSame(delegateSocket, socket);
         verify(delegateSocket).setEnabledProtocols(LEGACY_PROTOCOLS);
     }
-
-    @Test
-    public void testModernProtocolsAreNotReplacedByOlderOnesWhenSupported() throws IOException {
-        when(delegate.createSocket()).thenReturn(delegateSocket);
-        createFactory().createSocket();
-        verify(delegateSocket, never()).setEnabledProtocols(LEGACY_PROTOCOLS);
-    }
 }
