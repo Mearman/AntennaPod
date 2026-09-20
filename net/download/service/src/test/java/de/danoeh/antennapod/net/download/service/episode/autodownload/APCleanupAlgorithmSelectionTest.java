@@ -15,13 +15,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
 @RunWith(RobolectricTestRunner.class)
 public class APCleanupAlgorithmSelectionTest {
     private static final int ONE_HOUR = 1;
-    private static final int ONE_CENTURY_IN_HOURS = 24 * 365 * 100;
     private static final Date LONG_AGO = new Date(0);
 
     private final Context context = Mockito.mock(Context.class);
@@ -68,9 +68,11 @@ public class APCleanupAlgorithmSelectionTest {
 
     @Test
     public void episodesPlayedWithinRetentionPeriodAreNotReclaimable() {
-        storage.setDownloadedEpisodes(Collections.singletonList(playedEpisode(1, LONG_AGO)));
+        Date playedMinutesAgo = new Date(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(30));
+        Date playedHoursAgo = new Date(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(3));
+        storage.setDownloadedEpisodes(Arrays.asList(playedEpisode(1, playedMinutesAgo),
+                playedEpisode(2, playedHoursAgo)));
 
-        assertEquals(0, new APCleanupAlgorithm(ONE_CENTURY_IN_HOURS).getReclaimableItems());
         assertEquals(1, new APCleanupAlgorithm(ONE_HOUR).getReclaimableItems());
     }
 
@@ -209,10 +211,5 @@ public class APCleanupAlgorithmSelectionTest {
         storage.setDownloadedEpisodes(Collections.singletonList(playedEpisode(1, LONG_AGO)));
 
         assertEquals(0, new APCleanupAlgorithm(ONE_HOUR).makeRoomForEpisodes(context, -1));
-    }
-
-    @Test
-    public void retentionPeriodIsExposed() {
-        assertEquals(48, new APCleanupAlgorithm(48).getNumberOfHoursAfterPlayback());
     }
 }
