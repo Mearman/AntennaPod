@@ -13,9 +13,6 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Starts playback the way the episode lists and the player screen of the app do, through a short lived connection to the media session instead of a controller that the caller keeps.
- */
 @LargeTest
 public class Media3PlaybackStarterTest extends Media3ServiceTest {
 
@@ -45,10 +42,7 @@ public class Media3PlaybackStarterTest extends Media3ServiceTest {
         awaitReady();
         Media3TestUtils.runOnMain(() -> controller().seekTo(12000));
         awaitPositionAtLeast(12000);
-        Media3TestUtils.runOnMain(controller()::pause);
-        Awaitility.await("playback paused")
-                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !Media3TestUtils.getOnMain(controller()::isPlaying));
+        pausePlayback();
 
         startPlayback(media);
 

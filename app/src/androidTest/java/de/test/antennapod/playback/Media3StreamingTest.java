@@ -17,9 +17,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Plays episodes that were never downloaded. The playback service streams them from the local test server instead of reading a file from the device.
- */
 @LargeTest
 public class Media3StreamingTest extends Media3ServiceTest {
 
@@ -55,18 +52,20 @@ public class Media3StreamingTest extends Media3ServiceTest {
     @Test
     public void testStreamedEpisodeStoresItsPositionAndDuration() {
         FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        long playedUntil = 6000;
 
         play(media);
         awaitCurrentMedia(media);
-        awaitPositionAtLeast(6000);
-        Media3TestUtils.runOnMain(controller()::pause);
+        awaitPositionAtLeast(playedUntil);
+        pausePlayback();
 
         Awaitility.await("streamed position stored in the database")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> DBReader.getFeedMedia(media.getId()).getPosition() > 0);
+                .until(() -> DBReader.getFeedMedia(media.getId()).getPosition() >= playedUntil);
         int storedPosition = DBReader.getFeedMedia(media.getId()).getPosition();
-        assertTrue("Stored position " + storedPosition + " is the one that was played",
-                storedPosition >= 2000);
+        long pausedAt = position();
+        assertTrue("Stored position " + storedPosition + " is not beyond the position "
+                        + pausedAt + " where playback was paused", storedPosition <= pausedAt);
         assertTrue("The duration of the streamed episode is known",
                 DBReader.getFeedMedia(media.getId()).getDuration() > 0);
     }

@@ -25,9 +25,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Controls playback with the media buttons of a headset, a car stereo, the lock screen or the home screen widget. The buttons arrive at the playback service as media button intents, which is the same route a real button press takes.
- */
 @LargeTest
 public class Media3MediaButtonTest extends Media3ServiceTest {
 
@@ -190,10 +187,7 @@ public class Media3MediaButtonTest extends Media3ServiceTest {
         play(media);
         awaitCurrentMedia(media);
         awaitPlaying();
-        Media3TestUtils.runOnMain(controller()::pause);
-        Awaitility.await("playback paused")
-                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !Media3TestUtils.getOnMain(controller()::isPlaying));
+        pausePlayback();
     }
 
     private void seekAndAwait(long positionMs) {

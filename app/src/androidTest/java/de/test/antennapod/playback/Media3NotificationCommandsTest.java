@@ -25,12 +25,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/**
- * Presses the buttons that the playback service puts on its notification and on the lock screen. The buttons are sent back to the service as the session commands that they carry.
- */
 @LargeTest
 public class Media3NotificationCommandsTest extends Media3ServiceTest {
 
@@ -97,9 +95,9 @@ public class Media3NotificationCommandsTest extends Media3ServiceTest {
 
         assertTrue("Playback speed button is offered, got " + names,
                 names.contains(context.getString(R.string.playback_speed)));
-        assertEquals("Skip button is not offered, got " + names, false,
+        assertFalse("Skip button is not offered, got " + names,
                 names.contains(context.getString(R.string.skip_episode_label)));
-        assertEquals("Sleep timer button is not offered, got " + names, false,
+        assertFalse("Sleep timer button is not offered, got " + names,
                 names.contains(context.getString(R.string.sleep_timer_label)));
     }
 
