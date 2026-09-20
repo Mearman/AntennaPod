@@ -28,7 +28,7 @@ tasks.register('coverageReport', JacocoReport) {
     classDirectories.from(subprojects.collect { module ->
         fileTree("${module.projectDir}/build/intermediates/javac") {
             include "debug/**/*.class", "playDebug/**/*.class"
-            exclude "**/R.class", "**/R\$*.class", "**/BuildConfig.class"
+            exclude "**/R.class", "**/R\$*.class", "**/BuildConfig.class", "**/databinding/**", "**/DataBinderMapperImpl*.class", "**/BR.class"
         }
     })
     sourceDirectories.from(subprojects.collect { module ->
