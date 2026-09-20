@@ -1,6 +1,7 @@
 package de.test.antennapod.playback;
 
 import de.danoeh.antennapod.event.MessageEvent;
+import de.danoeh.antennapod.event.PlayerErrorEvent;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -10,10 +11,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Collects the messages that the playback service shows to the user.
+ * Collects the messages and the errors that the playback service shows to the user.
  */
-public class MessageEventRecorder {
+public class PlaybackEventRecorder {
     private final List<String> messages = Collections.synchronizedList(new ArrayList<>());
+    private final List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
     public void register() {
         EventBus.getDefault().register(this);
@@ -28,6 +30,11 @@ public class MessageEventRecorder {
         messages.add(event.message);
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onPlayerError(PlayerErrorEvent event) {
+        errors.add(event.getMessage());
+    }
+
     public boolean received(String message) {
         synchronized (messages) {
             return messages.contains(message);
@@ -37,6 +44,12 @@ public class MessageEventRecorder {
     public List<String> getMessages() {
         synchronized (messages) {
             return new ArrayList<>(messages);
+        }
+    }
+
+    public List<String> getErrors() {
+        synchronized (errors) {
+            return new ArrayList<>(errors);
         }
     }
 }

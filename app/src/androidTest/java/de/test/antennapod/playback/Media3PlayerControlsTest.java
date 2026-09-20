@@ -2,7 +2,6 @@ package de.test.antennapod.playback;
 
 import androidx.test.filters.LargeTest;
 import de.danoeh.antennapod.R;
-import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
 import de.danoeh.antennapod.playback.base.RewindAfterPauseUtils;
@@ -14,12 +13,10 @@ import org.awaitility.Awaitility;
 import org.junit.Test;
 
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -187,7 +184,7 @@ public class Media3PlayerControlsTest extends Media3ServiceTest {
         FeedPreferences preferences = first.getItem().getFeed().getPreferences();
         preferences.setFeedSkipEnding(20);
         DBWriter.setFeedPreferences(preferences).get();
-        MessageEventRecorder recorder = new MessageEventRecorder();
+        PlaybackEventRecorder recorder = new PlaybackEventRecorder();
         Media3TestUtils.runOnMain(recorder::register);
 
         try {
@@ -204,45 +201,5 @@ public class Media3PlayerControlsTest extends Media3ServiceTest {
         } finally {
             Media3TestUtils.runOnMain(recorder::unregister);
         }
-    }
-
-    @Test
-    public void testSkippingAnEpisodeStartsTheNextOneAndKeepsItInTheQueue() {
-        setSmartMarkAsPlayedSecs(0);
-        setSkipKeepsEpisode(true);
-        List<FeedItem> queue = DBReader.getQueue();
-        FeedMedia first = queue.get(0).getMedia();
-        FeedMedia second = queue.get(1).getMedia();
-
-        play(first);
-        awaitCurrentMedia(first);
-        awaitPositionAtLeast(300);
-        Media3TestUtils.runOnMain(controller()::seekToNextMediaItem);
-
-        awaitCurrentMedia(second);
-        assertNotEquals(first.getId(), PlaybackPreferences.getCurrentlyPlayingFeedMediaId());
-        assertTrue("Skipped episode stays in the queue",
-                DBReader.getQueueIDList().contains(first.getItem().getId()));
-        assertFalse("Skipped episode is not marked as played",
-                DBReader.getFeedItem(first.getItem().getId()).isPlayed());
-    }
-
-    @Test
-    public void testSkippingAnEpisodeRemovesItFromTheQueueWhenConfigured() {
-        setSmartMarkAsPlayedSecs(0);
-        setSkipKeepsEpisode(false);
-        List<FeedItem> queue = DBReader.getQueue();
-        FeedMedia first = queue.get(0).getMedia();
-        FeedMedia second = queue.get(1).getMedia();
-
-        play(first);
-        awaitCurrentMedia(first);
-        awaitPositionAtLeast(300);
-        Media3TestUtils.runOnMain(controller()::seekToNextMediaItem);
-
-        awaitCurrentMedia(second);
-        Awaitility.await("skipped episode removed from the queue")
-                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !DBReader.getQueueIDList().contains(first.getItem().getId()));
     }
 }

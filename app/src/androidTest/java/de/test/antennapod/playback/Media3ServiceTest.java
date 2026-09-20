@@ -13,6 +13,7 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.ui.UITestUtils;
 import org.awaitility.Awaitility;
+import org.greenrobot.eventbus.EventBus;
 import org.junit.After;
 import org.junit.Before;
 
@@ -33,6 +34,7 @@ public abstract class Media3ServiceTest {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         Media3TestUtils.awaitServiceStopped(context);
         DBWriter.tearDownTests();
+        EventBus.getDefault().removeAllStickyEvents();
         EspressoTestUtils.clearPreferences();
         EspressoTestUtils.clearDatabase();
         uiTestUtils = new UITestUtils(context);
