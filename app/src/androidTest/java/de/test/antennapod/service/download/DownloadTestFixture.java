@@ -91,6 +91,29 @@ public class DownloadTestFixture {
         return server.serveFile(file);
     }
 
+    public int idOf(String hostedUrl) {
+        return Integer.parseInt(hostedUrl.substring(hostedUrl.lastIndexOf('/') + 1));
+    }
+
+    public File hostedFile(String hostedUrl) {
+        return server.accessFile(idOf(hostedUrl));
+    }
+
+    public List<HTTPBin.RecordedRequest> requestsFor(String hostedUrl) {
+        return server.getRequestsForPrefix(hostedUrl.substring(server.getBaseUrl().length()));
+    }
+
+    /**
+     * Hosts a text file with the given content.
+     *
+     * @return The URL of the file
+     */
+    public String hostText(String name, String content) throws IOException {
+        File file = file(name);
+        FileUtils.writeStringToFile(file, content, "UTF-8");
+        return hostFile(file);
+    }
+
     public String url(String path) {
         return server.getBaseUrl() + path;
     }

@@ -298,7 +298,7 @@ public class HTTPBin extends NanoHTTPD {
             Log.w(TAG, "File not found: " + id);
             return get404Error();
         }
-        final String etag = "\"" + file.length() + "-" + file.lastModified() + "\"";
+        final String etag = "\"etag-" + file.length() + "-" + file.lastModified() + "\"";
         if (etag.equals(header.get("if-none-match"))) {
             Response notModified = new Response(Response.Status.NOT_MODIFIED, MIME_PLAIN, "");
             notModified.addHeader("ETag", etag);
