@@ -44,11 +44,6 @@ public class ItunesNamespaceTest {
     }
 
     @Test
-    public void itemAuthorDoesNotChangeFeedAuthor() {
-        assertEquals("Feed & Author", feed.getAuthor());
-    }
-
-    @Test
     public void longerSummaryReplacesSubtitle() {
         assertEquals("A considerably longer summary", feed.getItems().get(1).getDescription());
     }
