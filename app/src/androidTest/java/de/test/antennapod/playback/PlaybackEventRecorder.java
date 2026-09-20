@@ -10,9 +10,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Collects the messages and the errors that the playback service shows to the user.
- */
 public class PlaybackEventRecorder {
     private final List<String> messages = Collections.synchronizedList(new ArrayList<>());
     private final List<String> errors = Collections.synchronizedList(new ArrayList<>());
