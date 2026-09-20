@@ -13,6 +13,7 @@ import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
+import org.junit.After;
 import org.junit.Before;
 import org.robolectric.RuntimeEnvironment;
 
@@ -32,12 +33,19 @@ public abstract class ImportExportPipelineTestBase {
         UserPreferences.init(context);
         PlaybackPreferences.init(context);
         PodDBAdapter.init(context);
+        PodDBAdapter.tearDownTests();
         PodDBAdapter.deleteDatabase();
         PodDBAdapter adapter = PodDBAdapter.getInstance();
         adapter.open();
         adapter.close();
         SynchronizationQueue.setInstance(new SynchronizationQueueStub());
         DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
+    }
+
+    @After
+    public void closeDatabase() {
+        DBWriter.tearDownTests();
+        PodDBAdapter.tearDownTests();
     }
 
     protected static String escapeXml(String text) {
@@ -74,6 +82,10 @@ public abstract class ImportExportPipelineTestBase {
 
     protected List<Feed> storedFeeds() {
         return DBReader.getFeedList();
+    }
+
+    protected void reopenDatabase() {
+        PodDBAdapter.tearDownTests();
     }
 
     protected void resetDatabase() {
