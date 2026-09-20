@@ -6,6 +6,7 @@ import java.io.File;
 
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.parser.feed.FeedHandler;
+import de.danoeh.antennapod.parser.feed.FeedHandlerResult;
 
 /**
  * Tests for FeedHandler.
@@ -26,10 +27,14 @@ public abstract class FeedParserTestHelper {
      */
     @NonNull
     static Feed runFeedParser(@NonNull File feedFile) throws Exception {
+        return runFeedHandler(feedFile).feed;
+    }
+
+    @NonNull
+    static FeedHandlerResult runFeedHandler(@NonNull File feedFile) throws Exception {
         FeedHandler handler = new FeedHandler();
         Feed parsedFeed = new Feed("http://example.com/feed", null);
         parsedFeed.setLocalFileUrl(feedFile.getAbsolutePath());
-        handler.parseFeed(parsedFeed);
-        return parsedFeed;
+        return handler.parseFeed(parsedFeed);
     }
 }

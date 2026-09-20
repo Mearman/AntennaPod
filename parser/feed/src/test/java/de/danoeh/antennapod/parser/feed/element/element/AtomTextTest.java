@@ -34,4 +34,25 @@ public class AtomTextTest {
             assertEquals(pair[1], atomText.getProcessedContent());
         }
     }
+
+    @Test
+    public void testUntypedContentIsReturnedUnchanged() {
+        final AtomText atomText = new AtomText("", new Atom(), null);
+        atomText.setContent("&gt; <b>raw</b>");
+        assertEquals("&gt; <b>raw</b>", atomText.getProcessedContent());
+    }
+
+    @Test
+    public void testXhtmlContentIsReturnedUnchanged() {
+        final AtomText atomText = new AtomText("", new Atom(), "xhtml");
+        atomText.setContent("&gt; <b>raw</b>");
+        assertEquals("&gt; <b>raw</b>", atomText.getProcessedContent());
+    }
+
+    @Test
+    public void testUnknownTypeIsTreatedAsPlainText() {
+        final AtomText atomText = new AtomText("", new Atom(), "text");
+        atomText.setContent("&gt; <b>raw</b>");
+        assertEquals("&gt; <b>raw</b>", atomText.getProcessedContent());
+    }
 }
