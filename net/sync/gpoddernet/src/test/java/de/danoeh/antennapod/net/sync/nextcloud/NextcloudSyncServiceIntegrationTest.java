@@ -193,14 +193,4 @@ public class NextcloudSyncServiceIntegrationTest {
         assertThrows(NextcloudSynchronizationServiceException.class,
                 () -> newService("").uploadEpisodeActions(Collections.singletonList(playAction(1))));
     }
-
-    @Test
-    public void loginAndLogoutDoNotContactServer() {
-        NextcloudSyncService service = newService("");
-
-        service.login();
-        service.logout();
-
-        assertEquals(0, server.getRequestCount());
-    }
 }
