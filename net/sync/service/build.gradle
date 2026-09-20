@@ -3,6 +3,7 @@ plugins {
 }
 apply from: "../../../common.gradle"
 apply from: "../../../playFlavor.gradle"
+apply from: "../../../mockitoAgent.gradle"
 
 android {
     namespace "de.danoeh.antennapod.net.sync.service"
@@ -34,4 +35,5 @@ dependencies {
     testImplementation libs.junit
     testImplementation libs.robolectric
     testImplementation libs.okhttp.mockwebserver
+    testImplementation libs.mockito.core
 }
