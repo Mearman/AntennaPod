@@ -6,12 +6,14 @@ import androidx.work.Data;
 import androidx.work.DefaultWorkerFactory;
 import androidx.work.ProgressUpdater;
 import androidx.work.WorkerParameters;
+import androidx.work.impl.WorkManagerImpl;
 import androidx.work.impl.utils.taskexecutor.TaskExecutor;
 import com.google.common.util.concurrent.Futures;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.common.AntennapodHttpClient;
+import de.danoeh.antennapod.net.common.NetworkUtils;
 import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfaceStub;
@@ -38,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.UUID;
-import java.util.concurrent.Executor;
 
 import static org.junit.Assert.assertTrue;
 
@@ -53,17 +54,21 @@ public abstract class DownloadIntegrationTestBase {
     protected Context context;
     protected MockWebServer server;
     protected SynchronizationQueue synchronizationQueue;
+    protected WorkManagerImpl workManager;
 
     @Before
     public void setUpDownloadEnvironment() throws IOException {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         UserPreferences.init(context);
+        NetworkUtils.init(context);
         PlaybackPreferences.init(context);
         SynchronizationSettings.init(context);
         DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
         synchronizationQueue = Mockito.mock(SynchronizationQueue.class);
         SynchronizationQueue.setInstance(synchronizationQueue);
         AutoDownloadManager.setInstance(Mockito.mock(AutoDownloadManager.class));
+        workManager = Mockito.mock(WorkManagerImpl.class);
+        WorkManagerImpl.setDelegate(workManager);
 
         PodDBAdapter.init(context);
         PodDBAdapter.deleteDatabase();
@@ -82,26 +87,64 @@ public abstract class DownloadIntegrationTestBase {
     @After
     public void tearDownDownloadEnvironment() throws IOException {
         server.shutdown();
+        WorkManagerImpl.setDelegate(null);
         DBWriter.tearDownTests();
         PodDBAdapter.tearDownTests();
+    }
+
+    /**
+     * Creates an unsaved subscribed feed that can be refreshed from the given URL.
+     */
+    protected Feed newFeed(String title, String downloadUrl) {
+        Feed feed = new Feed(0, null, title, null, "link", "descr", null, null, null, "type", "id-" + title, null,
+                null, downloadUrl, 0, false, null, null, null, false, Feed.STATE_SUBSCRIBED);
+        feed.setItems(new ArrayList<>());
+        return feed;
+    }
+
+    /**
+     * Stores the feed in the database and returns it as read back from there.
+     */
+    protected Feed saveFeed(Feed feed) {
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
+        adapter.setCompleteFeed(feed);
+        adapter.close();
+        assertTrue(feed.getId() != 0);
+        return DBReader.getFeed(feed.getId(), false, 0, Integer.MAX_VALUE);
     }
 
     /**
      * Stores a subscribed feed containing one episode whose media is downloadable from the given URL.
      */
     protected FeedMedia saveEpisode(String mediaUrl) {
-        Feed feed = new Feed(0, null, "Test Feed", "link", "descr", null, null, null, null, "id", null, null,
-                server.url("/feed.xml").toString(), System.currentTimeMillis());
-        feed.setItems(new ArrayList<>());
+        Feed feed = newFeed("Test Feed", server.url("/feed.xml").toString());
         FeedItem item = new FeedItem(0, "Episode One", "guid-1", "link", new Date(), FeedItem.NEW, feed);
         item.setMedia(new FeedMedia(item, mediaUrl, 0, "audio/mpeg"));
         feed.getItems().add(item);
-        PodDBAdapter adapter = PodDBAdapter.getInstance();
-        adapter.open();
-        adapter.setCompleteFeed(feed);
-        adapter.close();
+        saveFeed(feed);
         assertTrue(item.getMedia().getId() != 0);
         return DBReader.getFeedMedia(item.getMedia().getId());
+    }
+
+    /**
+     * Builds a minimal RSS document with one enclosure episode per given title.
+     */
+    protected static String rss(String feedTitle, String... episodeTitles) {
+        StringBuilder xml = new StringBuilder(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>");
+        if (feedTitle != null) {
+            xml.append("<title>").append(feedTitle).append("</title>");
+        }
+        xml.append("<link>http://example.com</link><description>d</description>");
+        for (int i = 0; i < episodeTitles.length; i++) {
+            xml.append("<item><title>").append(episodeTitles[i]).append("</title><guid>")
+                    .append(feedTitle).append("-guid-").append(i).append("</guid>")
+                    .append("<pubDate>Mon, 0").append(i + 1).append(" Jan 2124 10:00:00 +0000</pubDate>")
+                    .append("<enclosure url=\"http://example.com/").append(i).append(".mp3\" length=\"100\" ")
+                    .append("type=\"audio/mpeg\"/></item>");
+        }
+        return xml.append("</channel></rss>").toString();
     }
 
     protected WorkerParameters workerParameters(Data inputData, int runAttemptCount) {
