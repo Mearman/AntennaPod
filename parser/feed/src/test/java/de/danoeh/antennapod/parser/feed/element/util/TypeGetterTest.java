@@ -95,13 +95,19 @@ public class TypeGetterTest {
     @Test
     public void unknownXmlRootIsRejected() {
         Feed feed = feedFor("feed-xml-testUnknownRoot.xml");
-        assertThrows(UnsupportedFeedtypeException.class, () -> new TypeGetter().getType(feed));
+        UnsupportedFeedtypeException exception =
+                assertThrows(UnsupportedFeedtypeException.class, () -> new TypeGetter().getType(feed));
+        assertEquals("html", exception.getRootElement());
+        assertEquals("Server returned html", exception.getMessage());
     }
 
     @Test
     public void plainTextIsRejected() {
         Feed feed = feedFor("feed-txt-testNotXml.txt");
-        assertThrows(UnsupportedFeedtypeException.class, () -> new TypeGetter().getType(feed));
+        UnsupportedFeedtypeException exception =
+                assertThrows(UnsupportedFeedtypeException.class, () -> new TypeGetter().getType(feed));
+        assertEquals("html", exception.getRootElement());
+        assertEquals("Server returned html", exception.getMessage());
     }
 
     @Test
