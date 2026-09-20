@@ -15,6 +15,7 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -160,6 +161,28 @@ public class Media3PlaybackTest extends Media3ServiceTest {
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory() != null
                         && DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory().getTime() > 0);
+    }
+
+    @Test
+    public void testMissingLocalFileReportsAPlaybackError() {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        assertTrue("The downloaded file is deleted before playback",
+                new File(media.getLocalFileUrl()).delete());
+        PlaybackEventRecorder recorder = new PlaybackEventRecorder();
+        Media3TestUtils.runOnMain(recorder::register);
+
+        try {
+            play(media);
+
+            Awaitility.await("playback error reported to the user")
+                    .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .until(() -> !recorder.getErrors().isEmpty());
+            assertFalse("The error message is not empty",
+                    recorder.getErrors().get(0).isEmpty());
+            assertFalse(PlaybackService.isRunning);
+        } finally {
+            Media3TestUtils.runOnMain(recorder::unregister);
+        }
     }
 
     @Test
