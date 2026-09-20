@@ -32,4 +32,5 @@ dependencies {
     implementation libs.guava
 
     testImplementation libs.junit
+    testImplementation libs.robolectric
 }
