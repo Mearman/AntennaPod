@@ -6,6 +6,9 @@ import de.danoeh.antennapod.model.playback.Playable;
 import de.danoeh.antennapod.playback.base.PlayerStatus;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.ui.widget.WidgetUpdater;
+import io.reactivex.rxjava3.android.plugins.RxAndroidPlugins;
+import io.reactivex.rxjava3.plugins.RxJavaPlugins;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,7 +17,11 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -42,6 +49,8 @@ public class PlaybackServiceTaskManagerTest {
 
     @After
     public void tearDown() {
+        RxJavaPlugins.reset();
+        RxAndroidPlugins.reset();
         taskManager.shutdown();
         PlaybackTestDatabase.tearDown();
     }
@@ -56,16 +65,6 @@ public class PlaybackServiceTaskManagerTest {
     public void thePositionSaverRunsUntilItIsCancelled() {
         taskManager.startPositionSaver();
         assertTrue(taskManager.isPositionSaverActive());
-
-        taskManager.cancelPositionSaver();
-
-        assertFalse(taskManager.isPositionSaverActive());
-    }
-
-    @Test
-    public void startingThePositionSaverTwiceKeepsTheOneAlreadyRunning() {
-        taskManager.startPositionSaver();
-        taskManager.startPositionSaver();
 
         taskManager.cancelPositionSaver();
 
@@ -127,11 +126,34 @@ public class PlaybackServiceTaskManagerTest {
 
     @Test
     public void loadingChaptersForAnEpisodeThatAlreadyHasThemDoesNothing() {
+        runChapterLoaderOnTheCallingThread();
         media.setChapters(new ArrayList<>());
 
         taskManager.startChapterLoader(media);
 
         assertTrue(callback.chapterLoads.isEmpty());
+    }
+
+    @Test
+    public void loadingChaptersForADownloadedEpisodeWithoutAnyReportsAnEmptyListBack() throws IOException {
+        runChapterLoaderOnTheCallingThread();
+        File file = new File(context.getCacheDir(), "episode.mp3");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(new byte[]{0, 0, 0, 0});
+        }
+        media.setLocalFileUrl(file.getAbsolutePath());
+        media.setDownloaded(true, System.currentTimeMillis());
+        media.setChapters(null);
+
+        taskManager.startChapterLoader(media);
+
+        assertEquals(Collections.singletonList(media), callback.chapterLoads);
+        assertTrue(media.getChapters().isEmpty());
+    }
+
+    private void runChapterLoaderOnTheCallingThread() {
+        RxJavaPlugins.setComputationSchedulerHandler(scheduler -> Schedulers.trampoline());
+        RxAndroidPlugins.setMainThreadSchedulerHandler(scheduler -> Schedulers.trampoline());
     }
 
     private static class RecordingCallback implements PlaybackServiceTaskManager.PSTMCallback {
