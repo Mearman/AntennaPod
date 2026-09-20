@@ -1,23 +1,28 @@
 package de.danoeh.antennapod.storage.database;
 
 import de.danoeh.antennapod.model.download.DownloadStatus;
+import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
+import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfaceStub;
 import de.danoeh.antennapod.storage.preferences.UserPreferences.EnqueueLocation;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
-import static de.danoeh.antennapod.storage.database.ItemEnqueuePositionCalculatorTest.createFeedItem;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class ItemEnqueuePositionCalculatorDownloadsTest {
+    private static final int RANDOM_SAMPLES = 1000;
     private final Map<String, DownloadStatus> currentDownloads = new HashMap<>();
     private List<FeedItem> queue;
 
@@ -28,6 +33,20 @@ public class ItemEnqueuePositionCalculatorDownloadsTest {
         DownloadServiceInterface.setImpl(stub);
         queue = new ArrayList<>(List.of(createFeedItem(11), createFeedItem(12), createFeedItem(13),
                 createFeedItem(14)));
+    }
+
+    @After
+    public void tearDown() {
+        DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
+    }
+
+    private static FeedItem createFeedItem(long id) {
+        Feed feed = new Feed("http://example.com/feed", null, "title");
+        FeedItem item = new FeedItem(id, "Item" + id, "ItemId" + id, "url", new Date(), FeedItem.PLAYED, feed);
+        FeedMedia media = new FeedMedia(item, "http://download.url.net/" + id, 1234567, "audio/mpeg");
+        media.setId(id);
+        item.setMedia(media);
+        return item;
     }
 
     private void markDownloading(FeedItem item, int state) {
@@ -91,11 +110,16 @@ public class ItemEnqueuePositionCalculatorDownloadsTest {
     }
 
     @Test
-    public void randomPositionIsAlwaysAValidInsertionIndex() {
-        for (int i = 0; i < 200; i++) {
-            int position = position(EnqueueLocation.RANDOM, null);
-            assertTrue("position " + position, position >= 0 && position <= queue.size());
+    public void randomPositionCoversEveryInsertionIndexAndNothingElse() {
+        Set<Integer> positions = new TreeSet<>();
+        for (int i = 0; i < RANDOM_SAMPLES; i++) {
+            positions.add(position(EnqueueLocation.RANDOM, null));
         }
+        Set<Integer> insertionIndexes = new TreeSet<>();
+        for (int index = 0; index <= queue.size(); index++) {
+            insertionIndexes.add(index);
+        }
+        assertEquals(insertionIndexes, positions);
     }
 
     @Test
