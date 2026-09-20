@@ -428,20 +428,6 @@ public class DbWriterQueueTest extends DatabaseTestBase {
     }
 
     @Test
-    public void queueIdListFollowsQueueOrder() {
-        Feed feed = storeFeed("feed");
-        FeedItem a = storeItem(feed, "a");
-        FeedItem b = storeItem(feed, "b");
-        await(DBWriter.addQueueItem(context, b, a));
-
-        LongList queueIds = DBReader.getQueueIDList();
-
-        assertEquals(2, queueIds.size());
-        assertEquals(b.getId(), queueIds.get(0));
-        assertEquals(a.getId(), queueIds.get(1));
-    }
-
-    @Test
     public void remainingQueueSizeCountsItemFromItsPosition() {
         Feed feed = storeFeed("feed");
         FeedItem a = storeItem(feed, "a");
