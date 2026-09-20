@@ -1,6 +1,8 @@
 package de.danoeh.antennapod.net.download.service;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.work.Data;
 import androidx.work.DefaultWorkerFactory;
@@ -25,7 +27,9 @@ import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.SynchronizationSettings;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import kotlin.coroutines.EmptyCoroutineContext;
+import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okio.Buffer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -33,6 +37,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.shadows.ShadowNetworkInfo;
 import org.robolectric.shadows.ShadowStatFs;
 
 import java.io.IOException;
@@ -42,10 +47,8 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
-/**
- * Sets up the real database, the shared HTTP client and a local HTTP server for tests of the download service.
- */
 @RunWith(RobolectricTestRunner.class)
 public abstract class DownloadIntegrationTestBase {
     @Rule
@@ -92,9 +95,6 @@ public abstract class DownloadIntegrationTestBase {
         PodDBAdapter.tearDownTests();
     }
 
-    /**
-     * Creates an unsaved subscribed feed that can be refreshed from the given URL.
-     */
     protected Feed newFeed(String title, String downloadUrl) {
         Feed feed = new Feed(0, null, title, null, "link", "descr", null, null, null, "type", "id-" + title, null,
                 null, downloadUrl, 0, false, null, null, null, false, Feed.STATE_SUBSCRIBED);
@@ -102,9 +102,6 @@ public abstract class DownloadIntegrationTestBase {
         return feed;
     }
 
-    /**
-     * Stores the feed in the database and returns it as read back from there.
-     */
     protected Feed saveFeed(Feed feed) {
         PodDBAdapter adapter = PodDBAdapter.getInstance();
         adapter.open();
@@ -114,9 +111,6 @@ public abstract class DownloadIntegrationTestBase {
         return DBReader.getFeed(feed.getId(), false, 0, Integer.MAX_VALUE);
     }
 
-    /**
-     * Stores a subscribed feed containing one episode whose media is downloadable from the given URL.
-     */
     protected FeedMedia saveEpisode(String mediaUrl) {
         Feed feed = newFeed("Test Feed", server.url("/feed.xml").toString());
         FeedItem item = new FeedItem(0, "Episode One", "guid-1", "link", new Date(), FeedItem.NEW, feed);
@@ -127,9 +121,6 @@ public abstract class DownloadIntegrationTestBase {
         return DBReader.getFeedMedia(item.getMedia().getId());
     }
 
-    /**
-     * Builds a minimal RSS document with one enclosure episode per given title.
-     */
     protected static String rss(String feedTitle, String... episodeTitles) {
         StringBuilder xml = new StringBuilder(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>");
@@ -154,5 +145,30 @@ public abstract class DownloadIntegrationTestBase {
                 EmptyCoroutineContext.INSTANCE, Mockito.mock(TaskExecutor.class),
                 DefaultWorkerFactory.INSTANCE, progressUpdater,
                 (ctx, id, foregroundInfo) -> Futures.immediateFuture(null));
+    }
+
+    protected void setNetwork(int type) {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        shadowOf(connectivityManager).setActiveNetworkInfo(ShadowNetworkInfo.newInstance(
+                NetworkInfo.DetailedState.CONNECTED, type, 0, true, NetworkInfo.State.CONNECTED));
+    }
+
+    protected void setNoNetwork() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+    }
+
+    protected static byte[] bytes(int length) {
+        byte[] data = new byte[length];
+        for (int i = 0; i < length; i++) {
+            data[i] = (byte) (i % 251);
+        }
+        return data;
+    }
+
+    protected static MockResponse audioResponse(byte[] body) {
+        return new MockResponse().setBody(new Buffer().write(body)).addHeader("Content-Type", "audio/mpeg");
     }
 }
