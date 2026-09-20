@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Hosts feeds and episodes on a local {@link HTTPBin} and subscribes to them in the database.
- */
 public class DownloadTestFixture {
     public static final String MEDIA_ASSET = "3sec.mp3";
     public static final String MIME_TYPE = "audio/mpeg";
@@ -105,11 +102,6 @@ public class DownloadTestFixture {
         return server.getRequestsForPrefix(hostedUrl.substring(server.getBaseUrl().length()));
     }
 
-    /**
-     * Hosts a text file with the given content.
-     *
-     * @return The URL of the file
-     */
     public String hostText(String name, String content) throws IOException {
         File file = file(name);
         FileUtils.writeStringToFile(file, content, "UTF-8");
@@ -120,9 +112,6 @@ public class DownloadTestFixture {
         return server.getBaseUrl() + path;
     }
 
-    /**
-     * Builds a feed that is not stored yet. Every episode has a hosted media file. The most recent episode comes first.
-     */
     public Feed newFeed(String title, int episodes) throws IOException {
         return newFeed(title, episodes, FeedItem.UNPLAYED);
     }
@@ -131,9 +120,6 @@ public class DownloadTestFixture {
         return newFeed(title, episodes, playState, DAY_MILLIS);
     }
 
-    /**
-     * Builds a feed whose episodes were published spacingMillis apart, ending now.
-     */
     public Feed newFeed(String title, int episodes, int playState, long spacingMillis) throws IOException {
         Feed feed = new Feed(0, null, title, "http://example.com/" + title, "Description of " + title,
                 null, "Author of " + title, "en", Feed.TYPE_RSS2, title + "-identifier", null, null, null, 0);
@@ -150,11 +136,6 @@ public class DownloadTestFixture {
         return feed;
     }
 
-    /**
-     * Writes the feed as RSS to the server. Hosting the same feed again replaces the content behind the same URL.
-     *
-     * @return The URL of the feed
-     */
     public String hostFeed(Feed feed) throws IOException {
         File feedFile = new File(hostedDir, "feed-" + feed.getTitle() + ".xml");
         try (FileOutputStream out = new FileOutputStream(feedFile)) {
@@ -163,11 +144,6 @@ public class DownloadTestFixture {
         return hostFile(feedFile);
     }
 
-    /**
-     * Stores the feed and its episodes in the database.
-     *
-     * @return The feed as it was stored, including all episodes
-     */
     public Feed subscribe(Feed feed) {
         Feed saved = FeedDatabaseWriter.updateFeed(context, feed, false);
         return DBReader.getFeed(saved.getId(), false, 0, Integer.MAX_VALUE);
@@ -183,9 +159,6 @@ public class DownloadTestFixture {
         return subscribe(feed);
     }
 
-    /**
-     * Gives the episode a downloaded file without contacting the server.
-     */
     public void markDownloaded(FeedItem item) throws Exception {
         FeedMedia media = DBReader.getFeedMedia(item.getMedia().getId());
         File downloaded = file("downloaded-" + media.getId() + ".mp3");

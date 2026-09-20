@@ -40,9 +40,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Runs the automatic download and the episode cleanup algorithms against the database and the local test server.
- */
 @RunWith(AndroidJUnit4.class)
 public class AutoDownloadTest {
     private static final long TIMEOUT_SECONDS = 60;

@@ -30,9 +30,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Starts feed refreshes through the feed update manager and lets WorkManager run them.
- */
 @RunWith(AndroidJUnit4.class)
 public class FeedUpdateManagerTest {
     private static final long TIMEOUT_SECONDS = 60;

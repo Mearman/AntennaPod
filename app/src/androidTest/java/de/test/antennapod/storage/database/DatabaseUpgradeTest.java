@@ -32,9 +32,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Opens databases written by older versions of the app and checks that the data survives the upgrade.
- */
 @RunWith(AndroidJUnit4.class)
 public class DatabaseUpgradeTest {
     private static final int FIRST_VERSION = 1;

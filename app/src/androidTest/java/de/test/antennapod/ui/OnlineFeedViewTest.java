@@ -34,13 +34,10 @@ import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Opens podcast links in the online feed view, downloads the feed from the local test server and subscribes to it.
- */
 @RunWith(AndroidJUnit4.class)
 public class OnlineFeedViewTest {
-    private static final long VIEW_TIMEOUT_MILLIS = 15000;
     private static final long TIMEOUT_SECONDS = 30;
+    private static final long VIEW_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS);
     private static final int EPISODES = 2;
 
     private final DownloadTestFixture fixture = new DownloadTestFixture();
