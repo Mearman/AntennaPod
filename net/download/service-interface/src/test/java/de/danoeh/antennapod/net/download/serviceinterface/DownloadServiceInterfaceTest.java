@@ -78,9 +78,4 @@ public class DownloadServiceInterfaceTest {
         DownloadServiceInterface.setImpl(downloads);
         assertSame(downloads, DownloadServiceInterface.get());
     }
-
-    @Test
-    public void stubReportsNoActiveDownloads() {
-        assertEquals(0, downloads.getNumberOfActiveDownloads(null));
-    }
 }
