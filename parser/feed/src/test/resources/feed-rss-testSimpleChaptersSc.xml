@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sc="http://podlove.org/simple-chapters">
+    <channel>
+        <title>Channel</title>
+        <item>
+            <title>Chapters</title>
+            <sc:chapters>
+                <sc:chapter start="00:00:30" title="Short prefix"/>
+            </sc:chapters>
+        </item>
+    </channel>
+</rss>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:psc="http://podlove.org/simple-chapters">
+    <channel>
+        <title>Channel</title>
+        <psc:chapters>
+            <psc:chapter start="00:00:01" title="Ignored channel chapter"/>
+        </psc:chapters>
+        <item>
+            <title>Chapters</title>
+            <psc:chapters version="1.2">
+                <psc:chapter start="00:00:00" title="Intro"/>
+                <psc:chapter start="00:01:10.500" title="Main" href="http://example.com/main" image="http://example.com/main.png"/>
+                <psc:chapter start="" title="Empty start"/>
+                <psc:chapter title="No start"/>
+                <psc:chapter start="aa:bb" title="Broken start"/>
+                <psc:chapter start="1:02:03" title="Hour"/>
+            </psc:chapters>
+        </item>
+    </channel>
+</rss>
