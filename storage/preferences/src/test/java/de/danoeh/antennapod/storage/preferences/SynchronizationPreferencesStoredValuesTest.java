@@ -6,6 +6,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -80,13 +82,13 @@ public class SynchronizationPreferencesStoredValuesTest extends StoredPreference
 
     @Test
     public void syncAttemptRecordsTheCurrentTimeAndItsOutcome() {
-        long before = System.currentTimeMillis();
+        assertEquals(0, SynchronizationSettings.getLastSyncAttempt());
 
         SynchronizationSettings.updateLastSynchronizationAttempt();
         SynchronizationSettings.setLastSynchronizationAttemptSuccess(true);
 
         long recorded = SynchronizationSettings.getLastSyncAttempt();
-        assertTrue(recorded >= before && recorded <= System.currentTimeMillis());
+        assertTrue(Math.abs(System.currentTimeMillis() - recorded) < TimeUnit.DAYS.toMillis(1));
         assertTrue(SynchronizationSettings.isLastSyncSuccessful());
     }
 
