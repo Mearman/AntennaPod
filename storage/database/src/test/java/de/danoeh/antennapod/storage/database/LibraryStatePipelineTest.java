@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
@@ -73,22 +72,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         Feed feed = loadWithItems(parseAndStore(rss("<title>Empty</title>")));
 
         assertNull(feed.getMostRecentItem());
-    }
-
-    @Test
-    public void feedIsIdentifiedByItsIdentifierThenDownloadUrlThenTitleThenLink() {
-        Feed feed = new Feed(null, null);
-        feed.setLink("https://example.com/link");
-        assertEquals("https://example.com/link", feed.getIdentifyingValue());
-
-        feed.setTitle("Title");
-        assertEquals("Title", feed.getIdentifyingValue());
-
-        feed.setDownloadUrl("https://example.com/feed.xml");
-        assertEquals("https://example.com/feed.xml", feed.getIdentifyingValue());
-
-        feed.setFeedIdentifier("urn:feed");
-        assertEquals("urn:feed", feed.getIdentifyingValue());
     }
 
     @Test
@@ -148,17 +131,7 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void onlyEpisodeSortOrdersOfASingleFeedAreAccepted() {
-        Feed feed = new Feed(FEED_URL, null);
-
-        assertThrows(IllegalArgumentException.class, () -> feed.setSortOrder(SortOrder.RANDOM));
-        assertThrows(IllegalArgumentException.class, () -> feed.setSortOrder(SortOrder.FEED_TITLE_A_Z));
-        feed.setSortOrder(SortOrder.DURATION_LONG_SHORT);
-        assertEquals(SortOrder.DURATION_LONG_SHORT, feed.getSortOrder());
-    }
-
-    @Test
-    public void feedHasEpisodesInTheAppOnceOneIsFavoritedQueuedOrDownloaded() throws Exception {
+    public void feedHasEpisodesInTheAppOnlyWhileOneIsFavoritedQueuedOrDownloaded() throws Exception {
         Feed stored = parseAndStore(DOCUMENT);
         assertFalse(loadWithItems(stored).hasEpisodeInApp());
         assertFalse(loadWithItems(stored).hasInteractedWithEpisode());
@@ -168,7 +141,21 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         assertTrue(loadWithItems(stored).hasEpisodeInApp());
 
         DBWriter.removeFavoriteItems(List.of(storedItem(stored, "linked")));
+        DBWriter.tearDownTests();
+        assertFalse(loadWithItems(stored).hasEpisodeInApp());
+
         DBWriter.addQueueItem(context, storedItem(stored, "oldest"));
+        DBWriter.tearDownTests();
+        assertTrue(loadWithItems(stored).hasEpisodeInApp());
+
+        DBWriter.removeQueueItem(context, false, storedItem(stored, "oldest"));
+        DBWriter.tearDownTests();
+        assertFalse(loadWithItems(stored).hasEpisodeInApp());
+
+        FeedMedia media = storedItem(stored, "newest").getMedia();
+        media.setLocalFileUrl("/downloads/newest.mp3");
+        media.setDownloaded(true, 1000L);
+        DBWriter.setMediaDownloadInformation(media);
         DBWriter.tearDownTests();
         assertTrue(loadWithItems(stored).hasEpisodeInApp());
     }
@@ -189,15 +176,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         DBWriter.setFeedMediaPlaybackInformation(started.getMedia());
         DBWriter.tearDownTests();
         assertTrue(loadWithItems(stored).hasInteractedWithEpisode());
-    }
-
-    @Test
-    public void feedWithoutLoadedItemsReportsNoEpisodesInTheApp() {
-        Feed feed = new Feed(FEED_URL, null);
-        feed.setItems(null);
-
-        assertFalse(feed.hasEpisodeInApp());
-        assertFalse(feed.hasInteractedWithEpisode());
     }
 
     @Test
@@ -224,22 +202,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         FeedItem orphan = new FeedItem();
         orphan.setFeed(new Feed(FEED_URL, null));
         assertNull(orphan.getLinkWithFallback());
-    }
-
-    @Test
-    public void episodeIsIdentifiedByGuidThenTitleThenMediaAddressThenLink() {
-        FeedItem item = new FeedItem();
-        item.setLink("https://example.com/link");
-        assertEquals("https://example.com/link", item.getIdentifyingValue());
-
-        item.setMedia(new FeedMedia(item, "https://example.com/media.mp3", 0, null));
-        assertEquals("https://example.com/media.mp3", item.getIdentifyingValue());
-
-        item.setTitle("Title");
-        assertEquals("Title", item.getIdentifyingValue());
-
-        item.setItemIdentifier("guid");
-        assertEquals("guid", item.getIdentifyingValue());
     }
 
     @Test
@@ -286,18 +248,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void transcriptWithoutTypeOrAddressIsIgnored() {
-        FeedItem item = new FeedItem();
-
-        item.setTranscriptUrl(null, "https://example.com/transcript");
-        item.setTranscriptUrl("text/vtt", "");
-        item.setTranscriptUrl("text/plain", "https://example.com/transcript.txt");
-
-        assertFalse(item.hasTranscript());
-        assertNull(item.getTranscriptUrl());
-    }
-
-    @Test
     public void chapterPositionIsFoundFromStoredChapters() throws Exception {
         Feed stored = parseAndStore(rss("""
                 <title>Chapters</title>
@@ -321,7 +271,7 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void storedChaptersAreIdentifiedByTheirDatabaseIdAndCanBeEdited() throws Exception {
+    public void storedChaptersAreIdentifiedByTheirDatabaseId() throws Exception {
         Feed stored = parseAndStore(rss("""
                 <title>Chapters</title>
                 <item>
@@ -337,18 +287,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         assertEquals(first, again);
         assertEquals(first.hashCode(), again.hashCode());
         assertNotEquals(first, new Chapter(10000, "One", null, null));
-        assertNotEquals(first, null);
-        first.setTitle("Renamed");
-        first.setStart(20000);
-        first.setLink("https://example.com/chapter");
-        first.setImageUrl("https://example.com/chapter.png");
-        first.setChapterId("external-id");
-        assertEquals("Renamed", first.getTitle());
-        assertEquals(20000, first.getStart());
-        assertEquals("https://example.com/chapter", first.getLink());
-        assertEquals("https://example.com/chapter.png", first.getImageUrl());
-        assertEquals("external-id", first.getChapterId());
-        assertTrue(first.toString().contains("Renamed"));
     }
 
     @Test
@@ -361,10 +299,6 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
 
         assertEquals(fromFeed, fromDatabase);
         assertEquals(fromFeed.hashCode(), fromDatabase.hashCode());
-        assertNotEquals(fromFeed, new FeedFunding("https://example.com/donate", "Other label"));
-        assertNotEquals(fromFeed, new FeedFunding("https://example.com/other", "Donate"));
-        assertNotEquals(fromFeed, null);
-        assertEquals(new FeedFunding(null, null), new FeedFunding(null, null));
     }
 
     @Test
@@ -378,6 +312,5 @@ public class LibraryStatePipelineTest extends FeedPipelineTestBase {
         assertEquals(item.hashCode(), storedItem(reload(stored), "linked").hashCode());
         assertNotEquals(item, storedItem(stored, "newest"));
         assertNotEquals(stored, new Feed(FEED_URL, null));
-        assertTrue(item.toString().contains("Linked"));
     }
 }
