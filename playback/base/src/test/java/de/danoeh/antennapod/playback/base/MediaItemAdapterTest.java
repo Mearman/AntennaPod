@@ -4,19 +4,14 @@ import android.content.Context;
 import android.net.Uri;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
+import androidx.media3.session.R;
 import com.google.common.collect.ImmutableList;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
-import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
-import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueueStub;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
-import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
-import de.danoeh.antennapod.storage.database.PodDBAdapter;
-import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
-import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import org.junit.After;
 import org.junit.Before;
@@ -48,40 +43,17 @@ public class MediaItemAdapterTest {
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
-        UserPreferences.init(context);
-        PlaybackPreferences.init(context);
-        PodDBAdapter.init(context);
-        PodDBAdapter.deleteDatabase();
-        SynchronizationQueue.setInstance(new SynchronizationQueueStub());
-        feed = storeFeed(2);
+        PlaybackBaseTestDatabase.setUp(context);
+        feed = PlaybackBaseTestDatabase.storeFeed(context, FEED_URL, FEED_TITLE, 2);
     }
 
     @After
     public void tearDown() {
-        PodDBAdapter.tearDownTests();
-    }
-
-    private Feed storeFeed(int numItems) {
-        Feed newFeed = new Feed(FEED_URL, null, FEED_TITLE);
-        newFeed.setImageUrl("http://example.com/feed.png");
-        newFeed.setAuthor("The Author");
-        newFeed.setItems(new ArrayList<>());
-        for (int i = 0; i < numItems; i++) {
-            FeedItem item = new FeedItem(0, "Episode " + i, "id-" + i, "link",
-                    new Date(1000L * (i + 1)), FeedItem.UNPLAYED, newFeed);
-            item.setMedia(new FeedMedia(item, FEED_URL + "/media" + i + ".mp3", 1024, "audio/mp3"));
-            newFeed.getItems().add(item);
-        }
-        return FeedDatabaseWriter.updateFeed(context, newFeed, false);
+        PlaybackBaseTestDatabase.tearDown();
     }
 
     private FeedMedia storedMedia(int index) {
-        for (FeedItem item : DBReader.getFeed(feed.getId(), true, 0, Integer.MAX_VALUE).getItems()) {
-            if (item.getItemIdentifier().equals("id-" + index)) {
-                return item.getMedia();
-            }
-        }
-        throw new AssertionError("No stored episode with index " + index);
+        return PlaybackBaseTestDatabase.storedMedia(feed.getId(), "id-" + index);
     }
 
     @Test
@@ -174,15 +146,14 @@ public class MediaItemAdapterTest {
 
         assertEquals(MediaItemAdapter.MEDIA_ID_FEED_PREFIX + stored.getId(), item.mediaId);
         assertEquals(FEED_TITLE, item.mediaMetadata.title);
-        assertEquals("The Author", item.mediaMetadata.subtitle);
+        assertEquals("Author of " + FEED_TITLE, item.mediaMetadata.subtitle);
         assertEquals(Boolean.TRUE, item.mediaMetadata.isBrowsable);
         assertEquals(Boolean.FALSE, item.mediaMetadata.isPlayable);
-        assertEquals(Uri.parse("http://example.com/feed.png"), item.mediaMetadata.artworkUri);
+        assertEquals(Uri.parse(FEED_URL + "/image.png"), item.mediaMetadata.artworkUri);
     }
 
     @Test
-    public void aFeedWithoutAnImageBecomesABrowsableItemWithoutArtwork()
-            throws ExecutionException, InterruptedException {
+    public void aFeedWithoutAnImageBecomesABrowsableItemWithoutArtwork() {
         Feed stored = DBReader.getFeed(feed.getId(), false, 0, 0);
         stored.setImageUrl(null);
 
@@ -195,7 +166,7 @@ public class MediaItemAdapterTest {
     @Test
     public void aBrowsableCategoryPointsAtItsIconResourceAndKeepsTheGivenSubtitle() {
         MediaItem item = MediaItemAdapter.from(context, "queue", "Queue",
-                android.R.drawable.ic_media_play, "3 episodes");
+                R.drawable.media3_icon_play, "3 episodes");
 
         assertEquals("queue", item.mediaId);
         assertEquals("Queue", item.mediaMetadata.title);
@@ -204,14 +175,14 @@ public class MediaItemAdapterTest {
         assertEquals(Boolean.FALSE, item.mediaMetadata.isPlayable);
         assertNotNull(item.mediaMetadata.artworkUri);
         assertEquals("android.resource", item.mediaMetadata.artworkUri.getScheme());
-        assertEquals("android", item.mediaMetadata.artworkUri.getAuthority());
-        assertTrue(item.mediaMetadata.artworkUri.toString().endsWith("/drawable/ic_media_play"));
+        assertEquals(context.getPackageName(), item.mediaMetadata.artworkUri.getAuthority());
+        assertTrue(item.mediaMetadata.artworkUri.toString().endsWith("/drawable/media3_icon_play"));
     }
 
     @Test
     public void aBrowsableCategoryWithoutASubtitleLeavesTheSubtitleUnset() {
         MediaItem item = MediaItemAdapter.from(context, "subscriptions", "Subscriptions",
-                android.R.drawable.ic_media_play, null);
+                R.drawable.media3_icon_play, null);
 
         assertNull(item.mediaMetadata.subtitle);
         assertEquals("Subscriptions", item.mediaMetadata.title);

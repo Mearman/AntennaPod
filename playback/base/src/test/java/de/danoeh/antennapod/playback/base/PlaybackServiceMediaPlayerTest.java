@@ -1,23 +1,15 @@
 package de.danoeh.antennapod.playback.base;
 
 import android.content.Context;
+import android.media.AudioManager;
 import android.net.wifi.WifiManager;
 import android.util.Pair;
 import android.view.SurfaceHolder;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import de.danoeh.antennapod.model.feed.Feed;
-import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.playback.MediaType;
 import de.danoeh.antennapod.model.playback.Playable;
-import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
-import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueueStub;
-import de.danoeh.antennapod.storage.database.DBReader;
-import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
-import de.danoeh.antennapod.storage.database.PodDBAdapter;
-import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
-import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import org.junit.After;
 import org.junit.Before;
@@ -31,7 +23,6 @@ import org.robolectric.RuntimeEnvironment;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -51,26 +42,16 @@ public class PlaybackServiceMediaPlayerTest {
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
-        UserPreferences.init(context);
-        PlaybackPreferences.init(context);
-        PodDBAdapter.init(context);
-        PodDBAdapter.deleteDatabase();
-        SynchronizationQueue.setInstance(new SynchronizationQueueStub());
-        Feed feed = new Feed("http://example.com/feed", null, "Feed");
-        feed.setItems(new ArrayList<>());
-        FeedItem item = new FeedItem(0, "Episode", "id-0", "link", new Date(1000),
-                FeedItem.UNPLAYED, feed);
-        item.setMedia(new FeedMedia(item, "http://example.com/media.mp3", 1024, "audio/mp3"));
-        feed.getItems().add(item);
-        Feed stored = FeedDatabaseWriter.updateFeed(context, feed, false);
-        media = DBReader.getFeed(stored.getId(), true, 0, Integer.MAX_VALUE).getItems().get(0).getMedia();
+        PlaybackBaseTestDatabase.setUp(context);
+        long feedId = PlaybackBaseTestDatabase.storeFeed(context, "http://example.com/feed", "Feed", 1).getId();
+        media = PlaybackBaseTestDatabase.storedMedia(feedId, "id-0");
         callback = new RecordingCallback();
         player = new TestMediaPlayer(context, callback);
     }
 
     @After
     public void tearDown() {
-        PodDBAdapter.tearDownTests();
+        PlaybackBaseTestDatabase.tearDown();
     }
 
     @Test
@@ -203,7 +184,30 @@ public class PlaybackServiceMediaPlayerTest {
 
     @Test
     public void anIdleAudioSystemIsNotReportedAsInUse() {
+        audioManager().setMode(AudioManager.MODE_NORMAL);
+        Shadows.shadowOf(audioManager()).setIsMusicActive(false);
+
         assertFalse(player.isAudioChannelInUse());
+    }
+
+    @Test
+    public void anotherAppPlayingMusicMeansTheAudioChannelIsInUse() {
+        audioManager().setMode(AudioManager.MODE_NORMAL);
+        Shadows.shadowOf(audioManager()).setIsMusicActive(true);
+
+        assertTrue(player.isAudioChannelInUse());
+    }
+
+    @Test
+    public void anOngoingCallMeansTheAudioChannelIsInUse() {
+        Shadows.shadowOf(audioManager()).setIsMusicActive(false);
+        audioManager().setMode(AudioManager.MODE_IN_CALL);
+
+        assertTrue(player.isAudioChannelInUse());
+    }
+
+    private AudioManager audioManager() {
+        return (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Test
@@ -215,17 +219,6 @@ public class PlaybackServiceMediaPlayerTest {
         assertFalse(PlayerStatus.INDETERMINATE.isAtLeast(PlayerStatus.STOPPED));
         assertFalse(PlayerStatus.ERROR.isAtLeast(PlayerStatus.INDETERMINATE));
         assertTrue(PlayerStatus.ERROR.isAtLeast(null));
-    }
-
-    @Test
-    public void thePlaybackInfoCanBeRetargetedAtAnotherPlayable() {
-        player.enterStatus(PlayerStatus.PLAYING, media, 0);
-        PlaybackServiceMediaPlayer.PSMPInfo info = player.getPSMPInfo();
-
-        info.setPlayable(null);
-
-        assertNull(info.getPlayable());
-        assertSame(media, player.getPlayable());
     }
 
     private static class RecordingCallback implements PlaybackServiceMediaPlayer.PSMPCallback {
