@@ -3,7 +3,6 @@ package de.danoeh.antennapod.net.download.service.episode.autodownload;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.BatteryManager;
 import androidx.preference.PreferenceManager;
 import de.danoeh.antennapod.model.feed.Feed;
@@ -21,7 +20,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.robolectric.shadows.ShadowNetworkInfo;
 
 import java.util.Date;
 import java.util.List;
@@ -34,7 +32,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.robolectric.Shadows.shadowOf;
 
 @Category(IntegrationTest.class)
 public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase {
@@ -56,13 +53,6 @@ public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase 
         int status = charging ? BatteryManager.BATTERY_STATUS_CHARGING : BatteryManager.BATTERY_STATUS_DISCHARGING;
         context.sendStickyBroadcast(new Intent(Intent.ACTION_BATTERY_CHANGED)
                 .putExtra(BatteryManager.EXTRA_STATUS, status));
-    }
-
-    private void setNetwork(int type) {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(ShadowNetworkInfo.newInstance(
-                NetworkInfo.DetailedState.CONNECTED, type, 0, true, NetworkInfo.State.CONNECTED));
     }
 
     private void setBooleanPreference(String key, boolean value) {
@@ -234,7 +224,7 @@ public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase 
 
         runAlgorithm();
 
-        assertEquals(1, downloadedTitles(1).size());
+        assertEquals(List.of("alpha episode 0"), downloadedTitles(1));
     }
 
     @Test
@@ -255,7 +245,7 @@ public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase 
 
         runAlgorithm();
 
-        assertEquals(1, downloadedTitles(1).size());
+        assertEquals(List.of("alpha episode 0"), downloadedTitles(1));
     }
 
     @Test
@@ -265,14 +255,12 @@ public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase 
 
         runAlgorithm();
 
-        assertEquals(1, downloadedTitles(1).size());
+        assertEquals(List.of("alpha episode 0"), downloadedTitles(1));
     }
 
     @Test
     public void nothingIsDownloadedWithoutNetwork() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+        setNoNetwork();
         saveFeed("alpha", FeedPreferences.AutoDownloadSetting.ENABLED, FeedItem.NEW, 1);
 
         runAlgorithm();
@@ -312,7 +300,8 @@ public class AutomaticDownloadAlgorithmTest extends DownloadIntegrationTestBase 
 
         runAlgorithm();
 
-        assertEquals(5, downloadedTitles(5).size());
+        assertEquals(List.of("alpha episode 0", "alpha episode 1", "alpha episode 2", "alpha episode 3",
+                "alpha episode 4"), downloadedTitles(5));
     }
 
     @Test
