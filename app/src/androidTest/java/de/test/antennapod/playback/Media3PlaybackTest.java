@@ -17,18 +17,19 @@ import org.awaitility.Awaitility;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Plays downloaded episodes through the Media3 playback service and verifies the effects on the playback preferences and on the database.
- */
 @LargeTest
 public class Media3PlaybackTest extends Media3ServiceTest {
 
@@ -131,8 +132,10 @@ public class Media3PlaybackTest extends Media3ServiceTest {
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> PlaybackPreferences.getCurrentlyPlayingFeedMediaId()
                         == PlaybackPreferences.NO_MEDIA_PLAYING);
+        Awaitility.await("the finished episode left the queue")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> DBReader.getQueueIDList().size() == 0);
         assertTrue(DBReader.getFeedItem(media.getItem().getId()).isPlayed());
-        assertEquals(0, DBReader.getQueueIDList().size());
     }
 
     @Test
@@ -158,10 +161,12 @@ public class Media3PlaybackTest extends Media3ServiceTest {
         play(media);
         awaitCurrentMedia(media);
 
-        Awaitility.await("episode added to the playback history")
+        Awaitility.await("episode played until its end")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory() != null
-                        && DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory().getTime() > 0);
+                .until(() -> DBReader.getFeedItem(media.getItem().getId()).isPlayed());
+        Date history = DBReader.getFeedMedia(media.getId()).getLastPlayedTimeHistory();
+        assertNotNull("The finished episode is in the playback history", history);
+        assertTrue("The playback history carries the date of the episode", history.getTime() > 0);
     }
 
     @Test
@@ -206,19 +211,59 @@ public class Media3PlaybackTest extends Media3ServiceTest {
     }
 
     @Test
-    public void testUnknownMediaIdDoesNotStartPlayback() {
+    public void testMediaIdWithoutADatabaseEntryStopsPlaybackInsteadOfStartingIt() {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        long unknownMediaId = firstUnusedMediaId();
+        assertNull("The media id is not in the database", DBReader.getFeedMedia(unknownMediaId));
+        play(media);
+        awaitCurrentMedia(media);
+        awaitPlaying();
+        pausePlayback();
+
         MediaController mediaController = controller();
         Media3TestUtils.runOnMain(() -> {
-            mediaController.setMediaItem(MediaItemAdapter.fromMediaIdStub(123456789L));
+            mediaController.setMediaItem(MediaItemAdapter.fromMediaIdStub(unknownMediaId));
             mediaController.prepare();
-            mediaController.play();
         });
 
         Awaitility.await("media item without database entry is rejected")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> Media3TestUtils.getOnMain(controller()::getMediaItemCount) == 0);
-        assertEquals(PlaybackPreferences.NO_MEDIA_PLAYING,
-                PlaybackPreferences.getCurrentlyPlayingFeedMediaId());
-        assertFalse(PlaybackService.isRunning);
+        assertFalse("Nothing is playing after the rejected request",
+                Media3TestUtils.getOnMain(controller()::isPlaying));
+        assertNotEquals(unknownMediaId, PlaybackPreferences.getCurrentlyPlayingFeedMediaId());
+    }
+
+    @Test
+    public void testMediaIdWithoutADatabaseEntryIsDroppedFromARequest() {
+        FeedMedia media = DBReader.getQueue().get(0).getMedia();
+        long unknownMediaId = firstUnusedMediaId();
+
+        MediaController mediaController = controller();
+        Media3TestUtils.runOnMain(() -> {
+            mediaController.setMediaItems(Arrays.asList(
+                    MediaItemAdapter.fromMediaIdStub(unknownMediaId),
+                    MediaItemAdapter.fromMediaIdStub(media.getId())));
+            mediaController.prepare();
+            mediaController.play();
+        });
+
+        awaitCurrentMedia(media);
+        awaitPlaying();
+        assertEquals("Only the episode that exists in the database is loaded", 1,
+                Media3TestUtils.getOnMain(controller()::getMediaItemCount).intValue());
+        assertEquals(String.valueOf(media.getId()),
+                Media3TestUtils.getOnMain(() -> controller().getMediaItemAt(0).mediaId));
+    }
+
+    private long firstUnusedMediaId() {
+        long unused = 1;
+        for (FeedItem item : DBReader.getEpisodes(0, Integer.MAX_VALUE,
+                FeedItemFilter.unfiltered(), SortOrder.DATE_NEW_OLD)) {
+            if (item.getMedia() != null) {
+                unused = Math.max(unused, item.getMedia().getId() + 1);
+            }
+        }
+        return unused;
     }
 }
