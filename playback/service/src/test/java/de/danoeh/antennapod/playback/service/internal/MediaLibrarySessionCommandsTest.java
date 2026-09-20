@@ -8,6 +8,7 @@ import androidx.media3.common.Player;
 import androidx.media3.session.CommandButton;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.SessionCommand;
+import androidx.media3.session.SessionError;
 import androidx.media3.session.SessionResult;
 import androidx.preference.PreferenceManager;
 import com.google.common.collect.ImmutableList;
@@ -180,7 +181,7 @@ public class MediaLibrarySessionCommandsTest {
         SessionResult result = callback.onCustomCommand(session, controller,
                 new SessionCommand("does_not_exist", Bundle.EMPTY), Bundle.EMPTY).get();
 
-        assertFalse(result.resultCode == SessionResult.RESULT_SUCCESS);
+        assertEquals(SessionError.ERROR_NOT_SUPPORTED, result.resultCode);
         verifyNoInteractions(player);
     }
 
