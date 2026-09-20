@@ -15,9 +15,20 @@ jacoco {
 
 tasks.register('coverageReport', JacocoReport) {
     group = "verification"
+    outputs.upToDateWhen { false }
     def suite = project.findProperty("coverageSuite")
-    def suiteName = suite ?: "all"
-    def reportDir = layout.buildDirectory.dir("reports/coverage/${suiteName}")
+    def scope = project.findProperty("coverageScope")
+    if (scope != null && scope != "logic") {
+        throw new GradleException("Unknown coverageScope '${scope}', expected 'logic'")
+    }
+    def logicModules = [":model", ":event", ":system", ":parser", ":net", ":storage", ":playback"]
+    def scopedModules = subprojects.findAll { module ->
+        scope == null || (module.path != ":playback:cast"
+                && logicModules.any { module.path == it || module.path.startsWith("${it}:") })
+    }
+    def suiteName = (suite ?: "all") + (scope == null ? "" : " (${scope})")
+    def reportDir = layout.buildDirectory.dir("reports/coverage/${suiteName.replace(' ', '-').replace('(', '').replace(')', '')}")
+    def minimum = project.findProperty("coverageMinimum")
     def executionPatterns = ["coverage/**/*.exec", "outputs/code_coverage/**/*.ec"]
     if (suite == "e2e") {
         executionPatterns = ["outputs/code_coverage/**/*.ec"]
@@ -25,13 +36,13 @@ tasks.register('coverageReport', JacocoReport) {
         executionPatterns = ["coverage/${suite}/*.exec"]
     }
 
-    classDirectories.from(subprojects.collect { module ->
+    classDirectories.from(scopedModules.collect { module ->
         fileTree("${module.projectDir}/build/intermediates/javac") {
             include "debug/**/*.class", "playDebug/**/*.class"
             exclude "**/R.class", "**/R\$*.class", "**/BuildConfig.class", "**/databinding/**", "**/DataBinderMapperImpl*.class", "**/BR.class"
         }
     })
-    sourceDirectories.from(subprojects.collect { module ->
+    sourceDirectories.from(scopedModules.collect { module ->
         files("${module.projectDir}/src/main/java", "${module.projectDir}/src/play/java")
     })
     executionData.from(subprojects.collect { module ->
@@ -56,15 +67,19 @@ tasks.register('coverageReport', JacocoReport) {
         def slurper = new groovy.xml.XmlSlurper(false, false, true)
         slurper.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
         def counters = slurper.parse(reports.xml.outputLocation.get().asFile).counter
-        def percentage = { String type ->
+        def ratio = { String type ->
             def counter = counters.find { it.@type == type }
             def covered = counter.@covered.toInteger()
             def total = covered + counter.@missed.toInteger()
-            String.format("%.1f%%", 100.0 * covered / total)
+            100.0 * covered / total
         }
+        def percentage = { String type -> String.format("%.1f%%", ratio(type)) }
         def summary = layout.buildDirectory.file("reports/coverage/summary.md").get().asFile
         def rows = summary.exists() ? summary.readLines().drop(2).findAll { !it.startsWith("| ${suiteName} |") } : []
         rows << "| ${suiteName} | ${percentage("LINE")} | ${percentage("BRANCH")} |".toString()
         summary.text = (["| Suite | Lines | Branches |", "| --- | --- | --- |"] + rows).join("\n") + "\n"
+        if (minimum != null && ratio("LINE") < minimum.toBigDecimal()) {
+            throw new GradleException("Line coverage of '${suiteName}' is ${percentage("LINE")}, below the required ${minimum}%")
+        }
     }
 }
