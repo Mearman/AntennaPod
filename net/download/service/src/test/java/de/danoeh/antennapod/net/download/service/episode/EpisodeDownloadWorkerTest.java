@@ -21,8 +21,8 @@ import de.danoeh.antennapod.test.categories.IntegrationTest;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
-import okio.Buffer;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.junit.After;
@@ -51,6 +51,7 @@ import static org.robolectric.Shadows.shadowOf;
 @Category(IntegrationTest.class)
 public class EpisodeDownloadWorkerTest extends DownloadIntegrationTestBase {
     private static final int LAST_ATTEMPT = 2;
+    private static final long NOTIFICATION_TIMEOUT_SECONDS = 10;
 
     private final List<MessageEvent> messages = new ArrayList<>();
 
@@ -67,18 +68,6 @@ public class EpisodeDownloadWorkerTest extends DownloadIntegrationTestBase {
     @After
     public void unregisterMessageSubscriber() {
         EventBus.getDefault().unregister(this);
-    }
-
-    private static byte[] bytes(int length) {
-        byte[] data = new byte[length];
-        for (int i = 0; i < length; i++) {
-            data[i] = (byte) (i % 251);
-        }
-        return data;
-    }
-
-    private static MockResponse audioResponse(byte[] body) {
-        return new MockResponse().setBody(new Buffer().write(body)).addHeader("Content-Type", "audio/mpeg");
     }
 
     private EpisodeDownloadWorker workerFor(FeedMedia media, int runAttemptCount) {
@@ -351,10 +340,15 @@ public class EpisodeDownloadWorkerTest extends DownloadIntegrationTestBase {
         server.setDispatcher(new Dispatcher() {
             @Override
             public MockResponse dispatch(RecordedRequest request) {
-                Awaitility.await().atMost(10, TimeUnit.SECONDS)
-                        .until(() -> shadowOf(manager).getNotification(R.id.notification_downloading) != null);
-                textWhileDownloading.set(shadowOf(shadowOf(manager).getNotification(R.id.notification_downloading))
-                        .getContentText().toString());
+                try {
+                    Awaitility.await().atMost(NOTIFICATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                            .until(() -> shadowOf(manager).getNotification(R.id.notification_downloading) != null);
+                    textWhileDownloading.set(
+                            shadowOf(shadowOf(manager).getNotification(R.id.notification_downloading))
+                                    .getContentText().toString());
+                } catch (ConditionTimeoutException e) {
+                    textWhileDownloading.set(null);
+                }
                 return audioResponse(bytes(1000));
             }
         });
