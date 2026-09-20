@@ -316,6 +316,32 @@ public class ExoPlayerWrapperTest {
     }
 
     @Test
+    public void reachingTheEndOfTheMediaRunsTheCompletionListener() throws Exception {
+        AtomicBoolean completed = new AtomicBoolean(false);
+        wrapper.setOnCompletionListener(() -> completed.set(true));
+        prepareFakeTracks(audioTrack("en"));
+
+        wrapper.start();
+        TestPlayerRunHelper.runUntilPlaybackState(wrapper.getExoPlayer(), Player.STATE_ENDED);
+
+        assertTrue(completed.get());
+    }
+
+    @Test
+    public void theSizeOfPreparedVideoMediaIsReported() throws Exception {
+        Format video = new Format.Builder()
+                .setSampleMimeType(MimeTypes.VIDEO_H264)
+                .setWidth(1920)
+                .setHeight(1080)
+                .build();
+
+        prepareFakeTracks(video);
+
+        assertEquals(1920, wrapper.getVideoWidth());
+        assertEquals(1080, wrapper.getVideoHeight());
+    }
+
+    @Test
     public void releasingStopsTheBufferingUpdates() throws Exception {
         List<Integer> updates = new ArrayList<>();
         wrapper.setOnBufferingUpdateListener(updates::add);
