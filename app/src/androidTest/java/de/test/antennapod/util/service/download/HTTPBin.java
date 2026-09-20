@@ -14,14 +14,19 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 
 import de.danoeh.antennapod.BuildConfig;
@@ -37,6 +42,11 @@ import de.danoeh.antennapod.BuildConfig;
  * /basic-auth/username/password: Basic auth with username and password
  * /gzip/n:      Send gzipped data of size n bytes
  * /files/id:     Accesses the file with the specified ID (this has to be added first via serveFile).
+ *                Supports range requests, ETag and If-None-Match.
+ * /basic-auth-file/username/password/id: Serves the file with the specified ID if the credentials match.
+ * /moved/code/id: Answers with the redirect status code, pointing to the file with the specified ID.
+ * /stall/id:     Serves half of the file, then waits until releaseStalled is called.
+ * /truncated/id: Announces more bytes than the file has and then closes the connection.
  */
 public class HTTPBin extends NanoHTTPD {
     private static final String TAG = "HTTPBin";
@@ -44,11 +54,65 @@ public class HTTPBin extends NanoHTTPD {
     private static final String MIME_HTML = "text/html";
     private static final String MIME_PLAIN = "text/plain";
 
+    private static final int TRUNCATED_MISSING_BYTES = 100;
+
     private final List<File> servedFiles;
+    private final List<RecordedRequest> requests = new CopyOnWriteArrayList<>();
+    private final CountDownLatch stalled = new CountDownLatch(1);
+    private final CountDownLatch stallGate = new CountDownLatch(1);
 
     public HTTPBin() {
         super(0); // Let system pick a free port
         this.servedFiles = new ArrayList<>();
+    }
+
+    /**
+     * A request that reached the server. Header names are lower case.
+     */
+    public static class RecordedRequest {
+        public final String method;
+        public final String uri;
+        public final Map<String, String> headers;
+
+        RecordedRequest(String method, String uri, Map<String, String> headers) {
+            this.method = method;
+            this.uri = uri;
+            this.headers = headers;
+        }
+    }
+
+    public List<RecordedRequest> getRequests() {
+        return new ArrayList<>(requests);
+    }
+
+    public List<RecordedRequest> getRequestsForPrefix(String uriPrefix) {
+        List<RecordedRequest> matching = new ArrayList<>();
+        for (RecordedRequest request : requests) {
+            if (request.uri.startsWith(uriPrefix)) {
+                matching.add(request);
+            }
+        }
+        return matching;
+    }
+
+    /**
+     * Waits until a response of /stall/id has delivered half of its body.
+     */
+    public boolean awaitStalled(long timeout, TimeUnit unit) throws InterruptedException {
+        return stalled.await(timeout, unit);
+    }
+
+    /**
+     * Lets all stalled responses continue. Later /stall/id requests are not delayed anymore.
+     */
+    public void releaseStalled() {
+        stallGate.countDown();
+    }
+
+    @Override
+    public void stop() {
+        releaseStalled();
+        super.stop();
     }
 
     public String getBaseUrl() {
@@ -86,6 +150,8 @@ public class HTTPBin extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
 
         if (BuildConfig.DEBUG) Log.d(TAG, "Requested url: " + session.getUri());
+        requests.add(new RecordedRequest(session.getMethod().name(), session.getUri(),
+                new HashMap<>(session.getHeaders())));
 
         String[] segments = session.getUri().split("/");
         if (segments.length < 3) {
@@ -184,70 +250,99 @@ public class HTTPBin extends NanoHTTPD {
                     Log.w(TAG, "Invalid ID: " + id);
                     throw new NumberFormatException();
                 }
-                return getFileAccessResponse(id, headers);
+                return getFileAccessResponse(id, headers, false, false);
 
             } catch (NumberFormatException e) {
                 e.printStackTrace();
                 return getInternalError();
             }
+        } else if (func.equalsIgnoreCase("basic-auth-file")) {
+            if (segments.length < 5) {
+                return get404Error();
+            }
+            if (!headers.containsKey("authorization")) {
+                return getUnauthorizedResponse();
+            }
+            String credentials = new String(Base64.decode(headers.get("authorization").split(" ")[1], 0));
+            if (!credentials.equals(segments[2] + ":" + segments[3])) {
+                return getUnauthorizedResponse();
+            }
+            return getFileAccessResponse(Integer.parseInt(segments[4]), headers, false, false);
+        } else if (func.equalsIgnoreCase("moved")) {
+            if (segments.length < 4) {
+                return get404Error();
+            }
+            Response response = new Response(getStatus(Integer.parseInt(param)), MIME_HTML, "");
+            response.addHeader("Location", "/files/" + segments[3]);
+            return response;
+        } else if (func.equalsIgnoreCase("stall")) {
+            return getFileAccessResponse(Integer.parseInt(param), headers, true, false);
+        } else if (func.equalsIgnoreCase("truncated")) {
+            return getFileAccessResponse(Integer.parseInt(param), headers, false, true);
         }
 
         return get404Error();
     }
 
-    private synchronized Response getFileAccessResponse(int id, Map<String, String> header) {
+    private synchronized Response getFileAccessResponse(int id, Map<String, String> header, boolean stall,
+                                                        boolean truncate) {
         File file = accessFile(id);
         if (file == null || !file.exists()) {
             Log.w(TAG, "File not found: " + id);
             return get404Error();
         }
-        InputStream inputStream = null;
+        final String etag = "\"" + file.length() + "-" + file.lastModified() + "\"";
+        if (etag.equals(header.get("if-none-match"))) {
+            Response notModified = new Response(Response.Status.NOT_MODIFIED, MIME_PLAIN, "");
+            notModified.addHeader("ETag", etag);
+            return notModified;
+        }
+
+        long start = 0;
+        long end = file.length() - 1;
+        Response.Status status = Response.Status.OK;
         String contentRange = null;
-        Response.Status status;
+        final String ifRange = header.get("if-range");
+        if (header.containsKey("range") && (ifRange == null || ifRange.equals(etag))) {
+            final String value = header.get("range");
+            final String[] segments = value.split("=");
+            if (segments.length != 2) {
+                Log.w(TAG, "Invalid segment length: " + Arrays.toString(segments));
+                return getInternalError();
+            }
+            final String type = StringUtils.substringBefore(value, "=");
+            if (!type.equalsIgnoreCase("bytes")) {
+                Log.w(TAG, "Range is not specified in bytes: " + value);
+                return getInternalError();
+            }
+            try {
+                start = Long.parseLong(StringUtils.substringBefore(segments[1], "-"));
+                final String endPart = StringUtils.substringAfter(segments[1], "-");
+                if (!endPart.isEmpty()) {
+                    end = Math.min(Long.parseLong(endPart), end);
+                }
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return getInternalError();
+            }
+            if (start >= file.length()) {
+                return getRangeNotSatisfiable(file.length());
+            }
+            contentRange = "bytes " + start + "-" + end + "/" + file.length();
+            status = Response.Status.PARTIAL_CONTENT;
+        }
+
+        final long length = end - start + 1;
+        InputStream inputStream = null;
         boolean successful = false;
         try {
             inputStream = new FileInputStream(file);
-            if (header.containsKey("range")) {
-                // read range header field
-                final String value = header.get("range");
-                final String[] segments = value.split("=");
-                if (segments.length != 2) {
-                    Log.w(TAG, "Invalid segment length: " + Arrays.toString(segments));
-                    return getInternalError();
-                }
-                final String type = StringUtils.substringBefore(value, "=");
-                if (!type.equalsIgnoreCase("bytes")) {
-                    Log.w(TAG, "Range is not specified in bytes: " + value);
-                    return getInternalError();
-                }
-                try {
-                    long start = Long.parseLong(StringUtils.substringBefore(segments[1], "-"));
-                    if (start >= file.length()) {
-                        return getRangeNotSatisfiable();
-                    }
-
-                    // skip 'start' bytes
-                    IOUtils.skipFully(inputStream, start);
-                    contentRange = "bytes " + start + (file.length() - 1) + "/" + file.length();
-
-                } catch (NumberFormatException e) {
-                    e.printStackTrace();
-                    return getInternalError();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return getInternalError();
-                }
-
-                status = Response.Status.PARTIAL_CONTENT;
-
-            } else {
-                // request did not contain range header field
-                status = Response.Status.OK;
-            }
+            IOUtils.skipFully(inputStream, start);
+            final long announcedLength = truncate ? length + TRUNCATED_MISSING_BYTES : length;
+            inputStream = new ServedStream(inputStream, length, announcedLength, stall ? length / 2 : -1);
             successful = true;
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             e.printStackTrace();
-
             return getInternalError();
         } finally {
             if (!successful && inputStream != null) {
@@ -258,11 +353,73 @@ public class HTTPBin extends NanoHTTPD {
         Response response = new Response(status, URLConnection.guessContentTypeFromName(file.getAbsolutePath()), inputStream);
 
         response.addHeader("Accept-Ranges", "bytes");
+        response.addHeader("ETag", etag);
         if (contentRange != null) {
             response.addHeader("Content-Range", contentRange);
         }
-        response.addHeader("Content-Length", String.valueOf(file.length()));
+        response.addHeader("Content-Length", String.valueOf(truncate ? length + TRUNCATED_MISSING_BYTES : length));
         return response;
+    }
+
+    /**
+     * Delivers at most length bytes of the source. Announces announcedLength bytes as available and, if stallAfter
+     * is not negative, waits at that offset until the stall gate is opened.
+     */
+    private class ServedStream extends InputStream {
+        private final InputStream source;
+        private final long length;
+        private final long announcedLength;
+        private final long stallAfter;
+        private long delivered = 0;
+
+        ServedStream(InputStream source, long length, long announcedLength, long stallAfter) {
+            this.source = source;
+            this.length = length;
+            this.announcedLength = announcedLength;
+            this.stallAfter = stallAfter;
+        }
+
+        @Override
+        public int read() throws IOException {
+            byte[] single = new byte[1];
+            int count = read(single, 0, 1);
+            return count == -1 ? -1 : single[0] & 0xff;
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int len) throws IOException {
+            if (delivered >= length) {
+                return -1;
+            }
+            long allowed = length - delivered;
+            if (stallAfter >= 0) {
+                if (delivered >= stallAfter) {
+                    stalled.countDown();
+                    try {
+                        stallGate.await();
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                } else {
+                    allowed = Math.min(allowed, stallAfter - delivered);
+                }
+            }
+            int count = source.read(buffer, offset, (int) Math.min(len, allowed));
+            if (count > 0) {
+                delivered += count;
+            }
+            return count;
+        }
+
+        @Override
+        public int available() {
+            return (int) (announcedLength - delivered);
+        }
+
+        @Override
+        public void close() throws IOException {
+            source.close();
+        }
     }
 
     private Response getGzippedResponse(int size) throws IOException {
@@ -354,8 +511,10 @@ public class HTTPBin extends NanoHTTPD {
         return new Response(Response.Status.INTERNAL_ERROR, MIME_HTML, "The server encountered an internal error");
     }
 
-    private Response getRangeNotSatisfiable() {
-        return new Response(Response.Status.RANGE_NOT_SATISFIABLE, MIME_PLAIN, "");
+    private Response getRangeNotSatisfiable(long fileLength) {
+        Response response = new Response(Response.Status.RANGE_NOT_SATISFIABLE, MIME_PLAIN, "");
+        response.addHeader("Content-Range", "bytes */" + fileLength);
+        return response;
     }
 
     private Response get404Error() {
