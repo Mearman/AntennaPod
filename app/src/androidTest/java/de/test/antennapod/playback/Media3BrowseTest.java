@@ -25,9 +25,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Browses the library that the playback service offers to Android Auto, Wear and other media browser clients.
- */
 @LargeTest
 public class Media3BrowseTest extends Media3ServiceTest {
     private static final int PAGE_SIZE = 100;
@@ -208,9 +205,10 @@ public class Media3BrowseTest extends Media3ServiceTest {
     public void testItemOfAnUnknownFeedReportsAnError() {
         MediaBrowser mediaBrowser = browser();
         LibraryResult<MediaItem> result = Media3TestUtils.awaitFuture(Media3TestUtils.getOnMain(() ->
-                mediaBrowser.getItem(MediaItemAdapter.MEDIA_ID_FEED_PREFIX + "987654321")));
+                mediaBrowser.getItem(MediaItemAdapter.MEDIA_ID_FEED_PREFIX + unknownFeedId())));
 
-        assertNotEquals(LibraryResult.RESULT_SUCCESS, result.resultCode);
+        assertEquals("Looking up a feed that does not exist fails",
+                LibraryResult.RESULT_ERROR_UNKNOWN, result.resultCode);
     }
 
     @Test
@@ -221,7 +219,8 @@ public class Media3BrowseTest extends Media3ServiceTest {
         LibraryResult<MediaItem> result = Media3TestUtils.awaitFuture(Media3TestUtils.getOnMain(() ->
                 mediaBrowser.getItem(String.valueOf(item.getMedia().getId()))));
 
-        assertNotEquals(LibraryResult.RESULT_SUCCESS, result.resultCode);
+        assertEquals("An episode is not a browsable item",
+                LibraryResult.RESULT_ERROR_NOT_SUPPORTED, result.resultCode);
     }
 
     @Test
@@ -230,7 +229,8 @@ public class Media3BrowseTest extends Media3ServiceTest {
         LibraryResult<ImmutableList<MediaItem>> result = Media3TestUtils.awaitFuture(
                 Media3TestUtils.getOnMain(() -> mediaBrowser.getChildren("not_a_section", 0, PAGE_SIZE, null)));
 
-        assertNotEquals(LibraryResult.RESULT_SUCCESS, result.resultCode);
+        assertEquals("Browsing a section that does not exist fails",
+                LibraryResult.RESULT_ERROR_UNKNOWN, result.resultCode);
     }
 
     @Test
@@ -247,6 +247,14 @@ public class Media3BrowseTest extends Media3ServiceTest {
 
         awaitCurrentMedia(DBReader.getFeedMedia(Long.parseLong(first.mediaId)));
         awaitPlaying();
+    }
+
+    private long unknownFeedId() {
+        long unused = 1;
+        for (Feed feed : DBReader.getFeedList()) {
+            unused = Math.max(unused, feed.getId() + 1);
+        }
+        return unused;
     }
 
     private List<MediaItem> childrenOf(String parentId) {
