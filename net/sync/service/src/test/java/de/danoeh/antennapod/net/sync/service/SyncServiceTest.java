@@ -9,6 +9,7 @@ import androidx.work.ListenableWorker;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.WorkerParameters;
+import de.danoeh.antennapod.event.FeedUpdateRunningEvent;
 import de.danoeh.antennapod.event.MessageEvent;
 import de.danoeh.antennapod.event.SyncServiceEvent;
 import de.danoeh.antennapod.model.feed.Feed;
@@ -370,6 +371,22 @@ public class SyncServiceTest {
     }
 
     @Test
+    public void remoteSubscriptionsRedirectingToFeedsQueuedForRemovalAreNotAdded() {
+        storage.enqueueFeedRemoved("http://removed.example/rss");
+        redirectChecker.when(() -> RedirectChecker.getNewUrlIfPermanentRedirect("http://moved.example/rss"))
+                .thenReturn("http://removed.example/rss");
+        SynchronizationSettings.setLastSubscriptionSynchronizationAttemptTimestamp(60);
+        enqueueLogin();
+        http.enqueue(200, "{\"add\": [\"http://moved.example/rss\"], \"remove\": [], \"timestamp\": 100}");
+        http.enqueue(200, UPLOAD_ACCEPTED);
+        http.enqueue(200, NO_EPISODE_ACTIONS);
+
+        assertSyncSucceeds();
+
+        feedDatabaseWriter.verify(() -> FeedDatabaseWriter.updateFeed(any(), any(), anyBoolean()), never());
+    }
+
+    @Test
     public void remoteUnsubscriptionsRemoveLocalFeedsUnlessJustSubscribedAgain() {
         storage.enqueueFeedAdded("http://again.example/rss");
         SynchronizationSettings.setLastSubscriptionSynchronizationAttemptTimestamp(60);
@@ -564,6 +581,63 @@ public class SyncServiceTest {
 
         assertEquals(3, http.requests().size());
         verify(feedUpdateManager, never()).runOnce(any(Context.class));
+    }
+
+    private static boolean isSleeping(Thread thread) {
+        SyncServiceEvent event = EventBus.getDefault().getStickyEvent(SyncServiceEvent.class);
+        if (event == null || event.getMessageResId() != R.string.sync_status_wait_for_downloads) {
+            return false;
+        }
+        for (StackTraceElement frame : thread.getStackTrace()) {
+            if (frame.getClassName().equals(Thread.class.getName()) && frame.getMethodName().startsWith("sleep")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Thread actWhenSleeping(Thread sleeper, Runnable action) {
+        Thread observer = new Thread(() -> {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+            while (!isSleeping(sleeper) && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            action.run();
+        });
+        observer.start();
+        return observer;
+    }
+
+    @Test
+    public void syncWaitsWhileFeedUpdateIsRunningAndContinuesAfterwards() throws Exception {
+        EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(true));
+        Thread syncThread = Thread.currentThread();
+        Thread observer = actWhenSleeping(syncThread,
+                () -> EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(false)));
+        enqueueLogin();
+        enqueueUnchangedSubscriptions();
+        http.enqueue(200, NO_EPISODE_ACTIONS);
+
+        assertSyncSucceeds();
+
+        observer.join();
+        assertEquals(3, http.requests().size());
+        assertTrue(SynchronizationSettings.isLastSyncSuccessful());
+    }
+
+    @Test
+    public void interruptedWaitForFeedUpdateDoesNotAbortTheSync() throws Exception {
+        EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(true));
+        Thread syncThread = Thread.currentThread();
+        Thread observer = actWhenSleeping(syncThread, syncThread::interrupt);
+        enqueueLogin();
+        enqueueUnchangedSubscriptions();
+        http.enqueue(200, NO_EPISODE_ACTIONS);
+
+        assertSyncSucceeds();
+
+        observer.join();
+        assertEquals(3, http.requests().size());
     }
 
     @Test
