@@ -12,8 +12,12 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -83,14 +87,29 @@ public class DbUpgraderTest {
     }
 
     private static Set<String> columnsOf(SQLiteDatabase db, String table) {
-        Set<String> columns = new HashSet<>();
+        return columnTypesOf(db, table).keySet();
+    }
+
+    private static Map<String, String> columnTypesOf(SQLiteDatabase db, String table) {
+        Map<String, String> columns = new TreeMap<>();
         try (Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null)) {
             int nameIndex = cursor.getColumnIndexOrThrow("name");
+            int typeIndex = cursor.getColumnIndexOrThrow("type");
             while (cursor.moveToNext()) {
-                columns.add(cursor.getString(nameIndex));
+                columns.put(cursor.getString(nameIndex), cursor.getString(typeIndex));
             }
         }
         return columns;
+    }
+
+    private static List<String> schemaOf(SQLiteDatabase db) {
+        List<String> definitions = new ArrayList<>();
+        try (Cursor cursor = db.rawQuery("SELECT type, name, sql FROM sqlite_master ORDER BY type, name", null)) {
+            while (cursor.moveToNext()) {
+                definitions.add(cursor.getString(0) + " " + cursor.getString(1) + " " + cursor.getString(2));
+            }
+        }
+        return definitions;
     }
 
     private Set<String> tableNames() {
@@ -110,17 +129,22 @@ public class DbUpgraderTest {
         SQLiteDatabase currentDb = SQLiteDatabase.openDatabase(
                 RuntimeEnvironment.getApplication().getDatabasePath(PodDBAdapter.DATABASE_NAME).getPath(), null,
                 SQLiteDatabase.OPEN_READONLY);
-        createVersionOneSchema();
+        try {
+            createVersionOneSchema();
 
-        upgradeFromVersionOne();
+            upgradeFromVersionOne();
 
-        for (String table : CURRENT_TABLES) {
-            Set<String> expected = columnsOf(currentDb, table);
-            Set<String> actual = columnsOf(legacyDb, table);
-            assertTrue(table + " is missing " + expected, actual.containsAll(expected));
+            for (String table : CURRENT_TABLES) {
+                Map<String, String> expected = columnTypesOf(currentDb, table);
+                Map<String, String> actual = columnTypesOf(legacyDb, table);
+                for (Map.Entry<String, String> column : expected.entrySet()) {
+                    assertEquals(table + "." + column.getKey(), column.getValue(), actual.get(column.getKey()));
+                }
+            }
+        } finally {
+            currentDb.close();
+            PodDBAdapter.tearDownTests();
         }
-        currentDb.close();
-        PodDBAdapter.tearDownTests();
     }
 
     @Test
@@ -211,14 +235,16 @@ public class DbUpgraderTest {
     }
 
     @Test
-    public void upgradeRecordsThatDownloadedMediaWithoutPictureHasNone() {
+    public void upgradeInspectsDownloadedMediaAndKeepsUnknownWhenFileCannotBeRead() {
         createVersionOneSchema();
         legacyDb.execSQL("INSERT INTO FeedMedia (id, downloaded, position, file_url)"
                 + " VALUES (1, 1, 0, '/storage/plain.mp3')");
+        legacyDb.execSQL("INSERT INTO FeedMedia (id, downloaded, position, file_url) VALUES (2, 1, 0, NULL)");
 
         upgradeFromVersionOne();
 
         assertEquals("0", scalar("SELECT has_embedded_picture FROM FeedMedia WHERE id = 1"));
+        assertEquals("-1", scalar("SELECT has_embedded_picture FROM FeedMedia WHERE id = 2"));
     }
 
     @Test
@@ -310,10 +336,12 @@ public class DbUpgraderTest {
     @Test
     public void upgradeWithCurrentVersionLeavesSchemaUntouched() {
         legacyDb.execSQL("CREATE TABLE FeedItems (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT)");
-        Set<String> before = columnsOf(legacyDb, "FeedItems");
+        legacyDb.execSQL("CREATE TABLE Feeds (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, hide TEXT)");
+        legacyDb.execSQL("CREATE TABLE FeedImages (id INTEGER PRIMARY KEY AUTOINCREMENT, download_url TEXT)");
+        List<String> before = schemaOf(legacyDb);
 
         DBUpgrader.upgrade(legacyDb, PodDBAdapter.VERSION, PodDBAdapter.VERSION);
 
-        assertEquals(before, columnsOf(legacyDb, "FeedItems"));
+        assertEquals(before, schemaOf(legacyDb));
     }
 }
