@@ -2,7 +2,6 @@ package de.test.antennapod.ui;
 
 import android.content.Context;
 import android.content.Intent;
-import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.ViewAction;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
@@ -56,13 +55,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Uses the queue, history, downloads, favourites, inbox and statistics screens.
- */
 @RunWith(AndroidJUnit4.class)
 public class EpisodeScreensTest {
     private static final long TIMEOUT_SECONDS = 30;
-    private static final long VIEW_TIMEOUT_MILLIS = 10000;
+    private static final long VIEW_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS);
 
     @Rule
     public IntentsTestRule<MainActivity> activityRule = new IntentsTestRule<>(MainActivity.class, false, false);
@@ -109,14 +105,8 @@ public class EpisodeScreensTest {
 
     private void chooseFromOverflowMenu(int menuLabel) {
         Awaitility.await().atMost(VIEW_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
-                .untilAsserted(() -> {
-                    try {
-                        onView(allOf(withText(menuLabel), isDisplayed())).perform(click());
-                    } catch (NoMatchingViewException e) {
-                        onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
-                        throw e;
-                    }
-                });
+                .untilAsserted(() -> onView(first(EspressoTestUtils.actionBarOverflow())).perform(click()));
+        performWhenReady(allOf(withText(menuLabel), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
     private void confirmDialog() {
