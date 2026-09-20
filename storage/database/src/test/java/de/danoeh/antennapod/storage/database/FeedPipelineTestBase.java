@@ -14,6 +14,7 @@ import de.danoeh.antennapod.parser.feed.FeedHandler;
 import de.danoeh.antennapod.parser.feed.FeedHandlerResult;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
+import org.junit.After;
 import org.junit.Before;
 import org.robolectric.RuntimeEnvironment;
 
@@ -54,6 +55,12 @@ public abstract class FeedPipelineTestBase {
         SynchronizationQueue.setInstance(new SynchronizationQueueStub());
         DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
         AutoDownloadManager.setInstance(new NoOpAutoDownloadManager());
+    }
+
+    @After
+    public void closeDatabase() {
+        DBWriter.tearDownTests();
+        PodDBAdapter.tearDownTests();
     }
 
     protected static String rss(String channelBody) {
