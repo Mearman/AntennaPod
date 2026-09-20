@@ -19,6 +19,7 @@ dependencies {
     implementation libs.rxandroid
     implementation libs.rxjava
 
+    testImplementation project(':net:sync:test-support')
     testImplementation libs.junit
     testImplementation libs.robolectric
 }
