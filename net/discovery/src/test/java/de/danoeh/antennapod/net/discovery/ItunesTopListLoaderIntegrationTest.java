@@ -120,6 +120,8 @@ public class ItunesTopListLoaderIntegrationTest extends SearcherTestBase {
                 Arrays.asList(notSubscribed, withoutAuthor));
 
         assertEquals(2, results.size());
+        assertEquals("Archived", results.get(0).title);
+        assertEquals("Untitled author", results.get(1).title);
     }
 
     @Test
