@@ -20,6 +20,15 @@ import java.util.List;
 
 public class FyydPodcastSearcher implements PodcastSearcher {
     private static final String FYYD_API_URL = "https://api.fyyd.de/0.2/search/podcast?title=%s&count=10";
+    private final String searchApiUrl;
+
+    public FyydPodcastSearcher() {
+        this(FYYD_API_URL);
+    }
+
+    FyydPodcastSearcher(String searchApiUrl) {
+        this.searchApiUrl = searchApiUrl;
+    }
 
     public Single<List<PodcastSearchResult>> search(String query) {
         return Single.create((SingleOnSubscribe<List<PodcastSearchResult>>) subscriber -> {
@@ -29,7 +38,7 @@ public class FyydPodcastSearcher implements PodcastSearcher {
             } catch (UnsupportedEncodingException e) {
                 encodedQuery = query;
             }
-            String formattedUrl = String.format(FYYD_API_URL, encodedQuery);
+            String formattedUrl = String.format(searchApiUrl, encodedQuery);
 
             OkHttpClient client = AntennapodHttpClient.getHttpClient();
             Request.Builder httpReq = new Request.Builder().url(formattedUrl);
