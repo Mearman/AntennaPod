@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.playback.base;
 
+import android.R;
 import android.content.Context;
 import android.net.Uri;
 import androidx.media3.common.MediaItem;
@@ -229,7 +230,7 @@ public class MediaItemAdapterTest {
     @Test
     public void folderItemPointsAtResourceIcon() {
         MediaItem mediaItem = MediaItemAdapter.from(context, "folder", "Folder",
-                android.R.drawable.ic_menu_add, "Subtitle");
+                R.drawable.ic_menu_add, "Subtitle");
         assertEquals("folder", mediaItem.mediaId);
         assertEquals("Folder", mediaItem.mediaMetadata.title.toString());
         assertEquals("Subtitle", mediaItem.mediaMetadata.subtitle.toString());
@@ -242,14 +243,14 @@ public class MediaItemAdapterTest {
     @Test
     public void folderItemWithoutSubtitleHasNoSubtitle() {
         MediaItem mediaItem = MediaItemAdapter.from(context, "folder", "Folder",
-                android.R.drawable.ic_menu_add, null);
+                R.drawable.ic_menu_add, null);
         assertNull(mediaItem.mediaMetadata.subtitle);
     }
 
     @Test
     public void streamingConfirmationItemPlaysTheGivenResource() {
         MediaItem mediaItem = MediaItemAdapter.buildStreamingConfirmationItem(context,
-                android.R.drawable.ic_menu_add, "Confirm", "Streaming uses mobile data");
+                R.drawable.ic_menu_add, "Confirm", "Streaming uses mobile data");
         assertEquals(MediaItemAdapter.MEDIA_ID_CONFIRM_STREAMING, mediaItem.mediaId);
         assertEquals(Uri.parse("android.resource://android/drawable/ic_menu_add"), mediaItem.localConfiguration.uri);
         assertEquals("Confirm", mediaItem.mediaMetadata.title.toString());
