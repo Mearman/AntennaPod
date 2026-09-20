@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.net.download.service.episode.autodownload;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -119,6 +120,7 @@ public class AutomaticDownloadAlgorithmTest {
         new AutomaticDownloadAlgorithm().autoDownloadUndownloadedItems(context).run();
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void setBatteryStatus(int status) {
         Intent batteryStatus = new Intent().putExtra(BatteryManager.EXTRA_STATUS, status);
         Mockito.when(context.registerReceiver(isNull(), any(IntentFilter.class))).thenReturn(batteryStatus);
