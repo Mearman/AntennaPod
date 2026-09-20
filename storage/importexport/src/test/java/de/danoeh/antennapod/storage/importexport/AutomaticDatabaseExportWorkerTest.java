@@ -28,8 +28,11 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowToast;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -162,12 +165,19 @@ public class AutomaticDatabaseExportWorkerTest {
     }
 
     @Test
-    public void exportCreatesDatedBackupFileAndSucceeds() {
+    public void exportCreatesBackupFileNamedAfterTheCurrentDateAndSucceeds() {
         configureExportFolder();
         setFolderContent();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        String dateBefore = dateFormat.format(new Date());
 
         assertEquals(ListenableWorker.Result.success(), worker.doWork());
 
+        String dateAfter = dateFormat.format(new Date());
+        ArgumentCaptor<String> createdName = ArgumentCaptor.forClass(String.class);
+        verify(folder).createFile(eq("application/x-sqlite3"), createdName.capture());
+        assertTrue(createdName.getValue().equals("AntennaPodBackup-" + dateBefore + ".db")
+                || createdName.getValue().equals("AntennaPodBackup-" + dateAfter + ".db"));
         databaseExporter.verify(() -> DatabaseExporter.exportToDocument(exportUri, worker.getApplicationContext()));
     }
 
