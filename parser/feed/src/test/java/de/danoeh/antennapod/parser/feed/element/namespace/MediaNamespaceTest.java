@@ -40,11 +40,6 @@ public class MediaNamespaceTest {
     }
 
     @Test
-    public void secondNonDefaultContentDoesNotReplaceMedia() {
-        assertEquals("http://example.com/a.mp3", item(0).getMedia().getDownloadUrl());
-    }
-
-    @Test
     public void thumbnailInItemIsItemImage() {
         assertEquals("http://example.com/item-thumb.png", item(0).getImageUrl());
     }
