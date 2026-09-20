@@ -150,6 +150,19 @@ public abstract class SyncServiceTestBase {
         return FeedDatabaseWriter.updateFeed(context, feed, false);
     }
 
+    Feed storeFeedWithMedialessEpisode(String feedUrl, String guid) {
+        Feed feed = new Feed(feedUrl, null, "Feed " + feedUrl);
+        feed.setItems(new ArrayList<>());
+        feed.setLastRefreshAttempt(System.currentTimeMillis());
+        FeedItem item = new FeedItem();
+        item.setItemIdentifier(guid);
+        item.setTitle("Episode " + guid);
+        item.setFeed(feed);
+        item.setPlayed(true);
+        feed.getItems().add(item);
+        return FeedDatabaseWriter.updateFeed(context, feed, false);
+    }
+
     List<String> storedFeedUrls() {
         List<String> urls = new ArrayList<>();
         for (Feed feed : DBReader.getFeedList()) {
