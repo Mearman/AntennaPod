@@ -137,12 +137,68 @@ public class FeedItemPermutorsOrderTest {
         assertTrue(items.isEmpty());
     }
 
+    @Test
+    public void nullEntriesSortAsIfTheyHadEmptyTitle() {
+        List<FeedItem> items = list(titled(1, "b"), null, titled(2, "a"));
+        FeedItemPermutors.getPermutor(SortOrder.EPISODE_TITLE_A_Z).reorder(items);
+        assertEquals(Arrays.asList(null, 2L, 1L), idsOrNull(items));
+    }
+
+    @Test
+    public void nullEntriesSortAsIfTheyHadEpochDate() {
+        List<FeedItem> items = list(dated(1, 5000L), null, dated(2, 1000L));
+        FeedItemPermutors.getPermutor(SortOrder.DATE_OLD_NEW).reorder(items);
+        assertEquals(Arrays.asList(null, 2L, 1L), idsOrNull(items));
+    }
+
+    @Test
+    public void nullEntriesSortAsIfTheyHadNoMedia() {
+        List<FeedItem> shortestFirst = list(completed(1, 0, 5000, 500), null, completed(2, 0, 1000, 100));
+        FeedItemPermutors.getPermutor(SortOrder.DURATION_SHORT_LONG).reorder(shortestFirst);
+        assertEquals(Arrays.asList(null, 2L, 1L), idsOrNull(shortestFirst));
+
+        List<FeedItem> smallestFirst = list(completed(1, 0, 5000, 500), null, completed(2, 0, 1000, 100));
+        FeedItemPermutors.getPermutor(SortOrder.SIZE_SMALL_LARGE).reorder(smallestFirst);
+        assertEquals(Arrays.asList(null, 2L, 1L), idsOrNull(smallestFirst));
+    }
+
+    @Test
+    public void nullEntriesAndMissingLinksSortAsIfLinkWasEmpty() {
+        List<FeedItem> items = list(linked(1, "http://x/b"), null, linked(2, "http://x/a"));
+        FeedItemPermutors.getPermutor(SortOrder.EPISODE_FILENAME_A_Z).reorder(items);
+        assertEquals(Arrays.asList(null, 2L, 1L), idsOrNull(items));
+    }
+
+    @Test
+    public void itemsWithoutFeedSortAsIfFeedTitleWasEmpty() {
+        FeedItem withFeed = fromFeed(1, 1, 0);
+        FeedItem withoutFeed = titled(2, "title");
+        List<FeedItem> items = list(withFeed, withoutFeed, null);
+        FeedItemPermutors.getPermutor(SortOrder.FEED_TITLE_A_Z).reorder(items);
+        assertEquals(Arrays.asList(2L, null, 1L), idsOrNull(items));
+    }
+
+    @Test
+    public void itemsWithoutMediaSortBeforeSizedItemsWhenSmallestFirst() {
+        List<FeedItem> items = list(completed(1, 0, 100, 100), titled(2, "no media"));
+        FeedItemPermutors.getPermutor(SortOrder.SIZE_SMALL_LARGE).reorder(items);
+        assertEquals(Arrays.asList(2L, 1L), ids(items));
+    }
+
     private static List<FeedItem> list(FeedItem... items) {
         return new ArrayList<>(Arrays.asList(items));
     }
 
     private static List<Long> ids(List<FeedItem> items) {
         return items.stream().map(FeedItem::getId).collect(Collectors.toList());
+    }
+
+    private static List<Long> idsOrNull(List<FeedItem> items) {
+        List<Long> result = new ArrayList<>();
+        for (FeedItem item : items) {
+            result.add(item == null ? null : item.getId());
+        }
+        return result;
     }
 
     private static FeedItem titled(long id, String title) {
@@ -159,8 +215,13 @@ public class FeedItemPermutorsOrderTest {
     }
 
     private static FeedItem completed(long id, long completionMillis) {
+        return completed(id, completionMillis, 0, 0);
+    }
+
+    private static FeedItem completed(long id, long completionMillis, int duration, long size) {
         FeedItem item = titled(id, "title");
-        FeedMedia media = new FeedMedia(item, "http://download/" + id, 0, "audio/mpeg");
+        FeedMedia media = new FeedMedia(item, "http://download/" + id, size, "audio/mpeg");
+        media.setDuration(duration);
         media.setLastPlayedTimeHistory(new Date(completionMillis));
         item.setMedia(media);
         return item;
