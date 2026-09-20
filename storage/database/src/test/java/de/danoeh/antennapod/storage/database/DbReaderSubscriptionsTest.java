@@ -95,7 +95,9 @@ public class DbReaderSubscriptionsTest extends DatabaseTestBase {
     @Test
     public void navDrawerListsOnlyFeedsOfRequestedState() {
         NavDrawerData subscribed = navDrawer("", FeedOrder.ALPHABETICAL, FeedCounter.SHOW_NONE);
-        NavDrawerData browsed = DBReader.getNavDrawerData(new SubscriptionsFilter(SubscriptionsFilter.SHOW_NON_SUBSCRIBED_FEEDS),
+        SubscriptionsFilter nonSubscribedOnly =
+                new SubscriptionsFilter(SubscriptionsFilter.SHOW_NON_SUBSCRIBED_FEEDS);
+        NavDrawerData browsed = DBReader.getNavDrawerData(nonSubscribedOnly,
                 FeedOrder.ALPHABETICAL, FeedCounter.SHOW_NONE, Feed.STATE_NOT_SUBSCRIBED);
 
         assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"), feedTitles(subscribed));

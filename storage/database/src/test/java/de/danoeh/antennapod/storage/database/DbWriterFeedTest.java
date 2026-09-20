@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -291,7 +292,8 @@ public class DbWriterFeedTest extends DatabaseTestBase {
         storeItem(feed, "played", 1000, FeedItem.PLAYED);
         storeItem(feed, "unplayed", 2000, FeedItem.UNPLAYED);
 
-        await(DBWriter.setFeedItemsFilter(feed.getId(), new HashSet<>(Collections.singletonList(FeedItemFilter.PLAYED))));
+        Set<String> playedOnly = new HashSet<>(Collections.singletonList(FeedItemFilter.PLAYED));
+        await(DBWriter.setFeedItemsFilter(feed.getId(), playedOnly));
 
         Feed filtered = DBReader.getFeed(feed.getId(), true, 0, Integer.MAX_VALUE);
         assertEquals(1, filtered.getItems().size());
