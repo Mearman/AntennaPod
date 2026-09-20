@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+        <title>Channel</title>
+        <media:content url="http://example.com/channel.mp3" type="audio/mpeg"/>
+        <media:thumbnail url="http://example.com/feed-thumb.png"/>
+        <media:thumbnail url="http://example.com/feed-thumb-second.png"/>
+        <media:thumbnail/>
+        <item>
+            <title>Typed audio</title>
+            <media:content url="http://example.com/a.mp3" fileSize="2048" type="audio/mpeg" duration="90"/>
+            <media:content url="http://example.com/ignored.mp3" type="audio/mpeg"/>
+            <media:thumbnail url="http://example.com/item-thumb.png"/>
+            <media:description>Short</media:description>
+        </item>
+        <item>
+            <title>Medium audio with bad numbers</title>
+            <media:content url="http://example.com/b.bin" medium="audio" fileSize="huge" duration="long"/>
+            <media:description>A much longer description text</media:description>
+        </item>
+        <item>
+            <title>Default replaces</title>
+            <media:content url="http://example.com/first.mp4" medium="video"/>
+            <media:content url="http://example.com/default.mp4" medium="video" isDefault="true"/>
+        </item>
+        <item>
+            <title>Image medium</title>
+            <media:content url="http://example.com/img.jpg" medium="image" type="image/jpeg"/>
+        </item>
+        <item>
+            <title>Image medium with audio type</title>
+            <media:content url="http://example.com/c.mp3" medium="image" type="audio/mpeg"/>
+        </item>
+        <item>
+            <title>Image by type</title>
+            <media:content url="http://example.com/typed.png" type="image/png"/>
+        </item>
+        <item>
+            <title>Broken type falls back to audio</title>
+            <media:content url="http://example.com/x" type="text/plain"/>
+            <media:content url="http://example.com/y" type="text/plain"/>
+        </item>
+        <item>
+            <title>Content without url</title>
+            <media:content type="audio/mpeg"/>
+        </item>
+    </channel>
+</rss>
