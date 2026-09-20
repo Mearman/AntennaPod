@@ -163,6 +163,10 @@ public class ExoPlayerWrapper {
         initLoudnessEnhancer(exoPlayer.getAudioSessionId());
     }
 
+    ExoPlayer getExoPlayer() {
+        return exoPlayer;
+    }
+
     public int getCurrentPosition() {
         return (int) exoPlayer.getCurrentPosition();
     }
