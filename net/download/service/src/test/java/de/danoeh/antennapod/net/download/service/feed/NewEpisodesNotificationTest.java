@@ -124,7 +124,15 @@ public class NewEpisodesNotificationTest {
 
         newEpisodes.showIfNeeded(context, feed(true, true));
 
-        assertEquals(2, postedNotifications().size());
+        String expectedText = context.getResources().getQuantityString(
+                R.plurals.new_episode_notification_message, 1, 1, "Podcast");
+        boolean feedNotificationPosted = false;
+        for (Notification notification : postedNotifications()) {
+            if (expectedText.equals(notification.extras.getString(Notification.EXTRA_TEXT))) {
+                feedNotificationPosted = true;
+            }
+        }
+        assertTrue(feedNotificationPosted);
     }
 
     @Test
