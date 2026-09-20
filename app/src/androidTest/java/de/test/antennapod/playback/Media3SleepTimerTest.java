@@ -10,6 +10,7 @@ import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.playback.service.PlaybackService;
 import de.danoeh.antennapod.playback.service.internal.MediaLibrarySessionCallback;
+import de.danoeh.antennapod.playback.service.internal.SleepTimer;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.SleepTimerPreferences;
@@ -26,9 +27,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Starts, extends, cancels and expires the sleep timer through the commands that the notification and the player screen send to the playback service.
- */
 @LargeTest
 public class Media3SleepTimerTest extends Media3ServiceTest {
     private static final long ONE_MINUTE_MILLIS = TimeUnit.MINUTES.toMillis(1);
@@ -188,13 +186,8 @@ public class Media3SleepTimerTest extends Media3ServiceTest {
                         && DBReader.getFeedItem(second.getItem().getId()).isPlayed());
     }
 
-    private void skipToTheEnd() {
-        awaitReady();
-        Media3TestUtils.runOnMain(() -> controller().seekTo(28000));
-    }
-
     @Test
-    public void testExpiringSleepTimerWatchesForShakesWhenConfigured() {
+    public void testExpiringSleepTimerFadesTheVolumeOut() {
         SleepTimerPreferences.setSleepTimerType(SleepTimerType.CLOCK);
         SleepTimerPreferences.setLastTimer("1");
         SleepTimerPreferences.setVibrate(true);
@@ -205,21 +198,33 @@ public class Media3SleepTimerTest extends Media3ServiceTest {
         awaitPlaying();
         sendCommand(MediaLibrarySessionCallback.SESSION_COMMAND_SET_SLEEP_TIMER, null);
         awaitTimerRunning();
+        assertEquals("Playback starts at full volume", 1.0f, volume(), 0.0f);
 
         sendCommand(MediaLibrarySessionCallback.SESSION_COMMAND_EXTEND_SLEEP_TIMER,
-                MediaLibrarySessionCallback.createBundle(-ONE_MINUTE_MILLIS + 8000));
+                MediaLibrarySessionCallback.createBundle(SleepTimer.NOTIFICATION_THRESHOLD
+                        - sleepTimerEvent().getMillisTimeLeft()));
 
-        Awaitility.await("sleep timer about to expire")
+        Awaitility.await("volume faded out while the timer is about to expire")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> sleepTimerEvent().getMillisTimeLeft() < 8000);
+                .until(() -> volume() < 1.0f);
         assertTrue("Playback continues while the timer is about to expire",
                 Media3TestUtils.getOnMain(controller()::isPlaying));
 
         sendCommand(MediaLibrarySessionCallback.SESSION_COMMAND_DISABLE_SLEEP_TIMER, null);
 
-        Awaitility.await("sleep timer cancelled")
+        Awaitility.await("volume restored after cancelling the timer")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> sleepTimerEvent().isCancelled());
+                .until(() -> volume() == 1.0f);
+        assertTrue(sleepTimerEvent().isCancelled());
+    }
+
+    private void skipToTheEnd() {
+        awaitReady();
+        Media3TestUtils.runOnMain(() -> controller().seekTo(28000));
+    }
+
+    private float volume() {
+        return Media3TestUtils.getOnMain(controller()::getVolume);
     }
 
     private void awaitTimerRunning() {
