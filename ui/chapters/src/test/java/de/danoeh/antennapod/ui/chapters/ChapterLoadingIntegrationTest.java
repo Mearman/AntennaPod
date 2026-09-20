@@ -8,6 +8,7 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.common.AntennapodHttpClient;
+import de.danoeh.antennapod.parser.media.MediaFormatDetector;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -154,7 +156,7 @@ public class ChapterLoadingIntegrationTest {
     }
 
     @Test
-    public void formatIsDetectedFromContentWhenMimeTypeIsWrong() throws Exception {
+    public void wrongMimeTypeDoesNotPreventReadingRecognisedContent() throws Exception {
         FeedMedia media = storeEpisode("mp3chaps-py.mp3", "audio/ogg", null, null);
 
         ChapterUtils.loadChapters(media, context, false);
@@ -193,14 +195,55 @@ public class ChapterLoadingIntegrationTest {
     }
 
     @Test
-    public void streamWithoutMimeTypeIsRecognisedFromContent() throws Exception {
-        server.enqueue(new MockResponse().setBody(loadFixtureAsBuffer("auphonic.mp3")));
-        FeedMedia media = storeStreamedEpisode(server.url("/episode").toString(), null);
+    public void mimeTypeHintIsMappedToFormat() {
+        assertEquals(MediaFormatDetector.Format.ID3, ChapterUtils.detectHintFromMetadata("audio/mpeg", null));
+        assertEquals(MediaFormatDetector.Format.ID3, ChapterUtils.detectHintFromMetadata(" Audio/MP3 ", null));
+        assertEquals(MediaFormatDetector.Format.OGG, ChapterUtils.detectHintFromMetadata("audio/opus", null));
+        assertEquals(MediaFormatDetector.Format.OGG, ChapterUtils.detectHintFromMetadata("application/ogg", null));
+        assertEquals(MediaFormatDetector.Format.FLAC, ChapterUtils.detectHintFromMetadata("audio/x-flac", null));
+        assertEquals(MediaFormatDetector.Format.M4A, ChapterUtils.detectHintFromMetadata("audio/x-m4b", null));
+        assertEquals(MediaFormatDetector.Format.M4A, ChapterUtils.detectHintFromMetadata("video/mp4", null));
+    }
 
-        ChapterUtils.loadChapters(media, context, false);
+    @Test
+    public void fileExtensionOfUrlIsUsedWhenMimeTypeGivesNoHint() {
+        assertEquals(MediaFormatDetector.Format.ID3,
+                ChapterUtils.detectHintFromMetadata(null, "https://example.com/episode.mp3"));
+        assertEquals(MediaFormatDetector.Format.OGG,
+                ChapterUtils.detectHintFromMetadata(null, "https://example.com/episode.opus"));
+        assertEquals(MediaFormatDetector.Format.FLAC,
+                ChapterUtils.detectHintFromMetadata(null, "https://example.com/episode.flac"));
+        assertEquals(MediaFormatDetector.Format.M4A,
+                ChapterUtils.detectHintFromMetadata(null, "https://example.com/episode.m4b"));
+    }
 
-        assertEquals(4, media.getChapters().size());
-        assertEquals(1, server.getRequestCount());
+    @Test
+    public void mimeTypeHintTakesPrecedenceOverFileExtension() {
+        assertEquals(MediaFormatDetector.Format.OGG,
+                ChapterUtils.detectHintFromMetadata("audio/ogg", "https://example.com/episode.mp3"));
+    }
+
+    @Test
+    public void noHintIsAvailableForUnknownMimeTypeAndExtension() {
+        assertEquals(MediaFormatDetector.Format.UNKNOWN,
+                ChapterUtils.detectHintFromMetadata("application/octet-stream", "https://example.com/episode.bin"));
+        assertEquals(MediaFormatDetector.Format.UNKNOWN, ChapterUtils.detectHintFromMetadata(null, null));
+    }
+
+    @Test
+    public void fallbackOrderSkipsTheFormatAlreadyTriedFirst() {
+        assertArrayEquals(new MediaFormatDetector.Format[] {
+                MediaFormatDetector.Format.ID3, MediaFormatDetector.Format.M4A},
+                ChapterUtils.getFallbackOrder(MediaFormatDetector.Format.OGG));
+        assertArrayEquals(new MediaFormatDetector.Format[] {
+                MediaFormatDetector.Format.ID3, MediaFormatDetector.Format.OGG},
+                ChapterUtils.getFallbackOrder(MediaFormatDetector.Format.M4A));
+        assertArrayEquals(new MediaFormatDetector.Format[] {
+                MediaFormatDetector.Format.OGG, MediaFormatDetector.Format.M4A},
+                ChapterUtils.getFallbackOrder(MediaFormatDetector.Format.ID3));
+        assertArrayEquals(new MediaFormatDetector.Format[] {
+                MediaFormatDetector.Format.OGG, MediaFormatDetector.Format.M4A},
+                ChapterUtils.getFallbackOrder(MediaFormatDetector.Format.UNKNOWN));
     }
 
     @Test
@@ -443,14 +486,14 @@ public class ChapterLoadingIntegrationTest {
         List<Chapter> stored = Arrays.asList(
                 new Chapter(0, "Stored one", null, null),
                 new Chapter(20000, "Stored two", null, null));
-        FeedMedia stored1 = storeEpisode("ffmpeg-txxx-comment.mp3", "audio/mpeg", stored, null);
-        FeedMedia detached = copyThroughParcel(stored1);
+        FeedMedia storedMedia = storeEpisode("ffmpeg-txxx-comment.mp3", "audio/mpeg", stored, null);
+        FeedMedia detached = copyThroughParcel(storedMedia);
         assertNull(detached.getItem());
 
         ChapterUtils.loadChapters(detached, context, false);
 
         assertNotNull(detached.getItem());
-        assertEquals(stored1.getItemId(), detached.getItem().getId());
+        assertEquals(storedMedia.getItemId(), detached.getItem().getId());
         assertEquals(2, detached.getItem().getChapters().size());
         assertEquals("Stored two", detached.getItem().getChapters().get(1).getTitle());
     }
@@ -458,9 +501,7 @@ public class ChapterLoadingIntegrationTest {
     private FeedMedia storeEpisode(String fixture, String mimeType, List<Chapter> chapters,
                                    String podcastIndexChapterUrl) throws Exception {
         File file = temporaryFolder.newFile(fixture);
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream(fixture)) {
-            Files.write(file.toPath(), IOUtils.toByteArray(in));
-        }
+        Files.write(file.toPath(), readFixture(fixture));
         Feed feed = new Feed("https://example.com/feed.xml", null, "Feed");
         feed.setItems(new ArrayList<>());
         FeedItem item = new FeedItem(0, "Episode", "episode-id", "https://example.com/episode", new Date(),
@@ -504,8 +545,13 @@ public class ChapterLoadingIntegrationTest {
     }
 
     private Buffer loadFixtureAsBuffer(String fixture) throws IOException {
+        return new Buffer().write(readFixture(fixture));
+    }
+
+    private byte[] readFixture(String fixture) throws IOException {
         try (InputStream in = getClass().getClassLoader().getResourceAsStream(fixture)) {
-            return new Buffer().write(IOUtils.toByteArray(in));
+            assertNotNull("Missing test resource " + fixture, in);
+            return IOUtils.toByteArray(in);
         }
     }
 }
