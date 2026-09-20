@@ -2,6 +2,8 @@ package de.danoeh.antennapod.model.feed;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -151,6 +153,24 @@ public class FeedFilterTest {
         assertTrue(filter.shouldAutoDownload(download));
         assertFalse(filter.shouldAutoDownload(doNotDownload));
         assertTrue(filter.shouldAutoDownload(download2));
+    }
+
+    @Test
+    public void testGetIncludeAndExcludeFilterParseQuotedTerms() {
+        FeedFilter filter = new FeedFilter("One \"Two Three\"", "Four", 120);
+
+        assertEquals(Arrays.asList("One", "Two Three"), filter.getIncludeFilter());
+        assertEquals(Collections.singletonList("Four"), filter.getExcludeFilter());
+        assertEquals(120, filter.getMinimalDurationFilter());
+    }
+
+    @Test
+    public void testGetIncludeAndExcludeFilterOfNullFilterAreEmpty() {
+        FeedFilter filter = new FeedFilter(null, null);
+
+        assertTrue(filter.getIncludeFilter().isEmpty());
+        assertTrue(filter.getExcludeFilter().isEmpty());
+        assertEquals(-1, filter.getMinimalDurationFilter());
     }
 
 }
