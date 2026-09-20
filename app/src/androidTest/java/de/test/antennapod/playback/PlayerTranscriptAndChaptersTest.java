@@ -61,6 +61,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -140,6 +141,9 @@ public class PlayerTranscriptAndChaptersTest {
 
     private void startPlayback(Feed feed) {
         FeedItem item = FeedRobot.itemByGuid(FeedRobot.reload(feed), "episode");
+        waitForViewGlobally(allOf(withId(R.id.secondaryActionButton), isDisplayed(), anyOf(
+                withContentDescription(R.string.play_label), withContentDescription(R.string.stream_label))),
+                PLAYER_TIMEOUT_MS);
         onView(withId(R.id.recyclerView)).perform(RecyclerViewActions.actionOnItem(
                 hasDescendant(withText("Playable episode")), clickChildViewWithId(R.id.secondaryActionButton)));
         Awaitility.await().atMost(PLAYER_TIMEOUT_MS, TimeUnit.MILLISECONDS).until(
