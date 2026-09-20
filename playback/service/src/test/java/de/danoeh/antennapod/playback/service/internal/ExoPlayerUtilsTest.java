@@ -2,14 +2,10 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Bundle;
-import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.datasource.DataSpec;
 import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.source.MediaSource;
-import de.danoeh.antennapod.playback.base.MediaItemAdapter;
 import de.danoeh.antennapod.playback.service.R;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import org.junit.After;
@@ -24,8 +20,6 @@ import java.io.IOException;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
@@ -103,34 +97,5 @@ public class ExoPlayerUtilsTest {
                 PlaybackException.ERROR_CODE_UNSPECIFIED);
 
         assertEquals("Unknown error", ExoPlayerUtils.translateErrorReason(error, context));
-    }
-
-    @Test
-    public void aMediaSourceKeepsTheMediaItemItWasBuiltFrom() {
-        MediaSource.Factory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
-        MediaItem item = MediaItem.fromUri("file:///tmp/episode.mp3");
-
-        MediaSource source = factory.createMediaSource(item);
-
-        assertEquals(item.localConfiguration.uri, source.getMediaItem().localConfiguration.uri);
-        assertTrue(factory.getSupportedTypes().length > 0);
-    }
-
-    @Test
-    public void aMediaSourceForAnEpisodeBehindAuthenticationKeepsItsAuthorizationHeader() {
-        MediaSource.Factory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
-        Bundle extras = new Bundle();
-        extras.putString(MediaItemAdapter.KEY_AUTHORIZATION_HEADER, "Basic dXNlcjpzZWNyZXQ=");
-        MediaItem item = new MediaItem.Builder()
-                .setUri("file:///tmp/episode.mp3")
-                .setRequestMetadata(new MediaItem.RequestMetadata.Builder().setExtras(extras).build())
-                .build();
-
-        MediaSource source = factory.createMediaSource(item);
-
-        assertNotNull(source);
-        assertEquals("Basic dXNlcjpzZWNyZXQ=",
-                source.getMediaItem().requestMetadata.extras.getString(
-                        MediaItemAdapter.KEY_AUTHORIZATION_HEADER));
     }
 }

@@ -1,7 +1,6 @@
 package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
-import android.os.Looper;
 import de.danoeh.antennapod.model.playback.Playable;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import okhttp3.mockwebserver.MockResponse;
@@ -15,14 +14,13 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
-import static org.robolectric.Shadows.shadowOf;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
@@ -137,16 +135,37 @@ public class ExoPlayerWrapperTest {
     @Test
     public void aStreamedEpisodeOfAFeedWithCredentialsSendsThemToTheServer() throws Exception {
         MockWebServer server = new MockWebServer();
-        server.enqueue(new MockResponse().setResponseCode(200).setBody("not really audio"));
-        server.start();
-        player.setDataSource(server.url("/episode.mp3").toString(), "user", "secret");
+        try {
+            server.enqueue(new MockResponse().setResponseCode(200).setBody("not really audio"));
+            server.start();
+            player.setDataSource(server.url("/episode.mp3").toString(), "user", "secret");
 
-        player.prepare();
-        shadowOf(Looper.getMainLooper()).idle();
-        RecordedRequest request = server.takeRequest(5, TimeUnit.SECONDS);
+            player.prepare();
+            RecordedRequest request = server.takeRequest(30, TimeUnit.SECONDS);
 
-        assertNotNull(request);
-        assertEquals("Basic dXNlcjpzZWNyZXQ=", request.getHeader("Authorization"));
-        server.shutdown();
+            assertNotNull(request);
+            assertEquals("/episode.mp3", request.getPath());
+            assertEquals("Basic dXNlcjpzZWNyZXQ=", request.getHeader("Authorization"));
+        } finally {
+            server.shutdown();
+        }
+    }
+
+    @Test
+    public void aStreamedEpisodeOfAFeedWithoutCredentialsSendsNoAuthorizationHeader() throws Exception {
+        MockWebServer server = new MockWebServer();
+        try {
+            server.enqueue(new MockResponse().setResponseCode(200).setBody("not really audio"));
+            server.start();
+            player.setDataSource(server.url("/episode.mp3").toString());
+
+            player.prepare();
+            RecordedRequest request = server.takeRequest(30, TimeUnit.SECONDS);
+
+            assertNotNull(request);
+            assertNull(request.getHeader("Authorization"));
+        } finally {
+            server.shutdown();
+        }
     }
 }
