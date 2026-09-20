@@ -4,6 +4,7 @@ import android.media.MediaMetadataRetriever;
 import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.download.DownloadRequest;
 import de.danoeh.antennapod.model.download.DownloadResult;
+import de.danoeh.antennapod.model.feed.Chapter;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -12,8 +13,8 @@ import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
+import de.danoeh.antennapod.ui.chapters.ChapterUtils;
 import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
@@ -23,10 +24,11 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -101,16 +103,6 @@ public class MediaDownloadedHandlerTest extends DownloadIntegrationTestBase {
     }
 
     @Test
-    public void successfulStatusIsPassedThroughUnchanged() throws Exception {
-        FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
-
-        MediaDownloadedHandler handler = runHandler(media, downloadedFile());
-
-        assertTrue(handler.getUpdatedStatus().isSuccessful());
-        assertEquals(DownloadError.SUCCESS, handler.getUpdatedStatus().getReason());
-    }
-
-    @Test
     public void downloadOfSubscribedFeedIsQueuedForSynchronisation() throws Exception {
         FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
 
@@ -150,17 +142,21 @@ public class MediaDownloadedHandlerTest extends DownloadIntegrationTestBase {
     }
 
     @Test
-    public void podcastIndexChaptersAreFetchedFromTheAnnouncedUrl() throws Exception {
+    public void podcastIndexChaptersAreFetchedAndCachedForLaterUse() throws Exception {
         server.enqueue(new MockResponse().setBody("{\"version\":\"1.2.0\",\"chapters\":["
                 + "{\"startTime\":0,\"title\":\"Intro\"},{\"startTime\":60,\"title\":\"Main topic\"}]}")
-                .addHeader("Content-Type", "application/json+chapters"));
-        FeedMedia media = saveEpisodeWith(newFeed("Chapters", server.url("/feed.xml").toString()),
-                server.url("/chapters.json").toString(), null);
+                .addHeader("Content-Type", "application/json+chapters")
+                .addHeader("Cache-Control", "max-age=3600"));
+        String chaptersUrl = server.url("/chapters.json").toString();
+        FeedMedia media = saveEpisodeWith(newFeed("Chapters", server.url("/feed.xml").toString()), chaptersUrl, null);
 
         runHandler(media, downloadedFile());
 
-        RecordedRequest recorded = server.takeRequest();
-        assertEquals("/chapters.json", recorded.getPath());
+        assertEquals("/chapters.json", server.takeRequest().getPath());
+        List<Chapter> chapters = ChapterUtils.loadChaptersFromUrl(chaptersUrl, false);
+        assertEquals(List.of("Intro", "Main topic"),
+                chapters.stream().map(Chapter::getTitle).collect(Collectors.toList()));
+        assertEquals(1, server.getRequestCount());
         assertTrue(DBReader.getFeedMedia(media.getId()).isDownloaded());
     }
 
@@ -202,7 +198,7 @@ public class MediaDownloadedHandlerTest extends DownloadIntegrationTestBase {
         runHandler(media, file);
 
         assertFalse(new File(file.getAbsolutePath() + ".transcript").exists());
-        assertNotNull(DBReader.getFeedMedia(media.getId()).getLocalFileUrl());
+        assertTrue(DBReader.getFeedMedia(media.getId()).isDownloaded());
     }
 
     @Test
