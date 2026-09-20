@@ -34,7 +34,6 @@ import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -177,12 +176,12 @@ public class HttpDownloaderTest {
     }
 
     @Test
-    public void textResponseForFeedIsNotRejectedAsWrongFileType() {
+    public void textResponseForFeedIsAcceptedAndOnlyFailsWritingTheDestination() {
         responder = req -> body(req, 200, "text/xml", "<rss></rss>");
 
         HttpDownloader downloader = download(feedRequest(null));
 
-        assertNotEquals(DownloadError.ERROR_FILE_TYPE, downloader.getResult().getReason());
+        assertEquals(DownloadError.ERROR_IO_ERROR, downloader.getResult().getReason());
     }
 
     @Test
