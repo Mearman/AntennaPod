@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+    <channel>
+        <title>Tom &amp;amp; Jerry</title>
+        <link>http://example.com</link>
+        <description>&lt;b&gt;Bold&lt;/b&gt; text &amp;amp; more</description>
+        <language>EN-us</language>
+    </channel>
+</rss>
