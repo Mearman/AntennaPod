@@ -38,7 +38,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 
 @Category(IntegrationTest.class)
@@ -124,7 +124,7 @@ public class LocalFeedUpdaterMetadataIntegrationTest {
     public void m4aWithoutDescriptionLeavesItemDescriptionEmpty() throws Exception {
         FeedItem item = scanSingleFile("nero-chapters.m4a", "audio/mp4");
 
-        assertTrue(item.getDescription() == null || item.getDescription().isEmpty());
+        assertNull(item.getDescription());
         assertEquals("nero-chapters", item.getTitle());
     }
 
@@ -138,7 +138,7 @@ public class LocalFeedUpdaterMetadataIntegrationTest {
 
         assertEquals(1, items.size());
         assertEquals("broken", items.get(0).getTitle());
-        assertTrue(items.get(0).getDescription() == null || items.get(0).getDescription().isEmpty());
+        assertNull(items.get(0).getDescription());
     }
 
     @Test
