@@ -7,7 +7,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
@@ -20,6 +19,7 @@ public class LockingAsyncExecutorTest {
     private static class LockHolder {
         private final CountDownLatch acquired = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
+        private final AtomicBoolean releasing = new AtomicBoolean(false);
         private final Thread thread = new Thread(() -> {
             LockingAsyncExecutor.lock();
             try {
@@ -28,9 +28,14 @@ public class LockingAsyncExecutorTest {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } finally {
+                releasing.set(true);
                 LockingAsyncExecutor.unlock();
             }
         });
+
+        boolean isReleasing() {
+            return releasing.get();
+        }
 
         void acquire() throws InterruptedException {
             thread.start();
@@ -79,15 +84,17 @@ public class LockingAsyncExecutorTest {
         holder.acquire();
         CountDownLatch ran = new CountDownLatch(1);
         AtomicReference<Thread> runningThread = new AtomicReference<>();
+        AtomicBoolean holderWasReleasing = new AtomicBoolean(false);
 
         LockingAsyncExecutor.executeLockedAsync(() -> {
             runningThread.set(Thread.currentThread());
+            holderWasReleasing.set(holder.isReleasing());
             ran.countDown();
         });
 
-        assertEquals(1, ran.getCount());
         holder.release();
         assertTrue(ran.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(holderWasReleasing.get());
         assertNotEquals(Thread.currentThread(), runningThread.get());
     }
 
@@ -97,6 +104,7 @@ public class LockingAsyncExecutorTest {
         holder.acquire();
         CountDownLatch insideRunnable = new CountDownLatch(1);
         CountDownLatch finishRunnable = new CountDownLatch(1);
+        AtomicBoolean firstFinished = new AtomicBoolean(false);
         LockingAsyncExecutor.executeLockedAsync(() -> {
             insideRunnable.countDown();
             try {
@@ -104,20 +112,20 @@ public class LockingAsyncExecutorTest {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            firstFinished.set(true);
         });
         holder.release();
         assertTrue(insideRunnable.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
-        AtomicBoolean secondRan = new AtomicBoolean(false);
+        AtomicBoolean firstHadFinishedWhenSecondRan = new AtomicBoolean(false);
         CountDownLatch secondDone = new CountDownLatch(1);
 
         LockingAsyncExecutor.executeLockedAsync(() -> {
-            secondRan.set(true);
+            firstHadFinishedWhenSecondRan.set(firstFinished.get());
             secondDone.countDown();
         });
 
-        assertFalse(secondRan.get());
         finishRunnable.countDown();
         assertTrue(secondDone.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
-        assertTrue(secondRan.get());
+        assertTrue(firstHadFinishedWhenSecondRan.get());
     }
 }
