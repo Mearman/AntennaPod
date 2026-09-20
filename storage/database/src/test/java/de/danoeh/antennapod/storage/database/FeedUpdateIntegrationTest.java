@@ -261,7 +261,7 @@ public class FeedUpdateIntegrationTest extends DatabaseTestBase {
 
     @Test
     public void titleQuotesAndDashesAreNormalisedWhenComparingEpisodes() {
-        Feed subscribed = subscribeWithEpisode("old-guid", "“Quoted” — episode", DAY);
+        Feed subscribed = subscribeWithEpisode("old-guid", "\u201cQuoted\u201d \u2014 episode", DAY);
         Feed update = newFeed();
         update.setId(subscribed.getId());
         addEpisode(update, "new-guid", "\"Quoted\" - episode", DAY, "https://cdn.example.com/other.mp3", 60000,
