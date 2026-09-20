@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.event;
 
+import de.danoeh.antennapod.event.playback.PlaybackHistoryEvent;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
@@ -9,17 +10,17 @@ import java.util.List;
 public class EventRecorder {
     private final List<Object> received = new ArrayList<>();
 
-    void register() {
+    public void register() {
         EventBus.getDefault().register(this);
     }
 
-    void unregister() {
+    public void unregister() {
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this);
         }
     }
 
-    void clear() {
+    public void clear() {
         received.clear();
     }
 
@@ -53,7 +54,17 @@ public class EventRecorder {
         received.add(event);
     }
 
-    <T> List<T> of(Class<T> type) {
+    @Subscribe
+    public void onPlaybackHistoryEvent(PlaybackHistoryEvent event) {
+        received.add(event);
+    }
+
+    @Subscribe
+    public void onDownloadLogEvent(DownloadLogEvent event) {
+        received.add(event);
+    }
+
+    public <T> List<T> of(Class<T> type) {
         List<T> result = new ArrayList<>();
         for (Object event : received) {
             if (type.isInstance(event)) {
@@ -63,7 +74,7 @@ public class EventRecorder {
         return result;
     }
 
-    <T> T single(Class<T> type) {
+    public <T> T single(Class<T> type) {
         List<T> matching = of(type);
         if (matching.size() != 1) {
             throw new AssertionError("Expected exactly one " + type.getSimpleName()
