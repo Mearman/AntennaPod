@@ -5,10 +5,14 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.SortOrder;
+import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfaceStub;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueueStub;
 import de.danoeh.antennapod.parser.feed.FeedHandler;
 import de.danoeh.antennapod.parser.feed.FeedHandlerResult;
+import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.junit.Before;
 import org.robolectric.RuntimeEnvironment;
@@ -19,6 +23,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 public abstract class FeedPipelineTestBase {
     protected static final String FEED_URL = "https://example.com/feed.xml";
@@ -39,12 +45,15 @@ public abstract class FeedPipelineTestBase {
     public void setUpDatabase() {
         context = RuntimeEnvironment.getApplication();
         UserPreferences.init(context);
+        PlaybackPreferences.init(context);
         PodDBAdapter.init(context);
         PodDBAdapter.deleteDatabase();
         PodDBAdapter adapter = PodDBAdapter.getInstance();
         adapter.open();
         adapter.close();
         SynchronizationQueue.setInstance(new SynchronizationQueueStub());
+        DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
+        AutoDownloadManager.setInstance(new NoOpAutoDownloadManager());
     }
 
     protected static String rss(String channelBody) {
@@ -70,6 +79,16 @@ public abstract class FeedPipelineTestBase {
         return DBReader.getFeed(stored.getId(), false, 0, Integer.MAX_VALUE);
     }
 
+    protected Feed refresh(String document) throws Exception {
+        return refresh(document, false);
+    }
+
+    protected Feed refresh(String document, boolean removeUnlistedItems) throws Exception {
+        Feed updated = FeedDatabaseWriter.updateFeed(context, parse(document).feed, removeUnlistedItems);
+        DBWriter.tearDownTests();
+        return reload(updated);
+    }
+
     protected Feed reload(Feed feed) {
         return DBReader.getFeed(feed.getId(), false, 0, Integer.MAX_VALUE);
     }
@@ -93,5 +112,16 @@ public abstract class FeedPipelineTestBase {
         File file = new File(context.getCacheDir(), "pipeline-feed-" + documentCounter + ".xml");
         Files.write(file.toPath(), document.getBytes(charset));
         return file;
+    }
+
+    private static class NoOpAutoDownloadManager extends AutoDownloadManager {
+        @Override
+        public Future<?> autodownloadUndownloadedItems(Context context) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public void performAutoCleanup(Context context) {
+        }
     }
 }
