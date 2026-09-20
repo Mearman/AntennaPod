@@ -43,6 +43,7 @@ import static org.junit.Assert.assertTrue;
 @Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class SynchronizationQueueImplTest {
+    private static final String SETTINGS_PREFERENCES = "synchronization";
     private static final String WORK_ID = "SyncServiceWorkId";
     private static final String FEED_URL = "https://a.example/feed.xml";
     private static final String EPISODE_URL = "https://a.example/1.mp3";
@@ -72,6 +73,13 @@ public class SynchronizationQueueImplTest {
 
     private void connectProvider() {
         SynchronizationSettings.setSelectedSyncProvider(SynchronizationProvider.GPODDER_NET.getIdentifier());
+    }
+
+    private void lastAttemptWasMinutesAgo(int minutes) {
+        long attempt = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(minutes);
+        context.getSharedPreferences(SETTINGS_PREFERENCES, Context.MODE_PRIVATE).edit()
+                .putLong(SynchronizationSettings.LAST_SYNC_ATTEMPT_TIMESTAMP, attempt)
+                .commit();
     }
 
     private List<WorkInfo> syncWork() throws Exception {
@@ -176,12 +184,25 @@ public class SynchronizationQueueImplTest {
     }
 
     @Test
-    public void syncIfNotSyncedRecentlySchedulesAfterTheThrottleInterval() throws Exception {
-        SynchronizationSettings.updateLastSynchronizationAttempt();
-        queue.syncIfNotSyncedRecently();
-        assertTrue(syncWork().isEmpty());
+    public void syncIfNotSyncedRecentlyDoesNothingWithinTenMinutesOfTheLastAttempt() throws Exception {
+        lastAttemptWasMinutesAgo(9);
 
-        SynchronizationSettings.resetTimestamps();
+        queue.syncIfNotSyncedRecently();
+
+        assertTrue(syncWork().isEmpty());
+    }
+
+    @Test
+    public void syncIfNotSyncedRecentlySchedulesASyncOnceTenMinutesHavePassedSinceTheLastAttempt() throws Exception {
+        lastAttemptWasMinutesAgo(11);
+
+        queue.syncIfNotSyncedRecently();
+
+        assertEquals(1, syncWork().size());
+    }
+
+    @Test
+    public void syncIfNotSyncedRecentlySchedulesASyncWhenNoAttemptWasEverMade() throws Exception {
         queue.syncIfNotSyncedRecently();
 
         assertEquals(1, syncWork().size());
