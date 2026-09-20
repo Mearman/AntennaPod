@@ -21,7 +21,6 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.util.List;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -93,7 +92,7 @@ public class DatabaseMaintenanceWorkerTest {
     @Test
     public void foregroundInfoShowsOngoingRefreshNotification() throws Exception {
         DatabaseMaintenanceWorker worker = TestWorkerBuilder.from(context, DatabaseMaintenanceWorker.class,
-                Executors.newSingleThreadExecutor()).build();
+                Runnable::run).build();
 
         ForegroundInfo info = worker.getForegroundInfoAsync().get();
 
