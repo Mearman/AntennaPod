@@ -2,14 +2,15 @@ package de.danoeh.antennapod.storage.preferences;
 
 import de.danoeh.antennapod.model.download.ProxyConfig;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.io.File;
 import java.net.Proxy;
-import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -21,6 +22,8 @@ import static org.junit.Assert.assertTrue;
 @Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class UserPreferencesNetworkStoredValuesTest extends StoredPreferencesTestBase {
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
     public void updateIntervalIsStoredInMinutesAndZeroDisablesAutomaticUpdates() {
@@ -146,7 +149,7 @@ public class UserPreferencesNetworkStoredValuesTest extends StoredPreferencesTes
 
     @Test
     public void dataFolderUsesTheChosenFolderAndCreatesTypeSubfolders() throws Exception {
-        File chosen = Files.createTempDirectory("chosen-data-folder").toFile();
+        File chosen = temporaryFolder.newFolder("chosen-data-folder");
         UserPreferences.setDataFolder(chosen.getAbsolutePath());
 
         File root = UserPreferences.getDataFolder(null);
@@ -158,13 +161,14 @@ public class UserPreferencesNetworkStoredValuesTest extends StoredPreferencesTes
     }
 
     @Test
-    public void dataFolderFallsBackToTheDefaultLocationWhenTheChosenFolderIsUnusable() {
-        UserPreferences.setDataFolder("/nonexistent-root/unwritable");
+    public void dataFolderFallsBackToTheDefaultLocationWhenTheChosenFolderIsUnusable() throws Exception {
+        File regularFile = temporaryFolder.newFile("not-a-folder");
+        UserPreferences.setDataFolder(regularFile.getAbsolutePath());
 
         File folder = UserPreferences.getDataFolder("media");
 
         assertTrue(folder.getAbsolutePath(), folder.canWrite());
-        assertFalse(folder.getAbsolutePath().startsWith("/nonexistent-root"));
+        assertFalse(folder.getAbsolutePath().startsWith(regularFile.getAbsolutePath()));
     }
 
     @Test
