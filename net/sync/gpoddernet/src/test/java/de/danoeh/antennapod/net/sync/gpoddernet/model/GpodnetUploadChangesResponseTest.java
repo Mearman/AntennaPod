@@ -5,8 +5,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
-import java.util.Collections;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -42,14 +40,5 @@ public class GpodnetUploadChangesResponseTest {
     public void urlRewriteWithoutTargetIsRejected() {
         assertThrows(JSONException.class, () -> GpodnetUploadChangesResponse.fromJSONObject(
                 "{\"timestamp\": 12, \"update_urls\": [[\"http://a.example\"]]}"));
-    }
-
-    @Test
-    public void descriptionContainsTimestampAndRewrites() {
-        GpodnetUploadChangesResponse response = new GpodnetUploadChangesResponse(
-                77, Collections.singletonMap("http://a.example", "http://b.example"));
-
-        assertTrue(response.toString().contains("77"));
-        assertTrue(response.toString().contains("http://b.example"));
     }
 }

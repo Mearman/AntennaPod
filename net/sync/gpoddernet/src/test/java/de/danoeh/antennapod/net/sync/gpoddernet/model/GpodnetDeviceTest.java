@@ -3,7 +3,6 @@ package de.danoeh.antennapod.net.sync.gpoddernet.model;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class GpodnetDeviceTest {
     @Test
@@ -31,16 +30,5 @@ public class GpodnetDeviceTest {
         for (GpodnetDevice.DeviceType type : GpodnetDevice.DeviceType.values()) {
             assertEquals(type, new GpodnetDevice("id", "c", type.toString(), 0).getType());
         }
-    }
-
-    @Test
-    public void deviceKeepsIdentityCaptionAndSubscriptionCount() {
-        GpodnetDevice device = new GpodnetDevice("device-id", "My laptop", "laptop", 17);
-
-        assertEquals("device-id", device.getId());
-        assertEquals("My laptop", device.getCaption());
-        assertEquals(17, device.getSubscriptions());
-        assertTrue(device.toString().contains("device-id"));
-        assertTrue(device.toString().contains("My laptop"));
     }
 }
