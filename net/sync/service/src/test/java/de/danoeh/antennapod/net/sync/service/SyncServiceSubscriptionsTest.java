@@ -333,9 +333,12 @@ public class SyncServiceSubscriptionsTest extends SyncServiceTestBase {
         markSyncedBefore(50, 60);
         serveGpodderChanges(150, jsonArray(remoteFeed), "[]", 160, "[]");
 
-        runSync();
+        assertEquals(Result.success(), runSync());
 
-        Feed stored = DBReader.getFeedList().get(0);
+        List<Feed> feeds = DBReader.getFeedList();
+        assertEquals(1, feeds.size());
+        Feed stored = feeds.get(0);
+        assertEquals(remoteFeed, stored.getDownloadUrl());
         assertEquals("Unknown podcast", stored.getTitle());
         assertEquals(Feed.STATE_SUBSCRIBED, stored.getState());
         assertEquals(0, stored.getLastRefreshAttempt());
