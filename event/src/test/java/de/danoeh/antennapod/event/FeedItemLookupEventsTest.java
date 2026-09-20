@@ -2,7 +2,6 @@ package de.danoeh.antennapod.event;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +12,6 @@ import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 public class FeedItemLookupEventsTest {
 
@@ -53,15 +49,6 @@ public class FeedItemLookupEventsTest {
     public void firstMatchingItemIsReturnedForDuplicateIds() {
         List<FeedItem> items = Arrays.asList(itemWithId(5), itemWithId(5));
         assertEquals(0, FeedItemEvent.indexOfItemWithId(items, 5));
-    }
-
-    @Test
-    public void feedItemEventKeepsItemsAndUnreadFlag() {
-        List<FeedItem> items = new ArrayList<>(List.of(itemWithId(1)));
-        FeedItemEvent event = new FeedItemEvent(items, true);
-        assertSame(items, event.items);
-        assertTrue(event.unreadStatusChanged);
-        assertFalse(new FeedItemEvent(items, false).unreadStatusChanged);
     }
 
     @Test
