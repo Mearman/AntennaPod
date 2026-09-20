@@ -98,8 +98,8 @@ public class EpisodeScreensTest {
     }
 
     private void onEpisode(int index, ViewAction action) {
-        performWhenReady(allOf(withId(R.id.recyclerView), isDisplayed()),
-                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action), VIEW_TIMEOUT_MILLIS);
+        onView(allOf(withId(R.id.recyclerView), isDisplayed())).perform(
+                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action));
     }
 
     private void chooseFromLongPressMenu(int index, int menuLabel) {
@@ -228,7 +228,7 @@ public class EpisodeScreensTest {
                 click(), VIEW_TIMEOUT_MILLIS);
         performWhenReady(allOf(withText(R.string.subscriptions_label), isDescendantOfA(withId(R.id.sliding_tabs))),
                 click(), VIEW_TIMEOUT_MILLIS);
-        performWhenReady(first(allOf(withText(feed.getTitle()), isDisplayed())), click(), VIEW_TIMEOUT_MILLIS);
+        onView(first(allOf(withText(feed.getTitle()), isDisplayed()))).perform(click());
 
         waitForViewGlobally(withText(R.string.statistics_episodes_space), VIEW_TIMEOUT_MILLIS);
     }

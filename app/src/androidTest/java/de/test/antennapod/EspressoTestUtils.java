@@ -50,7 +50,8 @@ public class EspressoTestUtils {
     /**
      * Performs an action on a view once it exists in a root that has window focus, retrying until the timeout.
      * Unlike a plain {@code onView(...).perform(...)} it survives popups and dialogs that need a while to appear
-     * or to take over the window focus on a slow device.
+     * or to take over the window focus on a slow device. The action is repeated whenever performing it throws,
+     * so it must be safe to repeat, which excludes actions that change what a second click would do.
      *
      * @param viewMatcher The view to act on.
      * @param action The action to perform on the matching view.

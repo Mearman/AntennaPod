@@ -80,7 +80,7 @@ public class OnlineFeedViewTest {
         assertEquals(1, DBReader.getFeedList().size());
         assertEquals(Feed.STATE_NOT_SUBSCRIBED, DBReader.getFeedList().get(0).getState());
 
-        performWhenReady(allOf(withId(R.id.butSubscribe), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
+        onView(allOf(withId(R.id.butSubscribe), isDisplayed())).perform(click());
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
                 () -> DBReader.getFeedList().get(0).getState() == Feed.STATE_SUBSCRIBED);

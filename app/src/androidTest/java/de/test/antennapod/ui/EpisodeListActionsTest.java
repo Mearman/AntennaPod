@@ -100,8 +100,8 @@ public class EpisodeListActionsTest {
     }
 
     private void onEpisode(int index, ViewAction action) {
-        performWhenReady(allOf(withId(R.id.recyclerView), isDisplayed()),
-                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action), VIEW_TIMEOUT_MILLIS);
+        onView(allOf(withId(R.id.recyclerView), isDisplayed())).perform(
+                RecyclerViewActions.actionOnItem(hasDescendant(withText(title(index))), action));
     }
 
     private void clickSecondaryAction(int index) {
