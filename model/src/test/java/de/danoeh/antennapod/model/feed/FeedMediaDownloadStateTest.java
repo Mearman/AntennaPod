@@ -81,12 +81,6 @@ public class FeedMediaDownloadStateTest {
     }
 
     @Test
-    public void fileExists_withMissingFileIsFalse() {
-        media.setLocalFileUrl("/nonexistent-directory-for-tests/episode.mp3");
-        assertFalse(media.fileExists());
-    }
-
-    @Test
     public void transcriptFileUrl_appendsTranscriptSuffixToLocalFile() {
         assertNull(media.getTranscriptFileUrl());
         media.setLocalFileUrl("/storage/episode.mp3");

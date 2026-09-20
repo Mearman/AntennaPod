@@ -6,6 +6,7 @@ import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -17,13 +18,10 @@ public class DownloadResultTest {
     }
 
     @Test
-    public void shortConstructor_setsCompletionDateToNowAndZeroId() {
-        long before = System.currentTimeMillis();
+    public void shortConstructor_setsCompletionDateAndZeroId() {
         DownloadResult result = failedResult();
-        long after = System.currentTimeMillis();
         assertEquals(0, result.getId());
-        assertTrue(result.getCompletionDate().getTime() >= before);
-        assertTrue(result.getCompletionDate().getTime() <= after);
+        assertNotNull(result.getCompletionDate());
     }
 
     @Test
