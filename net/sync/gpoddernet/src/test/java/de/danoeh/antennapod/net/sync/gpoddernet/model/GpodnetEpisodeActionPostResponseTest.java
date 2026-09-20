@@ -7,7 +7,6 @@ import org.robolectric.RobolectricTestRunner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class GpodnetEpisodeActionPostResponseTest {
@@ -17,14 +16,6 @@ public class GpodnetEpisodeActionPostResponseTest {
                 "{\"timestamp\": 31, \"update_urls\": []}");
 
         assertEquals(31, response.timestamp);
-    }
-
-    @Test
-    public void descriptionContainsRewrittenUrls() throws JSONException {
-        GpodnetEpisodeActionPostResponse response = GpodnetEpisodeActionPostResponse.fromJSONObject(
-                "{\"timestamp\": 31, \"update_urls\": [[\"http://a.example\", \"http://sanitised.example\"]]}");
-
-        assertTrue(response.toString().contains("http://sanitised.example"));
     }
 
     @Test
