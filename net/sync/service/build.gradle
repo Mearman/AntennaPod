@@ -38,4 +38,5 @@ dependencies {
     testImplementation libs.mockito.core
     testImplementation libs.okhttp.mockwebserver
     testImplementation libs.mockito.core
+    testImplementation libs.awaitility
 }
