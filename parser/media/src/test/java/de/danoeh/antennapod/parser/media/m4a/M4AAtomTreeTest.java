@@ -135,6 +135,7 @@ public class M4AAtomTreeTest {
     @Test
     public void truncatedChapterAtomYieldsNoChapters() {
         byte[] chapters = chapterAtom(new String[] {"Only"}, new long[] {10_000});
+        assertEquals(1, readChapters(fileTypeAtom(), chapterTree(chapters)).size());
         byte[] truncated = new byte[chapters.length - 3];
         System.arraycopy(chapters, 0, truncated, 0, truncated.length);
         assertTrue(readChapters(fileTypeAtom(), chapterTree(truncated)).isEmpty());
