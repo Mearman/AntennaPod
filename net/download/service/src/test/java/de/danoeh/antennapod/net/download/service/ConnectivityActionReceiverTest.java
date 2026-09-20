@@ -1,9 +1,7 @@
 package de.danoeh.antennapod.net.download.service;
 
-import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
@@ -11,11 +9,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
-import org.robolectric.shadows.ShadowNetworkInfo;
 
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.robolectric.Shadows.shadowOf;
 
 @Category(IntegrationTest.class)
 public class ConnectivityActionReceiverTest extends DownloadIntegrationTestBase {
@@ -28,13 +24,6 @@ public class ConnectivityActionReceiverTest extends DownloadIntegrationTestBase 
         downloadService = Mockito.mock(DownloadServiceInterface.class);
         DownloadServiceInterface.setImpl(downloadService);
         autoDownloadManager = AutoDownloadManager.getInstance();
-    }
-
-    private void setNetwork(int type) {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(ShadowNetworkInfo.newInstance(
-                NetworkInfo.DetailedState.CONNECTED, type, 0, true, NetworkInfo.State.CONNECTED));
     }
 
     private void receiveConnectivityChange() {
@@ -63,9 +52,7 @@ public class ConnectivityActionReceiverTest extends DownloadIntegrationTestBase 
 
     @Test
     public void lostNetworkNeitherStartsNorCancelsDownloads() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+        setNoNetwork();
 
         receiveConnectivityChange();
 
