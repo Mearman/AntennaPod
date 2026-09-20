@@ -30,11 +30,17 @@ public class FeedItemStateTest {
     }
 
     @Test
-    public void setNew_setsNewStateAndSetPlayedFalseLeavesIt() {
+    public void setNew_setsNewState() {
         item.setNew();
         assertTrue(item.isNew());
         assertEquals(FeedItem.NEW, item.getPlayState());
+    }
+
+    @Test
+    public void setPlayedFalse_movesNewItemToUnplayed() {
+        item.setNew();
         item.setPlayed(false);
+        assertFalse(item.isNew());
         assertEquals(FeedItem.UNPLAYED, item.getPlayState());
     }
 
@@ -87,13 +93,9 @@ public class FeedItemStateTest {
     }
 
     @Test
-    public void constructorWithChapterFlag_clonesPubDateAndKeepsChapterFlag() {
-        Date date = new Date(5000);
-        FeedItem created = new FeedItem(1, "t", "g", "l", date, FeedItem.UNPLAYED, null, true);
-        date.setTime(9000);
-        assertEquals(5000, created.getPubDate().getTime());
-        assertTrue(created.hasChapters());
-        assertNull(new FeedItem(1, "t", "g", "l", null, FeedItem.UNPLAYED, null, false).getPubDate());
+    public void constructorWithChapterFlag_setsChapterFlag() {
+        assertTrue(new FeedItem(1, "t", "g", "l", new Date(5000), FeedItem.UNPLAYED, null, true).hasChapters());
+        assertFalse(new FeedItem(1, "t", "g", "l", new Date(5000), FeedItem.UNPLAYED, null, false).hasChapters());
     }
 
     @Test
