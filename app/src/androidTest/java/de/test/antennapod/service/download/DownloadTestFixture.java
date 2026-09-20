@@ -7,6 +7,7 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.storage.database.DBReader;
+import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.EspressoTestUtils;
@@ -21,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -122,13 +124,17 @@ public class DownloadTestFixture {
      * Builds a feed that is not stored yet. Every episode has a hosted media file. The most recent episode comes first.
      */
     public Feed newFeed(String title, int episodes) throws IOException {
+        return newFeed(title, episodes, FeedItem.UNPLAYED);
+    }
+
+    public Feed newFeed(String title, int episodes, int playState) throws IOException {
         Feed feed = new Feed(0, null, title, "http://example.com/" + title, "Description of " + title,
                 null, "Author of " + title, "en", Feed.TYPE_RSS2, title + "-identifier", null, null, null, 0);
         List<FeedItem> items = new ArrayList<>();
         long now = System.currentTimeMillis();
         for (int i = 0; i < episodes; i++) {
             FeedItem item = new FeedItem(0, title + " episode " + i, title + "-episode-" + i,
-                    "http://example.com/" + title + "/" + i, new Date(now - i * DAY_MILLIS), FeedItem.UNPLAYED, feed);
+                    "http://example.com/" + title + "/" + i, new Date(now - i * DAY_MILLIS), playState, feed);
             File mediaFile = newMediaFile(title + "-episode-" + i + ".mp3");
             item.setMedia(new FeedMedia(item, hostFile(mediaFile), mediaFile.length(), MIME_TYPE));
             items.add(item);
@@ -161,9 +167,30 @@ public class DownloadTestFixture {
     }
 
     public Feed subscribe(String title, int episodes) throws IOException {
-        Feed feed = newFeed(title, episodes);
+        return subscribe(title, episodes, FeedItem.UNPLAYED);
+    }
+
+    public Feed subscribe(String title, int episodes, int playState) throws IOException {
+        Feed feed = newFeed(title, episodes, playState);
         feed.setDownloadUrl(hostFeed(feed));
         return subscribe(feed);
+    }
+
+    /**
+     * Gives the episode a downloaded file without contacting the server.
+     */
+    public void markDownloaded(FeedItem item) throws Exception {
+        FeedMedia media = DBReader.getFeedMedia(item.getMedia().getId());
+        File downloaded = file("downloaded-" + media.getId() + ".mp3");
+        FileUtils.writeByteArrayToFile(downloaded, new byte[] {1, 2, 3});
+        media.setLocalFileUrl(downloaded.getAbsolutePath());
+        media.setDownloaded(true, System.currentTimeMillis());
+        DBWriter.setFeedMedia(media).get();
+    }
+
+    public void markPlayed(FeedItem item, long playedAtMillis) throws Exception {
+        DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(item)).get();
+        DBWriter.addItemToPlaybackHistory(item.getMedia(), new Date(playedAtMillis)).get();
     }
 
     public static FeedMedia reload(FeedMedia media) {
