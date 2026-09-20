@@ -19,23 +19,29 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Reads episodes from the database with filters, sort orders, searches and statistics.
- */
 @RunWith(AndroidJUnit4.class)
 public class QueryDatabaseTest {
     private static final long HOUR_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final int URL_LIST_LARGER_THAN_SQL_LIMIT = 1000;
     private static final int MAXIMUM_URLS_PER_QUERY = 800;
+    private static final int RANDOM_SEEDS = 20;
 
     private final DownloadTestFixture fixture = new DownloadTestFixture();
     private Context context;
@@ -148,52 +154,90 @@ public class QueryDatabaseTest {
         assertEquals(2, DBReader.getFeedEpisodeCount(gamma.getId(), new FeedItemFilter(FeedItemFilter.NO_MEDIA)));
     }
 
-    @Test
-    public void episodesCanBeSortedByEveryOrder() throws Exception {
-        for (SortOrder order : SortOrder.values()) {
-            if (order == SortOrder.GLOBAL_DEFAULT || order == SortOrder.RANDOM
-                    || order == SortOrder.SMART_SHUFFLE_OLD_NEW || order == SortOrder.SMART_SHUFFLE_NEW_OLD) {
-                continue;
+    private void assertSortedBy(SortOrder order, Comparator<FeedItem> expected, String... filter) {
+        List<FeedItem> actual = episodes(order, filter);
+        List<FeedItem> sorted = new ArrayList<>(actual);
+        Collections.sort(sorted, expected);
+
+        assertEquals(order.name(), count(filter), actual.size());
+        assertEquals(order.name(), ids(sorted), ids(actual));
+        assertTrue(order.name(), expected.compare(actual.get(0), actual.get(actual.size() - 1)) < 0);
+    }
+
+    private List<Long> ids(List<FeedItem> items) {
+        List<Long> ids = new ArrayList<>();
+        for (FeedItem item : items) {
+            ids.add(item.getId());
+        }
+        return ids;
+    }
+
+    private void giveEveryEpisodeItsOwnDurationAndSize() throws Exception {
+        int rank = 1;
+        for (Feed feed : Arrays.asList(alpha, beta)) {
+            for (FeedItem item : feed.getItems()) {
+                fixture.setDurationAndSize(item, rank * 1000, (rank * 7919) % 1000 + 1);
+                rank++;
             }
-            assertEquals(order.name(), 9, episodes(order).size());
         }
     }
 
     @Test
-    public void episodesAreSortedByTitleAndDate() throws Exception {
-        List<String> byTitle = titles(episodes(SortOrder.EPISODE_TITLE_A_Z));
-        assertEquals("Alpha episode 0", byTitle.get(0));
-        assertEquals("Gamma episode 1", byTitle.get(8));
-        assertEquals("Gamma episode 1", titles(episodes(SortOrder.EPISODE_TITLE_Z_A)).get(0));
+    public void episodesAreSortedByTitle() throws Exception {
+        Comparator<FeedItem> ascending = (a, b) -> a.getTitle().compareTo(b.getTitle());
 
-        List<String> oldest = titles(episodes(SortOrder.DATE_OLD_NEW));
-        List<String> newest = titles(episodes(SortOrder.DATE_NEW_OLD));
-        assertEquals("Alpha episode 3", oldest.get(0));
-        assertEquals("Alpha episode 3", newest.get(newest.size() - 1));
+        assertSortedBy(SortOrder.EPISODE_TITLE_A_Z, ascending);
+        assertSortedBy(SortOrder.EPISODE_TITLE_Z_A, Collections.reverseOrder(ascending));
+        assertEquals("Alpha episode 0", titles(episodes(SortOrder.EPISODE_TITLE_A_Z)).get(0));
+        assertEquals("Gamma episode 1", titles(episodes(SortOrder.EPISODE_TITLE_Z_A)).get(0));
     }
 
     @Test
-    public void episodesAreSortedByDurationAndSize() throws Exception {
-        fixture.setDurationAndSize(alpha.getItemAtIndex(0), 5000, 5_000_000);
-        fixture.setDurationAndSize(alpha.getItemAtIndex(1), 1000, 9_000_000);
-        fixture.setDurationAndSize(alpha.getItemAtIndex(2), 3000, 10);
+    public void episodesAreSortedByDate() throws Exception {
+        Comparator<FeedItem> oldestFirst = (a, b) -> a.getPubDate().compareTo(b.getPubDate());
 
-        List<FeedItem> shortFirst = episodes(SortOrder.DURATION_SHORT_LONG, FeedItemFilter.HAS_MEDIA);
-        List<FeedItem> longFirst = episodes(SortOrder.DURATION_LONG_SHORT, FeedItemFilter.HAS_MEDIA);
-        assertEquals(alpha.getItemAtIndex(0).getId(), longFirst.get(0).getId());
-        assertEquals(alpha.getItemAtIndex(0).getId(), shortFirst.get(shortFirst.size() - 1).getId());
+        assertSortedBy(SortOrder.DATE_OLD_NEW, oldestFirst);
+        assertSortedBy(SortOrder.DATE_NEW_OLD, Collections.reverseOrder(oldestFirst));
+    }
 
-        List<FeedItem> smallFirst = episodes(SortOrder.SIZE_SMALL_LARGE, FeedItemFilter.HAS_MEDIA);
-        List<FeedItem> largeFirst = episodes(SortOrder.SIZE_LARGE_SMALL, FeedItemFilter.HAS_MEDIA);
-        assertEquals(alpha.getItemAtIndex(2).getId(), smallFirst.get(0).getId());
-        assertEquals(alpha.getItemAtIndex(1).getId(), largeFirst.get(0).getId());
+    @Test
+    public void episodesAreSortedByLink() throws Exception {
+        Comparator<FeedItem> ascending = (a, b) -> a.getLink().compareTo(b.getLink());
+
+        assertSortedBy(SortOrder.EPISODE_FILENAME_A_Z, ascending);
+        assertSortedBy(SortOrder.EPISODE_FILENAME_Z_A, Collections.reverseOrder(ascending));
+    }
+
+    @Test
+    public void episodesAreSortedByDuration() throws Exception {
+        giveEveryEpisodeItsOwnDurationAndSize();
+        Comparator<FeedItem> shortestFirst = (a, b) ->
+                Integer.compare(a.getMedia().getDuration(), b.getMedia().getDuration());
+
+        assertSortedBy(SortOrder.DURATION_SHORT_LONG, shortestFirst, FeedItemFilter.HAS_MEDIA);
+        assertSortedBy(SortOrder.DURATION_LONG_SHORT, Collections.reverseOrder(shortestFirst),
+                FeedItemFilter.HAS_MEDIA);
+    }
+
+    @Test
+    public void episodesAreSortedBySize() throws Exception {
+        giveEveryEpisodeItsOwnDurationAndSize();
+        Comparator<FeedItem> smallestFirst = (a, b) -> Long.compare(a.getMedia().getSize(), b.getMedia().getSize());
+
+        assertSortedBy(SortOrder.SIZE_SMALL_LARGE, smallestFirst, FeedItemFilter.HAS_MEDIA);
+        assertSortedBy(SortOrder.SIZE_LARGE_SMALL, Collections.reverseOrder(smallestFirst), FeedItemFilter.HAS_MEDIA);
     }
 
     @Test
     public void historyIsSortedByCompletionDate() throws Exception {
+        long now = System.currentTimeMillis();
+        fixture.markPlayed(beta.getItemAtIndex(1), now - 3 * HOUR_MILLIS);
+        fixture.markPlayed(beta.getItemAtIndex(2), now - 2 * HOUR_MILLIS);
+
         List<FeedItem> history = episodes(SortOrder.COMPLETION_DATE_NEW_OLD, FeedItemFilter.IS_IN_HISTORY);
 
-        assertEquals(alpha.getItemAtIndex(2).getId(), history.get(0).getId());
+        assertEquals(Arrays.asList(alpha.getItemAtIndex(2).getId(), beta.getItemAtIndex(2).getId(),
+                beta.getItemAtIndex(1).getId()), ids(history));
     }
 
     @Test
@@ -208,12 +252,25 @@ public class QueryDatabaseTest {
     }
 
     @Test
-    public void randomEpisodesAreStableForASeed() throws Exception {
-        List<FeedItem> first = DBReader.getRandomEpisodes(3, 7);
-        List<FeedItem> again = DBReader.getRandomEpisodes(3, 7);
+    public void randomEpisodesArePlayableUnplayedAndComeFromDifferentFeeds() throws Exception {
+        for (int seed = 1; seed <= RANDOM_SEEDS; seed++) {
+            List<FeedItem> random = DBReader.getRandomEpisodes(3, seed);
 
-        assertEquals(titles(first), titles(again));
-        assertTrue(first.size() <= 3);
+            assertEquals(2, random.size());
+            Set<Long> feedIds = new HashSet<>();
+            for (FeedItem item : random) {
+                assertNotNull(item.getMedia());
+                assertFalse(item.isPlayed());
+                feedIds.add(item.getFeedId());
+            }
+            assertEquals(new HashSet<>(Arrays.asList(alpha.getId(), beta.getId())), feedIds);
+            assertEquals(titles(random), titles(DBReader.getRandomEpisodes(3, seed)));
+        }
+    }
+
+    @Test
+    public void randomEpisodesAreLimited() throws Exception {
+        assertEquals(1, DBReader.getRandomEpisodes(1, 1).size());
     }
 
     @Test
@@ -343,29 +400,42 @@ public class QueryDatabaseTest {
         assertEquals(10, statisticsOf(recent, "Beta").timePlayed);
     }
 
+    private long utc(int year, int month, int day) {
+        GregorianCalendar calendar = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+        calendar.clear();
+        calendar.set(year, month, day, 12, 0, 0);
+        return calendar.getTimeInMillis();
+    }
+
     @Test
-    public void monthlyStatisticsListPlayedTimePerMonth() throws Exception {
-        long now = System.currentTimeMillis();
-        setPlayed(alpha.getItemAtIndex(1), 60_000, now);
-        setPlayed(alpha.getItemAtIndex(2), 20_000, now);
+    public void monthlyStatisticsListPlayedTimePerMonthInChronologicalOrder() throws Exception {
+        setPlayed(alpha.getItemAtIndex(1), 60_000, utc(2024, Calendar.JANUARY, 10));
+        setPlayed(alpha.getItemAtIndex(2), 20_000, utc(2024, Calendar.JANUARY, 20));
+        setPlayed(beta.getItemAtIndex(1), 5_000, utc(2023, Calendar.DECEMBER, 31));
 
         List<DBReader.MonthlyStatisticsItem> months = DBReader.getMonthlyTimeStatistics();
 
-        assertEquals(1, months.size());
-        assertEquals(80_000, months.get(0).getTimePlayed());
-        assertTrue(months.get(0).getYear() >= 2020);
-        assertTrue(months.get(0).getMonth() >= 1 && months.get(0).getMonth() <= 12);
+        assertEquals(2, months.size());
+        assertEquals(2023, months.get(0).getYear());
+        assertEquals(12, months.get(0).getMonth());
+        assertEquals(5_000, months.get(0).getTimePlayed());
+        assertEquals(2024, months.get(1).getYear());
+        assertEquals(1, months.get(1).getMonth());
+        assertEquals(80_000, months.get(1).getTimePlayed());
     }
 
     @Test
     public void timeBetweenReleaseAndPlaybackIsTheMedianDelay() throws Exception {
-        long now = System.currentTimeMillis();
-        setPlayed(alpha.getItemAtIndex(0), 60_000, now + HOUR_MILLIS);
+        FeedItem first = DBReader.getFeedItem(alpha.getItemAtIndex(0).getId());
+        FeedItem second = DBReader.getFeedItem(alpha.getItemAtIndex(1).getId());
+        FeedItem third = DBReader.getFeedItem(beta.getItemAtIndex(1).getId());
+        setPlayed(first, 60_000, first.getPubDate().getTime() + HOUR_MILLIS);
+        setPlayed(second, 60_000, second.getPubDate().getTime() + 3 * HOUR_MILLIS);
+        setPlayed(third, 60_000, third.getPubDate().getTime() + 2 * HOUR_MILLIS);
+        long earliestRelease = Math.min(first.getPubDate().getTime(),
+                Math.min(second.getPubDate().getTime(), third.getPubDate().getTime()));
 
-        long delay = DBReader.getTimeBetweenReleaseAndPlayback(now - 2 * HOUR_MILLIS, Long.MAX_VALUE);
-
-        assertTrue(delay >= HOUR_MILLIS);
-        assertTrue(delay < HOUR_MILLIS + 5 * 60 * 1000);
+        assertEquals(2 * HOUR_MILLIS, DBReader.getTimeBetweenReleaseAndPlayback(earliestRelease, Long.MAX_VALUE));
     }
 
     private void setPlayed(FeedItem item, int playedMillis, long when) throws Exception {
