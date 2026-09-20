@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
-import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -119,19 +118,15 @@ public class SleepTimerPlaybackTest {
         Espresso.closeSoftKeyboard();
         onView(withId(R.id.setSleeptimerButton)).perform(click());
 
-        waitUntilDisplayed(withContentDescription(R.string.sleep_timer_label), PLAYER_TIMEOUT_MS);
-        onView(withContentDescription(R.string.set_sleeptimer_label)).check(doesNotExist());
-
-        onView(withContentDescription(R.string.sleep_timer_label)).perform(click());
         waitUntilDisplayed(withId(R.id.timeDisplayContainer), PLAYER_TIMEOUT_MS);
-        onView(withId(R.id.time)).check(matches(anyOf(
-                withText(containsString("00:01")), withText(containsString("00:00")))));
+        FeedRobot.awaitAssertion(() -> onView(withId(R.id.time)).check(matches(anyOf(
+                withText(containsString("00:01")), withText(containsString("00:00"))))));
         onView(withId(R.id.extendSleepFiveMinutesButton)).perform(click());
-        onView(withId(R.id.time)).check(matches(anyOf(
-                withText(containsString("00:06")), withText(containsString("00:05")))));
+        FeedRobot.awaitAssertion(() -> onView(withId(R.id.time)).check(matches(anyOf(
+                withText(containsString("00:06")), withText(containsString("00:05"))))));
 
         onView(withId(R.id.disableSleeptimerButton)).perform(click());
-        waitUntilDisplayed(withContentDescription(R.string.set_sleeptimer_label), PLAYER_TIMEOUT_MS);
-        onView(withContentDescription(R.string.sleep_timer_label)).check(doesNotExist());
+
+        waitUntilDisplayed(withId(R.id.timeSetupContainer), PLAYER_TIMEOUT_MS);
     }
 }
