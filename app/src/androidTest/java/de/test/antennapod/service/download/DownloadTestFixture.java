@@ -128,13 +128,20 @@ public class DownloadTestFixture {
     }
 
     public Feed newFeed(String title, int episodes, int playState) throws IOException {
+        return newFeed(title, episodes, playState, DAY_MILLIS);
+    }
+
+    /**
+     * Builds a feed whose episodes were published spacingMillis apart, ending now.
+     */
+    public Feed newFeed(String title, int episodes, int playState, long spacingMillis) throws IOException {
         Feed feed = new Feed(0, null, title, "http://example.com/" + title, "Description of " + title,
                 null, "Author of " + title, "en", Feed.TYPE_RSS2, title + "-identifier", null, null, null, 0);
         List<FeedItem> items = new ArrayList<>();
         long now = System.currentTimeMillis();
         for (int i = 0; i < episodes; i++) {
             FeedItem item = new FeedItem(0, title + " episode " + i, title + "-episode-" + i,
-                    "http://example.com/" + title + "/" + i, new Date(now - i * DAY_MILLIS), playState, feed);
+                    "http://example.com/" + title + "/" + i, new Date(now - i * spacingMillis), playState, feed);
             File mediaFile = newMediaFile(title + "-episode-" + i + ".mp3");
             item.setMedia(new FeedMedia(item, hostFile(mediaFile), mediaFile.length(), MIME_TYPE));
             items.add(item);
