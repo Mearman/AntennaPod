@@ -7,14 +7,15 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.datasource.DataSpec;
 import androidx.media3.datasource.HttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.drm.DrmSessionManager;
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy;
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy;
 import de.danoeh.antennapod.playback.base.MediaItemAdapter;
 import de.danoeh.antennapod.playback.service.R;
+import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -26,9 +27,12 @@ import java.io.IOException;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
 public class ExoPlayerUtilsTest {
@@ -92,8 +96,21 @@ public class ExoPlayerUtilsTest {
     }
 
     @Test
-    public void releasingACacheThatWasNeverOpenedIsHarmless() {
+    public void theStreamingCacheIsOpenedForThePlayerAndCanBeOpenedAgainAfterItWasReleased() {
+        UserPreferences.init(context);
         ExoPlayerUtils.releaseCache();
+        File cacheDir = new File(context.getCacheDir(), "streaming");
+
+        ExoPlayer player = ExoPlayerUtils.buildPlayer(context);
+        assertTrue(cacheDir.isDirectory());
+        player.release();
+
+        ExoPlayerUtils.releaseCache();
+        ExoPlayerUtils.releaseCache();
+        ExoPlayer reopened = ExoPlayerUtils.buildPlayer(context);
+
+        assertTrue(cacheDir.isDirectory());
+        reopened.release();
         ExoPlayerUtils.releaseCache();
     }
 
@@ -113,58 +130,44 @@ public class ExoPlayerUtilsTest {
     }
 
     @Test
-    public void aDownloadedEpisodeIsPlayedStraightFromTheLocalFile() {
+    public void aLocalFileAStreamAndAPrivateStreamAllGiveASourceForTheItemItWasBuiltFrom() {
         ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
-        MediaItem item = new MediaItem.Builder()
+        MediaItem downloaded = new MediaItem.Builder()
                 .setUri(Uri.fromFile(new File(context.getCacheDir(), "episode.mp3")))
                 .setMediaId("7")
                 .build();
-
-        MediaSource source = factory.createMediaSource(item);
-
-        assertEquals("7", source.getMediaItem().mediaId);
-    }
-
-    @Test
-    public void aStreamedEpisodeIsPlayedThroughTheStreamingCache() {
-        ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
-        MediaItem item = new MediaItem.Builder()
+        MediaItem streamed = new MediaItem.Builder()
                 .setUri(Uri.parse("http://example.com/e.mp3"))
-                .setMediaId("7")
+                .setMediaId("8")
                 .build();
-
-        MediaSource source = factory.createMediaSource(item);
-
-        assertEquals("7", source.getMediaItem().mediaId);
-    }
-
-    @Test
-    public void aStreamFromAPrivateFeedCarriesItsAuthorizationHeader() {
-        ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
         Bundle requestExtras = new Bundle();
         requestExtras.putString(MediaItemAdapter.KEY_AUTHORIZATION_HEADER, "Basic dXNlcjpwYXNz");
-        MediaItem item = new MediaItem.Builder()
-                .setUri(Uri.parse("http://example.com/e.mp3"))
-                .setMediaId("7")
+        MediaItem privateStream = new MediaItem.Builder()
+                .setUri(Uri.parse("http://example.com/private.mp3"))
+                .setMediaId("9")
                 .setRequestMetadata(new MediaItem.RequestMetadata.Builder().setExtras(requestExtras).build())
                 .build();
 
-        MediaSource source = factory.createMediaSource(item);
-
-        assertEquals("7", source.getMediaItem().mediaId);
+        assertSame(downloaded, factory.createMediaSource(downloaded).getMediaItem());
+        assertSame(streamed, factory.createMediaSource(streamed).getMediaItem());
+        assertSame(privateStream, factory.createMediaSource(privateStream).getMediaItem());
     }
 
     @Test
-    public void theConfiguredErrorPolicyAndDrmProviderAreHandedToTheSourceThatIsBuilt() {
+    public void theDrmProviderThatWasConfiguredIsAskedForTheItemWhoseSourceIsBuilt() {
         ExoPlayerUtils.ApMediaSourceFactory factory = new ExoPlayerUtils.ApMediaSourceFactory(context, null);
-        factory.setDrmSessionManagerProvider(mediaItem -> DrmSessionManager.DRM_UNSUPPORTED);
+        DrmSessionManagerProvider drmProvider = mock(DrmSessionManagerProvider.class);
+        when(drmProvider.get(any(MediaItem.class))).thenReturn(DrmSessionManager.DRM_UNSUPPORTED);
+        factory.setDrmSessionManagerProvider(drmProvider);
         factory.setLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy());
         MediaItem item = new MediaItem.Builder()
                 .setUri(Uri.fromFile(new File(context.getCacheDir(), "episode.mp3")))
                 .setMediaId("7")
                 .build();
 
-        assertNotNull(factory.createMediaSource(item));
+        factory.createMediaSource(item);
+
+        verify(drmProvider).get(item);
     }
 
     private static PlaybackException playbackException(Throwable cause) {
