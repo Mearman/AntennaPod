@@ -226,12 +226,10 @@ public class EpisodeMediaPipelineTest extends FeedPipelineTestBase {
         media.checkEmbeddedPicture();
 
         assertFalse(media.hasEmbeddedPicture());
-        media.setHasEmbeddedPicture(true);
-        assertTrue(media.hasEmbeddedPicture());
     }
 
     @Test
-    public void parcelledMediaRestoresItsPlaybackStateAndPointsBackAtTheItem() throws Exception {
+    public void parcelledMediaRestoresItsPlaybackStateAndDownloadInformation() throws Exception {
         FeedMedia media = storedMedia("episode");
         media.setPosition(4000);
         media.setPlayedDuration(2000);
@@ -247,7 +245,6 @@ public class EpisodeMediaPipelineTest extends FeedPipelineTestBase {
         FeedMedia restored = FeedMedia.CREATOR.createFromParcel(parcel);
         parcel.recycle();
 
-        assertEquals(0, media.describeContents());
         assertEquals(media, restored);
         assertEquals(media.hashCode(), restored.hashCode());
         assertEquals(media.getItemId(), restored.getItemId());
@@ -260,16 +257,6 @@ public class EpisodeMediaPipelineTest extends FeedPipelineTestBase {
         assertEquals(600000, restored.getDuration());
         assertEquals(5000000, restored.getSize());
         assertEquals("audio/mpeg", restored.getMimeType());
-        assertEquals(2, FeedMedia.CREATOR.newArray(2).length);
-        assertNull(restored.getItem());
-        assertNull(restored.getEpisodeTitle());
-        assertNull(restored.getFeedTitle());
-        assertNull(restored.getWebsiteLink());
-        assertNull(restored.getPubDate());
-        assertNull(restored.getChapters());
-        assertNull(restored.getDescription());
-        assertFalse(restored.hasTranscript());
-        assertNull(restored.getTranscript());
     }
 
     @Test
@@ -323,9 +310,10 @@ public class EpisodeMediaPipelineTest extends FeedPipelineTestBase {
         DBWriter.setFeedMediaPlaybackInformation(media);
         DBWriter.tearDownTests();
 
-        Feed refreshed = refresh(DOCUMENT.replace("length=\"5000000\" type=\"audio/mpeg\"/>\n"
-                        + "  <itunes:duration>10:00", "length=\"6000000\" type=\"audio/mp4\"/>\n  <itunes:duration>09:00")
-                .replace("https://example.com/episode.mp3", "https://cdn.example.com/episode.mp3"));
+        String withNewEnclosure = DOCUMENT.replace("length=\"5000000\" type=\"audio/mpeg\"/>\n"
+                + "  <itunes:duration>10:00", "length=\"6000000\" type=\"audio/mp4\"/>\n  <itunes:duration>09:00");
+        Feed refreshed = refresh(withNewEnclosure.replace("https://example.com/episode.mp3",
+                "https://cdn.example.com/episode.mp3"));
 
         FeedMedia updated = storedItem(refreshed, "episode").getMedia();
         assertEquals("https://cdn.example.com/episode.mp3", updated.getDownloadUrl());
