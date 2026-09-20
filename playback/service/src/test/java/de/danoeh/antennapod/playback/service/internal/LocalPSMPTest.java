@@ -2,10 +2,12 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
 import android.media.AudioManager;
+import android.net.wifi.WifiManager;
 import android.view.SurfaceHolder;
 import androidx.preference.PreferenceManager;
 import androidx.test.core.app.ApplicationProvider;
 import de.danoeh.antennapod.event.PlayerErrorEvent;
+import de.danoeh.antennapod.event.playback.SpeedChangedEvent;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -19,14 +21,19 @@ import de.danoeh.antennapod.playback.service.PlaybackService;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowAudioManager;
+import org.robolectric.shadows.ShadowWifiManager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -41,6 +48,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -57,6 +65,16 @@ public class LocalPSMPTest {
     private ExoPlayerWrapper player;
     private PlaybackServiceMediaPlayer.PSMPCallback callback;
     private LocalPSMP psmp;
+    private SpeedEventCollector speedEvents;
+
+    public static class SpeedEventCollector {
+        private final List<SpeedChangedEvent> events = new ArrayList<>();
+
+        @Subscribe
+        public void onSpeedChanged(SpeedChangedEvent event) {
+            events.add(event);
+        }
+    }
 
     @Before
     public void setUp() {
@@ -72,11 +90,14 @@ public class LocalPSMPTest {
                 return player;
             }
         };
+        speedEvents = new SpeedEventCollector();
+        EventBus.getDefault().register(speedEvents);
         PlaybackService.isRunning = true;
     }
 
     @After
     public void tearDown() {
+        EventBus.getDefault().unregister(speedEvents);
         PlaybackService.isRunning = false;
         EventBus.getDefault().removeAllStickyEvents();
     }
@@ -275,16 +296,6 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void pausingKeepsThePlayerPausedAndNotifiesTheCallback() {
-        playStreaming(audioMedia(1), true, true);
-
-        psmp.pause(false, false);
-
-        verify(player).pause();
-        assertEquals(PlayerStatus.PAUSED, psmp.getPlayerStatus());
-    }
-
-    @Test
     public void pauseIsIgnoredWhenNothingIsPlaying() {
         playStreaming(audioMedia(1), false, true);
 
@@ -402,33 +413,25 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void playbackSpeedIsOneWhileThePlayerIsNotReady() {
+    public void playbackSpeedIsOnlyReadFromThePlayerWhileItIsReady() {
         when(player.getCurrentSpeedMultiplier()).thenReturn(2.5f);
 
         assertEquals(1.0f, psmp.getPlaybackSpeed(), 0.001f);
-    }
 
-    @Test
-    public void playbackSpeedIsReadFromThePlayerOncePrepared() {
-        when(player.getCurrentSpeedMultiplier()).thenReturn(2.5f);
         playStreaming(audioMedia(1), false, true);
 
         assertEquals(2.5f, psmp.getPlaybackSpeed(), 0.001f);
     }
 
     @Test
-    public void skipSilenceIsReadFromThePlayerOncePrepared() {
-        when(player.getCurrentSkipSilence()).thenReturn(true);
-        playStreaming(audioMedia(1), false, true);
-
-        assertTrue(psmp.getSkipSilence());
-    }
-
-    @Test
-    public void skipSilenceIsOffWhileThePlayerIsNotReady() {
+    public void skipSilenceIsOnlyReadFromThePlayerWhileItIsReady() {
         when(player.getCurrentSkipSilence()).thenReturn(true);
 
         assertFalse(psmp.getSkipSilence());
+
+        playStreaming(audioMedia(1), false, true);
+
+        assertTrue(psmp.getSkipSilence());
     }
 
     @Test
@@ -454,39 +457,20 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void audioTracksAreEmptyBeforeAPlayerExists() {
-        assertTrue(psmp.getAudioTracks().isEmpty());
-        assertEquals(-1, psmp.getSelectedAudioTrack());
-    }
-
-    @Test
-    public void audioTracksAreReadFromThePlayer() {
+    public void audioTracksAreOnlyAvailableOnceAPlayerExists() {
         List<String> tracks = Arrays.asList("English", "German");
         when(player.getAudioTracks()).thenReturn(tracks);
         when(player.getSelectedAudioTrack()).thenReturn(1);
+
+        assertTrue(psmp.getAudioTracks().isEmpty());
+        assertEquals(-1, psmp.getSelectedAudioTrack());
+
         playStreaming(audioMedia(1), false, false);
-
-        assertEquals(tracks, psmp.getAudioTracks());
-        assertEquals(1, psmp.getSelectedAudioTrack());
-    }
-
-    @Test
-    public void selectingAnAudioTrackIsForwardedToThePlayer() {
-        playStreaming(audioMedia(1), false, false);
-
         psmp.setAudioTrack(1);
 
         verify(player).setAudioTrack(1);
-    }
-
-    @Test
-    public void videoSizeIsReadFromThePlayerForVideoMedia() {
-        when(player.getVideoWidth()).thenReturn(1920);
-        when(player.getVideoHeight()).thenReturn(1080);
-        playStreaming(feedMedia(1, "video/mp4", null, 0, 0, VolumeAdaptionSetting.OFF), false, false);
-
-        assertEquals(Integer.valueOf(1920), psmp.getVideoSize().first);
-        assertEquals(Integer.valueOf(1080), psmp.getVideoSize().second);
+        assertEquals(tracks, psmp.getAudioTracks());
+        assertEquals(1, psmp.getSelectedAudioTrack());
     }
 
     @Test
@@ -516,12 +500,15 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void startWhenPreparedCanBeChangedAfterwards() {
+    public void settingStartWhenPreparedMakesThePreparedPlayerStart() {
         playStreaming(audioMedia(1), false, false);
-
         psmp.setStartWhenPrepared(true);
 
+        psmp.prepare();
+
         assertTrue(psmp.isStartWhenPrepared());
+        verify(player).start();
+        assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
     }
 
     @Test
@@ -602,19 +589,6 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void regainingAudioFocusAfterDuckingRestoresTheVolume() {
-        playStreaming(audioMedia(1), true, true);
-        AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        AudioManager.OnAudioFocusChangeListener listener =
-                Shadows.shadowOf(audioManager).getLastAudioFocusRequest().listener;
-
-        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN);
-
-        verify(player, times(2)).setVolume(1.0f, 1.0f);
-        assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
-    }
-
-    @Test
     public void audioFocusChangesAreIgnoredAfterShutdown() {
         playStreaming(audioMedia(1), true, true);
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -651,12 +625,15 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void settingPlaybackParametersIsForwardedToThePlayer() {
+    public void settingPlaybackParametersAnnouncesTheNewSpeed() {
         playStreaming(audioMedia(1), false, false);
+        speedEvents.events.clear();
 
         psmp.setPlaybackParams(1.75f, true);
 
         verify(player).setPlaybackParams(1.75f, true);
+        assertEquals(1, speedEvents.events.size());
+        assertEquals(1.75f, speedEvents.events.get(0).getNewSpeed(), 0.001f);
     }
 
     @Test
@@ -668,20 +645,28 @@ public class LocalPSMPTest {
 
     @Test
     public void statusChangesAreReportedToTheCallback() {
-        playStreaming(audioMedia(1), false, false);
+        ArgumentCaptor<PlaybackServiceMediaPlayer.PSMPInfo> captor =
+                ArgumentCaptor.forClass(PlaybackServiceMediaPlayer.PSMPInfo.class);
+        FeedMedia media = audioMedia(1);
 
-        verify(callback, times(2)).statusChanged(any());
+        playStreaming(media, false, false);
+
+        verify(callback, times(2)).statusChanged(captor.capture());
+        assertEquals(PlayerStatus.INITIALIZING, captor.getAllValues().get(0).getPlayerStatus());
+        assertEquals(PlayerStatus.INITIALIZED, captor.getAllValues().get(1).getPlayerStatus());
+        assertEquals(media, captor.getAllValues().get(1).getPlayable());
         verify(callback).onMediaChanged(false);
-        verify(callback).ensureMediaInfoLoaded(any());
+        verify(callback).ensureMediaInfoLoaded(media);
     }
 
     @Test
-    public void audioFocusIsNotRequestedTwiceForAnAlreadyPlayingEpisode() {
+    public void resumeIsIgnoredWhileAlreadyPlaying() {
         playStreaming(audioMedia(1), true, true);
 
         psmp.resume();
 
         verify(player, times(1)).start();
+        assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
     }
 
     @Test
@@ -703,36 +688,46 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void localFilePlaybackDoesNotRequestAWifiLock() {
-        FeedMedia media = feedMedia(1, "audio/mpeg", readableLocalFile(), 600000, 0, VolumeAdaptionSetting.OFF);
+    public void aWifiLockIsOnlyHeldWhileStreaming() {
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext()
+                .getSystemService(Context.WIFI_SERVICE);
+        ShadowWifiManager shadowWifiManager = Shadows.shadowOf(wifiManager);
+        FeedMedia local = feedMedia(1, "audio/mpeg", readableLocalFile(), 600000, 0, VolumeAdaptionSetting.OFF);
         when(player.getDuration()).thenReturn(600000);
 
-        psmp.playMediaObject(media, false, true, true);
+        psmp.playMediaObject(local, false, true, true);
 
         assertFalse(psmp.isStreaming());
-        assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
+        assertEquals(0, shadowWifiManager.getActiveLockCount());
+
+        playStreaming(audioMedia(2), true, true);
+
+        assertTrue(psmp.isStreaming());
+        assertEquals(1, shadowWifiManager.getActiveLockCount());
     }
 
     @Test
-    public void startingPlaybackIsReportedToTheCallbackOnce() {
-        when(player.getCurrentPosition()).thenReturn(12000);
+    public void startingPlaybackIsReportedToTheCallbackOnceWithoutAPosition() {
         when(player.getDuration()).thenReturn(600000);
         FeedMedia media = audioMedia(1);
 
         playStreaming(media, true, true);
 
-        verify(callback, times(1)).onPlaybackStart(eq(media), anyInt());
+        verify(callback, times(1)).onPlaybackStart(eq(media), eq(Playable.INVALID_TIME));
     }
 
     @Test
     public void playbackPauseIsReportedWithThePositionItStoppedAt() {
         when(player.getCurrentPosition()).thenReturn(12000);
         when(player.getDuration()).thenReturn(600000);
-        playStreaming(audioMedia(1), true, true);
+        FeedMedia media = audioMedia(1);
+        playStreaming(media, true, true);
 
         psmp.pause(false, false);
 
-        verify(callback).onPlaybackPause(any(), eq(12000));
+        verify(player).pause();
+        verify(callback).onPlaybackPause(eq(media), eq(12000));
+        assertEquals(PlayerStatus.PAUSED, psmp.getPlayerStatus());
     }
 
     @Test
@@ -745,18 +740,13 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void streamingPlaybackIsReportedAsStreaming() {
+    public void switchingEpisodesReleasesTheOldPlayerAndConfiguresTheNewOneForMusic() {
         playStreaming(audioMedia(1), false, false);
 
-        assertTrue(psmp.isStreaming());
-        assertFalse(psmp.isCasting());
-    }
+        playStreaming(audioMedia(2), false, false);
 
-    @Test
-    public void everyPlayerCreationConfiguresTheMusicStream() {
-        playStreaming(audioMedia(1), false, false);
-
-        verify(player).setAudioStreamType(AudioManager.STREAM_MUSIC);
+        verify(player).release();
+        verify(player, times(2)).setAudioStreamType(AudioManager.STREAM_MUSIC);
     }
 
     @Test
@@ -824,7 +814,7 @@ public class LocalPSMPTest {
     }
 
     @Test
-    public void duckingLowersTheVolumeWhenTheUserDoesNotWantToPause() {
+    public void duckingLowersTheVolumeAndRegainingFocusRestoresIt() {
         PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putBoolean(UserPreferences.PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS, false).commit();
         playStreaming(audioMedia(1), true, true);
@@ -833,8 +823,12 @@ public class LocalPSMPTest {
                 Shadows.shadowOf(audioManager).getLastAudioFocusRequest().listener;
 
         listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK);
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN);
 
-        verify(player).setVolume(0.25f, 0.25f);
+        InOrder inOrder = inOrder(player);
+        inOrder.verify(player).setVolume(0.25f, 0.25f);
+        inOrder.verify(player).setVolume(1.0f, 1.0f);
+        verify(player, never()).pause();
         assertEquals(PlayerStatus.PLAYING, psmp.getPlayerStatus());
     }
 
