@@ -44,5 +44,6 @@ dependencies {
     testImplementation libs.robolectric
     testImplementation libs.awaitility
     testImplementation libs.mockito.core
+    testImplementation libs.okhttp.mockwebserver
     testImplementation libs.androidx.preference
 }
