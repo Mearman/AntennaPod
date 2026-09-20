@@ -1,11 +1,14 @@
 package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
+import android.net.Uri;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
+import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.Player;
+import androidx.media3.common.Timeline;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.LoadControl;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
@@ -26,7 +29,9 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,15 +43,16 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class ExoPlayerWrapperTest {
-    private static final String STREAM_URL = "https://example.com/episode.mp3";
-
     private Context context;
     private ExoPlayerWrapper wrapper;
     private TestScheduler scheduler;
+    private Locale defaultLocale;
 
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
+        defaultLocale = Locale.getDefault();
+        Locale.setDefault(Locale.ENGLISH);
         scheduler = new TestScheduler();
         RxJavaPlugins.setComputationSchedulerHandler(ignored -> scheduler);
         RxAndroidPlugins.setMainThreadSchedulerHandler(ignored -> scheduler);
@@ -67,10 +73,15 @@ public class ExoPlayerWrapperTest {
         wrapper.release();
         RxJavaPlugins.reset();
         RxAndroidPlugins.reset();
+        Locale.setDefault(defaultLocale);
     }
 
     private String missingFilePath() {
-        return context.getCacheDir().getAbsolutePath() + "/missing-episode.mp3";
+        return missingFilePath("missing-episode.mp3");
+    }
+
+    private String missingFilePath(String fileName) {
+        return context.getCacheDir().getAbsolutePath() + "/" + fileName;
     }
 
     private static Format audioTrack(String language) {
@@ -81,7 +92,11 @@ public class ExoPlayerWrapperTest {
     }
 
     private void prepareFakeTracks(Format... formats) throws Exception {
-        wrapper.getExoPlayer().setMediaSource(new FakeMediaSource(new FakeTimeline(), formats));
+        prepareFakeTracks(new FakeTimeline(), formats);
+    }
+
+    private void prepareFakeTracks(FakeTimeline timeline, Format... formats) throws Exception {
+        wrapper.getExoPlayer().setMediaSource(new FakeMediaSource(timeline, formats));
         wrapper.getExoPlayer().prepare();
         TestPlayerRunHelper.runUntilPlaybackState(wrapper.getExoPlayer(), Player.STATE_READY);
     }
@@ -199,9 +214,9 @@ public class ExoPlayerWrapperTest {
     }
 
     @Test
-    public void stoppingReturnsThePlayerToIdle() {
-        wrapper.setDataSource(missingFilePath());
-        wrapper.prepare();
+    public void stoppingReturnsThePlayerToIdle() throws Exception {
+        prepareFakeTracks(audioTrack("en"));
+        assertEquals(Player.STATE_READY, wrapper.getExoPlayer().getPlaybackState());
 
         wrapper.stop();
 
@@ -236,34 +251,25 @@ public class ExoPlayerWrapperTest {
     }
 
     @Test
-    public void credentialsAreAcceptedForAnyDataSource() throws Exception {
-        AtomicBoolean called = new AtomicBoolean(false);
-        wrapper.setOnErrorListener(message -> called.set(true));
-        wrapper.setDataSource(missingFilePath(), "user", "secret");
+    public void thePlayerUsesTheDataSourceThatWasConfiguredLast() {
+        wrapper.setDataSource(missingFilePath("first-episode.mp3"));
+        wrapper.setDataSource(missingFilePath("second-episode.mp3"));
 
-        prepareUntilFailed();
+        wrapper.prepare();
 
-        assertTrue(called.get());
+        MediaItem prepared = wrapper.getExoPlayer().getMediaItemAt(0);
+        assertEquals(Uri.parse(missingFilePath("second-episode.mp3")), prepared.localConfiguration.uri);
     }
 
     @Test
-    public void thePlayerUsesTheDataSourceThatWasConfiguredLast() throws Exception {
-        AtomicBoolean called = new AtomicBoolean(false);
-        wrapper.setOnErrorListener(message -> called.set(true));
-        wrapper.setDataSource(STREAM_URL);
+    public void aFailureWithoutAnErrorListenerStillStopsThePlayer() throws Exception {
+        prepareFakeTracks(audioTrack("en"));
+        assertEquals(Player.STATE_READY, wrapper.getExoPlayer().getPlaybackState());
         wrapper.setDataSource(missingFilePath());
 
         prepareUntilFailed();
 
-        assertTrue(called.get());
-    }
-
-    @Test
-    public void anErrorWithoutAListenerLeavesThePlayerIdle() throws Exception {
-        wrapper.setDataSource(missingFilePath());
-
-        prepareUntilFailed();
-
+        assertNotNull(wrapper.getExoPlayer().getPlayerError());
         assertEquals(Player.STATE_IDLE, wrapper.getExoPlayer().getPlaybackState());
     }
 
@@ -271,11 +277,7 @@ public class ExoPlayerWrapperTest {
     public void everyAudioTrackOfThePreparedMediaIsListedByName() throws Exception {
         prepareFakeTracks(audioTrack("en"), audioTrack("de"));
 
-        List<String> tracks = wrapper.getAudioTracks();
-
-        assertEquals(2, tracks.size());
-        assertTrue(tracks.get(0).contains("English"));
-        assertTrue(tracks.get(1).contains("German"));
+        assertEquals(Arrays.asList("English", "German"), wrapper.getAudioTracks());
     }
 
     @Test
@@ -297,9 +299,11 @@ public class ExoPlayerWrapperTest {
 
     @Test
     public void theDurationOfPreparedMediaIsReported() throws Exception {
-        prepareFakeTracks(audioTrack("en"));
+        FakeTimeline timeline = new FakeTimeline();
 
-        assertTrue(wrapper.getDuration() > 0);
+        prepareFakeTracks(timeline, audioTrack("en"));
+
+        assertEquals(timeline.getWindow(0, new Timeline.Window()).getDurationMs(), wrapper.getDuration());
     }
 
     @Test
@@ -345,12 +349,12 @@ public class ExoPlayerWrapperTest {
     public void releasingStopsTheBufferingUpdates() throws Exception {
         List<Integer> updates = new ArrayList<>();
         wrapper.setOnBufferingUpdateListener(updates::add);
-        wrapper.setDataSource(missingFilePath());
-        prepareUntilFailed();
-        int seen = updates.size();
+        prepareFakeTracks(audioTrack("en"));
+        updates.clear();
 
         wrapper.release();
+        scheduler.advanceTimeBy(2, TimeUnit.SECONDS);
 
-        assertEquals(seen, updates.size());
+        assertTrue(updates.isEmpty());
     }
 }
