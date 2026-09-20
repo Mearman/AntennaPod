@@ -81,6 +81,7 @@ public class ChapterTest {
         Chapter second = new Chapter(5000, "B", "link", "image");
         first.setId(3);
         second.setId(3);
+        assertEquals(first, first);
         assertEquals(first, second);
         assertEquals(first.hashCode(), second.hashCode());
         second.setId(4);
