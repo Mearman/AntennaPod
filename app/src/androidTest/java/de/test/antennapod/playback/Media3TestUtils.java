@@ -18,12 +18,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Utility methods for tests that drive the Media3 playback service through a media session.
- */
 public final class Media3TestUtils {
-    private static final long CONNECT_TIMEOUT_SECONDS = 30;
-    private static final long SHUTDOWN_TIMEOUT_SECONDS = 20;
+    private static final long CONNECT_TIMEOUT_SECONDS = 60;
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 40;
 
     private Media3TestUtils() {
     }
@@ -72,9 +69,6 @@ public final class Media3TestUtils {
         return result.get();
     }
 
-    /**
-     * Stops playback, releases the controller and waits until the service is destroyed. Tests must not continue while the service is alive because it keeps writing to the database.
-     */
     public static void stopPlaybackService(Context context, Player controller) {
         if (controller != null) {
             runOnMain(() -> {

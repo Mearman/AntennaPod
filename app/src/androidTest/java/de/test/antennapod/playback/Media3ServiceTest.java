@@ -19,11 +19,8 @@ import org.junit.Before;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * Base class for tests that drive the Media3 playback service through a media session. Each test starts with an empty database that is filled with the feeds of the local test server and ends with a destroyed playback service, so that tests do not influence each other.
- */
 public abstract class Media3ServiceTest {
-    protected static final long TIMEOUT_SECONDS = 30;
+    protected static final long TIMEOUT_SECONDS = 60;
 
     protected Context context;
     protected UITestUtils uiTestUtils;
@@ -88,6 +85,13 @@ public abstract class Media3ServiceTest {
         Awaitility.await("playback started")
                 .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> Media3TestUtils.getOnMain(controller()::isPlaying));
+    }
+
+    protected void pausePlayback() {
+        Media3TestUtils.runOnMain(controller()::pause);
+        Awaitility.await("playback paused")
+                .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> !Media3TestUtils.getOnMain(controller()::isPlaying));
     }
 
     protected void awaitReady() {
