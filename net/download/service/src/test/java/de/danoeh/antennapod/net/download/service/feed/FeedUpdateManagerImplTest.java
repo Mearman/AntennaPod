@@ -2,7 +2,6 @@ package de.danoeh.antennapod.net.download.service.feed;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.view.ContextThemeWrapper;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
@@ -25,9 +24,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.robolectric.shadows.ShadowDialog;
 import org.robolectric.shadows.ShadowLooper;
-import org.robolectric.shadows.ShadowNetworkInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,13 +41,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.robolectric.Shadows.shadowOf;
 
 @Category(IntegrationTest.class)
 public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
     private static final String WORK_ID_PERIODIC = "de.danoeh.antennapod.core.service.FeedUpdateWorker";
     private static final String WORK_ID_MANUAL = "feedUpdateManual";
-    private static long nextFeedId = 1_000;
+    private static final long FEED_ID = 1_000;
 
     private final List<MessageEvent> messages = new ArrayList<>();
     private FeedUpdateManagerImpl manager;
@@ -61,6 +59,8 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
     @Before
     public void createManager() {
         manager = new FeedUpdateManagerImpl();
+        manager.runOnce(context);
+        Mockito.clearInvocations(workManager);
         EventBus.getDefault().register(this);
     }
 
@@ -70,9 +70,9 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
         EventBus.getDefault().removeAllStickyEvents();
     }
 
-    private static Feed feedWithUniqueId() {
+    private static Feed feedWithId(long id) {
         Feed feed = new Feed("https://example.com/feed.xml", null, "Feed");
-        feed.setId(nextFeedId++);
+        feed.setId(id);
         return feed;
     }
 
@@ -80,13 +80,6 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
         ArgumentCaptor<OneTimeWorkRequest> captor = ArgumentCaptor.forClass(OneTimeWorkRequest.class);
         verify(workManager).enqueueUniqueWork(eq(WORK_ID_MANUAL), eq(ExistingWorkPolicy.REPLACE), captor.capture());
         return captor.getValue();
-    }
-
-    private void setNetwork(NetworkInfo.State state, int type) {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(
-                ShadowNetworkInfo.newInstance(NetworkInfo.DetailedState.CONNECTED, type, 0, true, state));
     }
 
     @Test
@@ -148,7 +141,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceForRemoteFeedCarriesFeedIdAndNextPageFlag() {
-        Feed feed = feedWithUniqueId();
+        Feed feed = feedWithId(FEED_ID);
 
         manager.runOnce(context, feed, true);
 
@@ -161,7 +154,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
     @Test
     public void runOnceForLocalFeedNeedsNoNetwork() {
         Feed feed = new Feed(Feed.PREFIX_LOCAL_FOLDER + "folder", null, "Local");
-        feed.setId(nextFeedId++);
+        feed.setId(FEED_ID);
 
         manager.runOnce(context, feed);
 
@@ -173,8 +166,8 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskStartsRefreshWhenNetworkIsUnrestricted() {
-        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_WIFI);
-        Feed feed = feedWithUniqueId();
+        setNetwork(ConnectivityManager.TYPE_WIFI);
+        Feed feed = feedWithId(FEED_ID);
 
         manager.runOnceOrAsk(context, feed);
 
@@ -185,11 +178,9 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskReportsMissingConnection() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+        setNoNetwork();
 
-        manager.runOnceOrAsk(context, feedWithUniqueId());
+        manager.runOnceOrAsk(context, feedWithId(FEED_ID));
 
         assertEquals(1, messages.size());
         assertEquals(context.getString(R.string.download_error_no_connection), messages.get(0).message);
@@ -202,11 +193,9 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskRefreshesLocalFeedWithoutNetwork() {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        shadowOf(connectivityManager).setActiveNetworkInfo(null);
+        setNoNetwork();
         Feed feed = new Feed(Feed.PREFIX_LOCAL_FOLDER + "folder", null, "Local");
-        feed.setId(nextFeedId++);
+        feed.setId(FEED_ID);
 
         manager.runOnceOrAsk(context, feed);
 
@@ -217,8 +206,8 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskRejectsSecondRequestForSameFeedWithinCooldown() {
-        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_WIFI);
-        Feed feed = feedWithUniqueId();
+        setNetwork(ConnectivityManager.TYPE_WIFI);
+        Feed feed = feedWithId(FEED_ID);
 
         manager.runOnceOrAsk(context, feed);
         manager.runOnceOrAsk(context, feed);
@@ -231,10 +220,10 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskAllowsDifferentFeedDuringCooldown() {
-        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_WIFI);
+        setNetwork(ConnectivityManager.TYPE_WIFI);
 
-        manager.runOnceOrAsk(context, feedWithUniqueId());
-        manager.runOnceOrAsk(context, feedWithUniqueId());
+        manager.runOnceOrAsk(context, feedWithId(FEED_ID));
+        manager.runOnceOrAsk(context, feedWithId(FEED_ID + 1));
 
         assertTrue(messages.isEmpty());
         verify(workManager, times(2))
@@ -242,11 +231,11 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
     }
 
     private Context themedContext() {
-        return new ContextThemeWrapper(context, com.google.android.material.R.style.Theme_Material3_DayNight);
+        return new ContextThemeWrapper(context, R.style.Theme_Material3_DayNight);
     }
 
     private AlertDialog showMobileRefreshDialog(Feed feed) {
-        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_MOBILE);
+        setNetwork(ConnectivityManager.TYPE_MOBILE);
 
         manager.runOnceOrAsk(themedContext(), feed);
 
@@ -258,9 +247,9 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void runOnceOrAskOnMobileNetworkAsksBeforeRefreshing() {
-        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+        AlertDialog dialog = showMobileRefreshDialog(feedWithId(FEED_ID));
 
-        TextView title = dialog.findViewById(androidx.appcompat.R.id.alertTitle);
+        TextView title = dialog.findViewById(R.id.alertTitle);
         TextView message = dialog.findViewById(android.R.id.message);
         assertEquals(context.getString(R.string.feed_refresh_title), title.getText().toString());
         assertEquals(context.getString(R.string.confirm_mobile_feed_refresh_dialog_message),
@@ -271,7 +260,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void confirmingMobileRefreshOnceStartsRefreshWithoutChangingPreference() {
-        Feed feed = feedWithUniqueId();
+        Feed feed = feedWithId(FEED_ID);
         AlertDialog dialog = showMobileRefreshDialog(feed);
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
@@ -284,7 +273,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void confirmingMobileRefreshAlwaysStoresPreferenceAndStartsRefresh() {
-        Feed feed = feedWithUniqueId();
+        Feed feed = feedWithId(FEED_ID);
         AlertDialog dialog = showMobileRefreshDialog(feed);
 
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).performClick();
@@ -297,7 +286,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void decliningMobileRefreshReportsRefreshNotRunning() {
-        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+        AlertDialog dialog = showMobileRefreshDialog(feedWithId(FEED_ID));
 
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
         ShadowLooper.idleMainLooper();
@@ -311,7 +300,7 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
 
     @Test
     public void dismissingMobileRefreshDialogReportsRefreshNotRunning() {
-        AlertDialog dialog = showMobileRefreshDialog(feedWithUniqueId());
+        AlertDialog dialog = showMobileRefreshDialog(feedWithId(FEED_ID));
 
         dialog.cancel();
         ShadowLooper.idleMainLooper();
@@ -324,8 +313,8 @@ public class FeedUpdateManagerImplTest extends DownloadIntegrationTestBase {
     @Test
     public void mobileRefreshIsAllowedWithoutAskingOnceThePreferenceIsSet() {
         UserPreferences.setAllowMobileFeedRefresh(true);
-        setNetwork(NetworkInfo.State.CONNECTED, ConnectivityManager.TYPE_MOBILE);
-        Feed feed = feedWithUniqueId();
+        setNetwork(ConnectivityManager.TYPE_MOBILE);
+        Feed feed = feedWithId(FEED_ID);
 
         manager.runOnceOrAsk(themedContext(), feed);
 
