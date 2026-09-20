@@ -17,4 +17,8 @@ dependencies {
     implementation libs.commons.io
     implementation libs.commons.lang3
     implementation libs.okhttp
+
+    testImplementation libs.junit
+    testImplementation libs.robolectric
+    testImplementation libs.okhttp.mockwebserver
 }
