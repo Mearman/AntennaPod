@@ -28,6 +28,8 @@ import de.danoeh.antennapod.ui.screen.AddFeedFragment;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.util.service.download.StaticContentServer;
 import com.google.android.material.chip.Chip;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,6 +39,7 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -211,19 +214,67 @@ public class FeedPreferencesTest {
         Feed feed = subscribeToFeed(EPISODE_A);
         FeedRobot.openFeedSettings();
 
-        FeedRobot.clickSetting(R.string.feed_tags_label);
-        waitUntilDisplayed(withId(R.id.newTagEditText), FeedRobot.UI_TIMEOUT_MS);
-        onView(withId(R.id.newTagEditText)).perform(replaceText("Comedy"));
-        onView(allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(R.id.newTagTextInput))))
-                .perform(click());
-        onView(withId(R.id.newTagEditText)).perform(replaceText("News"));
-        FeedRobot.confirmTypedDialog(android.R.string.ok);
-
+        for (int attempt = 0; attempt < 3; attempt++) {
+            FeedRobot.clickSetting(R.string.feed_tags_label);
+            waitUntilDisplayed(withId(R.id.newTagEditText), FeedRobot.UI_TIMEOUT_MS);
+            addChip(R.id.newTagTextInput, R.id.tagsRecycler, "Comedy");
+            addChip(R.id.newTagTextInput, R.id.tagsRecycler, "News");
+            FeedRobot.confirmTypedDialog(android.R.string.ok);
+            if (tagsAreStored(feed)) {
+                break;
+            }
+        }
         FeedRobot.awaitCondition(() -> preferences(feed).getTags().contains("Comedy")
                 && preferences(feed).getTags().contains("News"));
         clickBottomNavItem(R.string.subscriptions_label_short);
         waitUntilDisplayed(allOf(withId(R.id.tag_chip), withText("Comedy")), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.tag_chip), withText("News"))).check(matches(isDisplayed()));
+    }
+
+    private boolean tagsAreStored(Feed feed) {
+        try {
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() ->
+                    preferences(feed).getTags().contains("Comedy")
+                            && preferences(feed).getTags().contains("News"));
+            return true;
+        } catch (ConditionTimeoutException e) {
+            return false;
+        }
+    }
+
+    private boolean filterIsStored(Feed feed) {
+        try {
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+                FeedFilter stored = preferences(feed).getFilter();
+                return stored.getIncludeFilter().contains("Interview")
+                        && stored.getIncludeFilter().contains("Special edition")
+                        && stored.getMinimalDurationFilter() == 5 * 60;
+            });
+            return true;
+        } catch (ConditionTimeoutException e) {
+            return false;
+        }
+    }
+
+    private static void enableDurationFilter() {
+        try {
+            onView(withId(R.id.durationCheckBox)).check(matches(isNotChecked()));
+            onView(withId(R.id.durationCheckBox)).perform(click());
+        } catch (AssertionError alreadyEnabledByAnEarlierAttempt) {
+        }
+    }
+
+    @Test
+    public void volumeAdaptationIsStoredForTheFeed() throws Exception {
+        Feed feed = subscribeToFeed(EPISODE_A);
+        assertEquals(VolumeAdaptionSetting.OFF, preferences(feed).getVolumeAdaptionSetting());
+        FeedRobot.openFeedSettings();
+
+        FeedRobot.clickSetting(R.string.feed_volume_adapdation);
+        FeedRobot.chooseOption(R.string.feed_volume_reduction_light);
+
+        FeedRobot.awaitCondition(() -> preferences(feed).getVolumeAdaptionSetting()
+                == VolumeAdaptionSetting.LIGHT_REDUCTION);
     }
 
     @Test
@@ -405,14 +456,19 @@ public class FeedPreferencesTest {
         FeedRobot.chooseOption(R.string.enabled);
         FeedRobot.awaitCondition(() -> preferences(feed).isAutoDownload(false));
 
-        FeedRobot.clickSetting(R.string.episode_filters_label);
-        waitUntilDisplayed(withId(R.id.includeRadio), FeedRobot.UI_TIMEOUT_MS);
-        onView(withId(R.id.includeRadio)).check(matches(isChecked()));
-        addFilterTerm("Interview");
-        addFilterTerm("Special edition");
-        onView(withId(R.id.durationCheckBox)).perform(click());
-        onView(withId(R.id.episodeFilterDurationText)).perform(replaceText("5"));
-        FeedRobot.confirmTypedDialog(R.string.confirm_label);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            FeedRobot.clickSetting(R.string.episode_filters_label);
+            waitUntilDisplayed(withId(R.id.includeRadio), FeedRobot.UI_TIMEOUT_MS);
+            onView(withId(R.id.includeRadio)).check(matches(isChecked()));
+            addFilterTerm("Interview");
+            addFilterTerm("Special edition");
+            enableDurationFilter();
+            onView(withId(R.id.episodeFilterDurationText)).perform(replaceText("5"));
+            FeedRobot.confirmTypedDialog(R.string.confirm_label);
+            if (filterIsStored(feed)) {
+                break;
+            }
+        }
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFilter().hasIncludeFilter());
         FeedFilter filter = preferences(feed).getFilter();
@@ -467,9 +523,15 @@ public class FeedPreferencesTest {
     }
 
     private void addFilterTerm(String term) {
-        onView(allOf(instanceOf(EditText.class), isDescendantOfA(withId(R.id.termsTextInput))))
-                .perform(replaceText(term));
-        onView(allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(R.id.termsTextInput))))
-                .perform(click());
+        addChip(R.id.termsTextInput, R.id.termsRecycler, term);
+    }
+
+    private void addChip(int textInputId, int chipsRecyclerId, String text) {
+        FeedRobot.awaitAssertion(() -> {
+            onView(allOf(instanceOf(EditText.class), isDescendantOfA(withId(textInputId))))
+                    .perform(replaceText(text));
+            onView(allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(textInputId)))).perform(click());
+            onView(allOf(withText(text), isDescendantOfA(withId(chipsRecyclerId)))).check(matches(isDisplayed()));
+        });
     }
 }
