@@ -68,6 +68,7 @@ public class AutoDownloadTest {
     @After
     public void tearDown() throws Exception {
         runShellCommand("dumpsys battery reset");
+        limitCacheTo(UserPreferences.EPISODE_CACHE_SIZE_UNLIMITED);
         runAutoDownload();
         downloads.cancelAll(context);
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
@@ -128,8 +129,9 @@ public class AutoDownloadTest {
         return DBReader.getTotalEpisodeCount(new FeedItemFilter(FeedItemFilter.DOWNLOADED));
     }
 
-    private EpisodeCleanupAlgorithm cleanupWith(int cleanupValue) throws Exception {
+    private EpisodeCleanupAlgorithm cleanupWith(int cleanupValue, int cacheSize) throws Exception {
         runAutoDownload();
+        limitCacheTo(cacheSize);
         UserPreferences.setEpisodeCleanupValue(cleanupValue);
         return EpisodeCleanupAlgorithmFactory.build();
     }
@@ -276,8 +278,7 @@ public class AutoDownloadTest {
     @Test
     public void playedEpisodesAreDeletedToMakeRoomForNewDownloads() throws Exception {
         enableGlobalAutoDownload();
-        limitCacheTo(1);
-        cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT);
+        cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT, 1);
         Feed old = fixture.subscribe("Old", 1);
         fixture.markDownloaded(old.getItemAtIndex(0));
         fixture.markPlayed(old.getItemAtIndex(0), System.currentTimeMillis() - 2 * DAY_MILLIS);
@@ -292,13 +293,12 @@ public class AutoDownloadTest {
 
     @Test
     public void performAutoCleanupDeletesPlayedEpisodesBeyondTheCacheSize() throws Exception {
-        limitCacheTo(1);
-        cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT);
         Feed feed = fixture.subscribe("Cleaned", 3);
         for (int i = 0; i < 3; i++) {
             fixture.markDownloaded(feed.getItemAtIndex(i));
             fixture.markPlayed(feed.getItemAtIndex(i), System.currentTimeMillis() - (3 - i) * DAY_MILLIS);
         }
+        cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT, 1);
 
         AutoDownloadManager.getInstance().performAutoCleanup(context);
 
@@ -308,7 +308,6 @@ public class AutoDownloadTest {
 
     @Test
     public void defaultCleanupOnlyRemovesPlayedEpisodesThatAreNotQueuedOrFavourites() throws Exception {
-        limitCacheTo(2);
         Feed feed = fixture.subscribe("Default cleanup", 5);
         for (int i = 0; i < 5; i++) {
             fixture.markDownloaded(feed.getItemAtIndex(i));
@@ -319,7 +318,7 @@ public class AutoDownloadTest {
         fixture.markPlayed(feed.getItemAtIndex(2), now - 3 * DAY_MILLIS);
         DBWriter.addQueueItem(context, feed.getItemAtIndex(0)).get();
         DBWriter.addFavoriteItems(Arrays.asList(feed.getItemAtIndex(1))).get();
-        APCleanupAlgorithm algorithm = (APCleanupAlgorithm) cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT);
+        APCleanupAlgorithm algorithm = (APCleanupAlgorithm) cleanupWith(UserPreferences.EPISODE_CLEANUP_DEFAULT, 2);
         assertEquals(1, algorithm.getReclaimableItems());
 
         assertEquals(1, algorithm.makeRoomForEpisodes(context, 0));
@@ -333,14 +332,13 @@ public class AutoDownloadTest {
 
     @Test
     public void queueCleanupKeepsQueuedEpisodesAndFavourites() throws Exception {
-        limitCacheTo(1);
         Feed feed = fixture.subscribe("Queue cleanup", 4);
         for (int i = 0; i < 4; i++) {
             fixture.markDownloaded(feed.getItemAtIndex(i));
         }
         DBWriter.addQueueItem(context, feed.getItemAtIndex(0)).get();
         DBWriter.addFavoriteItems(Arrays.asList(feed.getItemAtIndex(1))).get();
-        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_QUEUE);
+        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_QUEUE, 1);
         assertTrue(algorithm instanceof APQueueCleanupAlgorithm);
         assertEquals(2, algorithm.getReclaimableItems());
 
@@ -354,13 +352,12 @@ public class AutoDownloadTest {
 
     @Test
     public void favouriteCleanupOnlyKeepsFavourites() throws Exception {
-        limitCacheTo(2);
         Feed feed = fixture.subscribe("Favourite cleanup", 4);
         for (int i = 0; i < 4; i++) {
             fixture.markDownloaded(feed.getItemAtIndex(i));
         }
         DBWriter.addFavoriteItems(Arrays.asList(feed.getItemAtIndex(3))).get();
-        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_EXCEPT_FAVORITE);
+        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_EXCEPT_FAVORITE, 2);
         assertTrue(algorithm instanceof ExceptFavoriteCleanupAlgorithm);
         assertEquals(3, algorithm.getReclaimableItems());
 
@@ -374,11 +371,10 @@ public class AutoDownloadTest {
 
     @Test
     public void nullCleanupNeverDeletesAnything() throws Exception {
-        limitCacheTo(1);
         Feed feed = fixture.subscribe("Null cleanup", 2);
         fixture.markDownloaded(feed.getItemAtIndex(0));
         fixture.markDownloaded(feed.getItemAtIndex(1));
-        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_NULL);
+        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_NULL, 1);
         assertTrue(algorithm instanceof APNullCleanupAlgorithm);
 
         assertEquals(0, algorithm.makeRoomForEpisodes(context, 5));
@@ -390,13 +386,15 @@ public class AutoDownloadTest {
 
     @Test
     public void cleanupDoesNothingWhileTheCacheIsUnlimited() throws Exception {
-        limitCacheTo(UserPreferences.EPISODE_CACHE_SIZE_UNLIMITED);
         Feed feed = fixture.subscribe("Unlimited", 2);
         fixture.markDownloaded(feed.getItemAtIndex(0));
         fixture.markDownloaded(feed.getItemAtIndex(1));
 
-        assertEquals(0, cleanupWith(UserPreferences.EPISODE_CLEANUP_EXCEPT_FAVORITE).makeRoomForEpisodes(context, 3));
-        assertEquals(0, cleanupWith(UserPreferences.EPISODE_CLEANUP_EXCEPT_FAVORITE).performCleanup(context));
+        EpisodeCleanupAlgorithm algorithm = cleanupWith(UserPreferences.EPISODE_CLEANUP_EXCEPT_FAVORITE,
+                UserPreferences.EPISODE_CACHE_SIZE_UNLIMITED);
+
+        assertEquals(0, algorithm.makeRoomForEpisodes(context, 3));
+        assertEquals(0, algorithm.performCleanup(context));
 
         assertEquals(2, downloadedEpisodes());
     }
