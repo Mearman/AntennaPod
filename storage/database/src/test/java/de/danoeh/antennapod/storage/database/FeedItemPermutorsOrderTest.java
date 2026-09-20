@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 
 @RunWith(RobolectricTestRunner.class)
 public class FeedItemPermutorsOrderTest {
@@ -87,6 +87,7 @@ public class FeedItemPermutorsOrderTest {
 
         assertEquals(before.size(), items.size());
         assertEquals(new HashSet<>(before), new HashSet<>(ids(items)));
+        assertNotEquals(before, ids(items));
     }
 
     @Test
@@ -131,10 +132,12 @@ public class FeedItemPermutorsOrderTest {
     }
 
     @Test
-    public void smartShuffleOfEmptyQueueLeavesItEmpty() {
-        List<FeedItem> items = new ArrayList<>();
+    public void smartShuffleOfASingleFeedOrdersItByPubdate() {
+        List<FeedItem> items = list(fromFeed(2, 10, 2000), fromFeed(3, 10, 3000), fromFeed(1, 10, 1000));
+
         FeedItemPermutors.getPermutor(SortOrder.SMART_SHUFFLE_OLD_NEW).reorder(items);
-        assertTrue(items.isEmpty());
+
+        assertEquals(Arrays.asList(1L, 2L, 3L), ids(items));
     }
 
     @Test
