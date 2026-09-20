@@ -7,6 +7,7 @@ import de.danoeh.antennapod.ui.widget.WidgetUpdater;
 import io.reactivex.rxjava3.android.plugins.RxAndroidPlugins;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.schedulers.TestScheduler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,9 +15,11 @@ import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowLog;
 
 import java.util.Collections;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -28,14 +31,17 @@ import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
 public class PlaybackServiceTaskManagerTest {
+    private static final String TAG = "PlaybackServiceTaskMgr";
     private Context context;
     private PlaybackServiceTaskManager.PSTMCallback callback;
     private PlaybackServiceTaskManager taskManager;
+    private TestScheduler chapterLoadScheduler;
 
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
-        RxJavaPlugins.setComputationSchedulerHandler(scheduler -> Schedulers.trampoline());
+        chapterLoadScheduler = new TestScheduler();
+        RxJavaPlugins.setComputationSchedulerHandler(scheduler -> chapterLoadScheduler);
         RxAndroidPlugins.setMainThreadSchedulerHandler(scheduler -> Schedulers.trampoline());
         callback = mock(PlaybackServiceTaskManager.PSTMCallback.class);
         when(callback.requestWidgetState()).thenReturn(mock(WidgetUpdater.WidgetState.class));
@@ -74,11 +80,14 @@ public class PlaybackServiceTaskManagerTest {
     @Test
     public void startingThePositionSaverTwiceKeepsTheFirstScheduleRunning() {
         taskManager.startPositionSaver();
-        taskManager.startPositionSaver();
-        assertTrue(taskManager.isPositionSaverActive());
+        ShadowLog.clear();
 
-        taskManager.cancelPositionSaver();
-        assertFalse(taskManager.isPositionSaverActive());
+        taskManager.startPositionSaver();
+
+        assertTrue(taskManager.isPositionSaverActive());
+        assertEquals(1, ShadowLog.getLogsForTag(TAG).stream()
+                .filter(entry -> "Call to startPositionSaver was ignored.".equals(entry.msg))
+                .count());
     }
 
     @Test
@@ -102,10 +111,13 @@ public class PlaybackServiceTaskManagerTest {
     }
 
     @Test
-    public void aWidgetUpdateAsksTheServiceForTheStateToDisplay() {
+    public void everyWidgetUpdateAsksTheServiceForTheStateToDisplayAnew() {
+        taskManager.requestWidgetUpdate();
+        verify(callback).requestWidgetState();
+
         taskManager.requestWidgetUpdate();
 
-        verify(callback).requestWidgetState();
+        verify(callback, times(2)).requestWidgetState();
     }
 
     @Test
@@ -122,7 +134,12 @@ public class PlaybackServiceTaskManagerTest {
         Playable media = mock(Playable.class);
         when(media.getChapters()).thenReturn(Collections.emptyList());
 
-        taskManager.startChapterLoader(media);
+        try (MockedStatic<ChapterUtils> chapters = mockStatic(ChapterUtils.class)) {
+            taskManager.startChapterLoader(media);
+            chapterLoadScheduler.triggerActions();
+
+            chapters.verify(() -> ChapterUtils.loadChapters(media, context, false), never());
+        }
 
         verify(callback, never()).onChapterLoaded(media);
     }
@@ -134,11 +151,11 @@ public class PlaybackServiceTaskManagerTest {
 
         try (MockedStatic<ChapterUtils> chapters = mockStatic(ChapterUtils.class)) {
             taskManager.startChapterLoader(media);
+            chapterLoadScheduler.triggerActions();
 
             chapters.verify(() -> ChapterUtils.loadChapters(media, context, false));
+            verify(callback).onChapterLoaded(media);
         }
-
-        verify(callback).onChapterLoaded(media);
     }
 
     @Test
@@ -151,6 +168,7 @@ public class PlaybackServiceTaskManagerTest {
                     .thenThrow(new IllegalStateException("no chapters"));
 
             taskManager.startChapterLoader(media);
+            chapterLoadScheduler.triggerActions();
         }
 
         verify(callback, never()).onChapterLoaded(media);
@@ -163,33 +181,32 @@ public class PlaybackServiceTaskManagerTest {
         when(first.getChapters()).thenReturn(null);
         when(second.getChapters()).thenReturn(null);
 
-        try (MockedStatic<ChapterUtils> ignored = mockStatic(ChapterUtils.class)) {
+        try (MockedStatic<ChapterUtils> chapters = mockStatic(ChapterUtils.class)) {
             taskManager.startChapterLoader(first);
             taskManager.startChapterLoader(second);
+            chapterLoadScheduler.triggerActions();
+
+            chapters.verify(() -> ChapterUtils.loadChapters(first, context, false), never());
+            chapters.verify(() -> ChapterUtils.loadChapters(second, context, false));
         }
 
-        verify(callback).onChapterLoaded(first);
+        verify(callback, never()).onChapterLoaded(first);
         verify(callback).onChapterLoaded(second);
     }
 
     @Test
-    public void cancellingAllTasksAlsoDropsAFinishedChapterLoad() {
+    public void cancellingAllTasksDropsAChapterLoadThatHasNotFinishedYet() {
         Playable media = mock(Playable.class);
         when(media.getChapters()).thenReturn(null);
 
-        try (MockedStatic<ChapterUtils> ignored = mockStatic(ChapterUtils.class)) {
+        try (MockedStatic<ChapterUtils> chapters = mockStatic(ChapterUtils.class)) {
             taskManager.startChapterLoader(media);
+            taskManager.cancelAllTasks();
+            chapterLoadScheduler.triggerActions();
+
+            chapters.verify(() -> ChapterUtils.loadChapters(media, context, false), never());
         }
-        taskManager.cancelAllTasks();
 
-        verify(callback).onChapterLoaded(media);
-    }
-
-    @Test
-    public void everyWidgetUpdateRequestReachesTheServiceAnew() {
-        taskManager.requestWidgetUpdate();
-        taskManager.requestWidgetUpdate();
-
-        verify(callback, times(2)).requestWidgetState();
+        verify(callback, never()).onChapterLoaded(media);
     }
 }
