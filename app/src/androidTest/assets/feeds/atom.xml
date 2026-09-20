@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+      xml:lang="fr">
+  <id>urn:uuid:atom-feed</id>
+  <title type="html">Atom &lt;b&gt;Podcast&lt;/b&gt;</title>
+  <subtitle type="text">Subtitle of the Atom feed</subtitle>
+  <link rel="alternate" type="text/html" href="https://example.com/atom"/>
+  <link rel="alternate" type="application/rss+xml" title="RSS version" href="${BASE}/feeds/full.xml"/>
+  <link rel="archives" type="application/atom+xml" title="Archive" href="${BASE}/feeds/archive.xml"/>
+  <link rel="archives" type="text/html" href="https://example.com/atom/archive"/>
+  <link rel="payment" href="https://example.com/atom-donate"/>
+  <logo>${BASE}/covers/logo.png</logo>
+  <icon>${BASE}/covers/icon.png</icon>
+  <author><name>First Author</name></author>
+  <author><name>Second Author</name></author>
+  <entry>
+    <id>urn:uuid:atom-entry-1</id>
+    <title type="text">First Atom entry</title>
+    <link rel="alternate" href="https://example.com/atom/1"/>
+    <link rel="enclosure" type="audio/mpeg" href="${BASE}/media/atom1.mp3" length="123456"/>
+    <link rel="payment" href="https://example.com/atom/1/pay"/>
+    <published>2023-03-01T10:00:00Z</published>
+    <updated>2023-03-02T10:00:00Z</updated>
+    <summary type="text">Short summary</summary>
+    <content type="html">&lt;p&gt;Content with &lt;em&gt;markup&lt;/em&gt; that is longer than the summary&lt;/p&gt;</content>
+    <itunes:duration>120</itunes:duration>
+  </entry>
+  <entry>
+    <id>urn:uuid:atom-entry-2</id>
+    <title>Second Atom entry</title>
+    <link href="https://example.com/atom/2"/>
+    <link rel="enclosure" type="image/png" href="${BASE}/covers/entry.png"/>
+    <link rel="enclosure" href="${BASE}/media/atom2.bin" length="broken"/>
+    <updated>2023-02-01T10:00:00Z</updated>
+    <content type="xhtml">Plain content of the second entry</content>
+  </entry>
+  <entry>
+    <id>urn:uuid:atom-entry-3</id>
+    <title>Third Atom entry</title>
+    <updated>2023-01-01T10:00:00Z</updated>
+  </entry>
+</feed>
