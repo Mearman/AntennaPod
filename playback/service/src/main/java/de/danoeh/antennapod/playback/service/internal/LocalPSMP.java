@@ -620,9 +620,13 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
             return;
         }
 
-        mediaPlayer = new ExoPlayerWrapper(context);
+        mediaPlayer = newExoPlayerWrapper();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         setMediaPlayerListeners(mediaPlayer);
+    }
+
+    ExoPlayerWrapper newExoPlayerWrapper() {
+        return new ExoPlayerWrapper(context);
     }
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
