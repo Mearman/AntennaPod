@@ -18,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -379,5 +380,70 @@ public class GpodnetServiceTest {
         assertEquals("https://gpodder.example/api/2/auth/other/login.json",
                 http.request(0).request.url().toString());
         assertEquals(Credentials.basic("other", "different"), http.request(0).request.header("Authorization"));
+    }
+
+    private void assertFailsWithNetworkError(ThrowingCall call) throws Exception {
+        IOException failure = new IOException("offline");
+        login();
+        http.enqueueFailure(failure);
+
+        GpodnetServiceException exception = assertThrows(GpodnetServiceException.class, call::run);
+
+        assertEquals(failure, exception.getCause());
+    }
+
+    private interface ThrowingCall {
+        void run() throws Exception;
+    }
+
+    @Test
+    public void getDevicesWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(() -> service.getDevices());
+    }
+
+    @Test
+    public void configureDeviceWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(() -> service.configureDevice("device", "caption", null));
+    }
+
+    @Test
+    public void uploadSubscriptionChangesWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(
+                () -> service.uploadSubscriptionChanges(Collections.emptyList(), Collections.emptyList()));
+    }
+
+    @Test
+    public void getSubscriptionChangesWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(() -> service.getSubscriptionChanges(0));
+    }
+
+    @Test
+    public void uploadEpisodeActionsWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(() -> service.uploadEpisodeActions(playActions(1)));
+    }
+
+    @Test
+    public void getEpisodeActionChangesWrapsNetworkFailures() throws Exception {
+        assertFailsWithNetworkError(() -> service.getEpisodeActionChanges(0));
+    }
+
+    @Test
+    public void responseBodyThatCannotBeReadIsReportedAsServiceFailure() throws Exception {
+        login();
+        http.enqueueUnreadableBody(200);
+
+        GpodnetServiceException exception = assertThrows(GpodnetServiceException.class, () -> service.getDevices());
+
+        assertEquals("unreadable body", exception.getCause().getMessage());
+    }
+
+    @Test
+    public void hostThatCannotFormAnUrlFailsLogin() {
+        service = new GpodnetService(http.client(), "bad host", "device", "user", "secret");
+
+        GpodnetServiceException exception = assertThrows(GpodnetServiceException.class, () -> service.login());
+
+        assertTrue(exception.getCause() instanceof URISyntaxException);
+        assertEquals(0, http.requests().size());
     }
 }

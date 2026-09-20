@@ -7,6 +7,9 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
+import okio.Okio;
+import okio.Source;
+import okio.Timeout;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -68,6 +71,34 @@ public class FakeHttpClient {
     public FakeHttpClient enqueueFailure(IOException failure) {
         replies.add(request -> {
             throw failure;
+        });
+        return this;
+    }
+
+    public FakeHttpClient enqueueUnreadableBody(int code) {
+        replies.add(request -> {
+            Source failing = new Source() {
+                @Override
+                public long read(Buffer sink, long byteCount) throws IOException {
+                    throw new IOException("unreadable body");
+                }
+
+                @Override
+                public Timeout timeout() {
+                    return Timeout.NONE;
+                }
+
+                @Override
+                public void close() {
+                }
+            };
+            return new Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(code)
+                    .message("Message " + code)
+                    .body(ResponseBody.create(Okio.buffer(failing), JSON, -1))
+                    .build();
         });
         return this;
     }
