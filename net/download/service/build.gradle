@@ -7,6 +7,10 @@ apply from: "../../../mockitoAgent.gradle"
 
 android {
     namespace "de.danoeh.antennapod.net.download.service"
+
+    sourceSets {
+        test.resources.srcDir "../../../parser/media/src/test/resources"
+    }
 }
 
 dependencies {
