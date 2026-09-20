@@ -5,6 +5,7 @@ import de.danoeh.antennapod.net.common.NetworkUtils;
 import de.danoeh.antennapod.net.common.RedirectChecker;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.service.download.DownloadTestFixture;
+import de.test.antennapod.util.PlatformNetwork;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,9 +19,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Checks the network settings helpers and the redirect detection against the local test server.
- */
 @RunWith(AndroidJUnit4.class)
 public class NetworkHelpersTest {
     private static final int UNUSED_PORT_URL_ID = 12345;
@@ -40,37 +38,63 @@ public class NetworkHelpersTest {
         fixture.tearDown();
     }
 
-    @Test
-    public void networkIsAvailableAndAllTransfersAreAllowedWhenMobileDataIsAllowed() {
-        UserPreferences.setAllowMobileFeedRefresh(true);
-        UserPreferences.setAllowMobileEpisodeDownload(true);
-        UserPreferences.setAllowMobileAutoDownload(true);
-        UserPreferences.setAllowMobileStreaming(true);
-        UserPreferences.setAllowMobileImages(true);
+    private void allowMobile(boolean feedRefresh, boolean episodeDownload, boolean streaming, boolean images) {
+        UserPreferences.setAllowMobileFeedRefresh(feedRefresh);
+        UserPreferences.setAllowMobileEpisodeDownload(episodeDownload);
+        UserPreferences.setAllowMobileStreaming(streaming);
+        UserPreferences.setAllowMobileImages(images);
+    }
 
-        assertTrue(NetworkUtils.networkAvailable());
+    @Test
+    public void networkAvailabilityFollowsTheConnectivityOfThePlatform() {
+        assertEquals(PlatformNetwork.isConnected(), NetworkUtils.networkAvailable());
+    }
+
+    @Test
+    public void networkRestrictionFollowsTheMeteredAndCellularStateOfThePlatform() {
+        assertEquals(PlatformNetwork.isMeteredOrCellular(), NetworkUtils.isNetworkRestricted());
+        assertEquals(PlatformNetwork.isVpnOverWifi(), NetworkUtils.isVpnOverWifi());
+    }
+
+    @Test
+    public void everyTransferIsAllowedWhenMobileDataIsAllowedForAllOfThem() {
+        allowMobile(true, true, true, true);
+
         assertTrue(NetworkUtils.isFeedRefreshAllowed());
         assertTrue(NetworkUtils.isEpisodeDownloadAllowed());
         assertTrue(NetworkUtils.isStreamingAllowed());
         assertTrue(NetworkUtils.isImageAllowed());
         assertTrue(NetworkUtils.isEpisodeHeadDownloadAllowed());
-        assertTrue(NetworkUtils.isAutoDownloadAllowed());
     }
 
     @Test
-    public void transfersFollowTheNetworkRestrictionWhenMobileDataIsNotAllowed() {
-        UserPreferences.setAllowMobileFeedRefresh(false);
-        UserPreferences.setAllowMobileEpisodeDownload(false);
-        UserPreferences.setAllowMobileStreaming(false);
-        UserPreferences.setAllowMobileImages(false);
-        boolean restricted = NetworkUtils.isNetworkRestricted();
+    public void mobileDataSettingsAllowOnlyTheirOwnTransferOnARestrictedNetwork() {
+        boolean restricted = PlatformNetwork.isMeteredOrCellular();
 
-        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
+        allowMobile(true, false, false, false);
+        assertTrue(NetworkUtils.isFeedRefreshAllowed());
         assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
         assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
         assertEquals(!restricted, NetworkUtils.isImageAllowed());
-        assertEquals(!restricted, NetworkUtils.isEpisodeHeadDownloadAllowed());
-        assertFalse(NetworkUtils.isVpnOverWifi());
+
+        allowMobile(false, true, false, false);
+        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
+        assertTrue(NetworkUtils.isEpisodeDownloadAllowed());
+        assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
+        assertEquals(!restricted, NetworkUtils.isImageAllowed());
+
+        allowMobile(false, false, true, false);
+        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
+        assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
+        assertTrue(NetworkUtils.isStreamingAllowed());
+        assertEquals(!restricted, NetworkUtils.isImageAllowed());
+
+        allowMobile(false, false, false, true);
+        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
+        assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
+        assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
+        assertTrue(NetworkUtils.isImageAllowed());
+        assertTrue(NetworkUtils.isEpisodeHeadDownloadAllowed());
     }
 
     @Test

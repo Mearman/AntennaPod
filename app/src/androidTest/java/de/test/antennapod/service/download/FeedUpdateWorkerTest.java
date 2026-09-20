@@ -21,6 +21,7 @@ import de.danoeh.antennapod.net.download.service.feed.FeedUpdateWorker;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
+import de.test.antennapod.util.PlatformNetwork;
 import de.test.antennapod.util.service.download.HTTPBin;
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -38,9 +39,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Runs the feed refresh worker against feeds that are hosted on the local test server.
- */
 @RunWith(AndroidJUnit4.class)
 public class FeedUpdateWorkerTest {
     private final DownloadTestFixture fixture = new DownloadTestFixture();
@@ -170,14 +168,33 @@ public class FeedUpdateWorkerTest {
     }
 
     @Test
-    public void automaticRefreshChecksTheNetworkBeforeUpdating() throws Exception {
+    public void automaticRefreshWaitsForAnAllowedNetworkBeforeUpdating() throws Exception {
         Feed feed = subscribeWithoutNewestEpisode("Network checked");
+        UserPreferences.setAllowMobileFeedRefresh(false);
+        Data automatic = new Data.Builder().putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build();
+
+        ListenableWorker.Result result = run(automatic);
+
+        if (PlatformNetwork.isMeteredOrCellular()) {
+            assertEquals(ListenableWorker.Result.retry(), result);
+            assertEquals(2, titlesOf(feed).size());
+            assertTrue(fixture.requestsFor(feed.getDownloadUrl()).isEmpty());
+        } else {
+            assertEquals(ListenableWorker.Result.success(), result);
+            assertEquals(3, titlesOf(feed).size());
+        }
+    }
+
+    @Test
+    public void automaticRefreshOnMobileDataRunsWhenTheUserAllowsIt() throws Exception {
+        Feed feed = subscribeWithoutNewestEpisode("Mobile allowed");
         UserPreferences.setAllowMobileFeedRefresh(true);
 
         assertEquals(ListenableWorker.Result.success(), run(new Data.Builder()
                 .putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build()));
 
         assertEquals(3, titlesOf(feed).size());
+        assertEquals(1, fixture.requestsFor(feed.getDownloadUrl()).size());
     }
 
     @Test
@@ -245,6 +262,7 @@ public class FeedUpdateWorkerTest {
 
         awaitLogEntry(feed, DownloadError.ERROR_PARSER_EXCEPTION);
         awaitFeedUpdateFailed(feed, true);
+        assertEquals(1, titlesOf(feed).size());
     }
 
     @Test
@@ -256,6 +274,8 @@ public class FeedUpdateWorkerTest {
         assertEquals(ListenableWorker.Result.success(), refresh(feed));
 
         awaitLogEntry(feed, DownloadError.ERROR_UNSUPPORTED_TYPE_HTML);
+        awaitFeedUpdateFailed(feed, true);
+        assertEquals(1, titlesOf(feed).size());
     }
 
     @Test
@@ -268,6 +288,8 @@ public class FeedUpdateWorkerTest {
         assertEquals(ListenableWorker.Result.success(), refresh(feed));
 
         awaitLogEntry(feed, DownloadError.ERROR_UNSUPPORTED_TYPE);
+        awaitFeedUpdateFailed(feed, true);
+        assertEquals(1, titlesOf(feed).size());
     }
 
     @Test
@@ -343,20 +365,23 @@ public class FeedUpdateWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), refresh(feed));
 
-        String expected = context.getResources().getQuantityString(
-                R.plurals.new_episode_notification_message, 1, 1, "Notified");
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> hasNotificationWithText(expected));
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> hasNotificationWithText(
+                newEpisodeMessage("Notified")));
     }
 
     @Test
     public void newEpisodeNotificationIsNotShownWhenDisabledForTheFeed() throws Exception {
-        Feed feed = subscribeWithoutNewestEpisode("Silent");
+        Feed silent = subscribeWithoutNewestEpisode("Silent");
+        Feed notified = subscribeWithoutNewestEpisode("Also notified");
+        notified.getPreferences().setShowEpisodeNotification(true);
+        DBWriter.setFeedPreferences(notified.getPreferences()).get();
 
-        assertEquals(ListenableWorker.Result.success(), refresh(feed));
+        assertEquals(ListenableWorker.Result.success(), refresh(null));
 
-        assertEquals(3, titlesOf(feed).size());
-        assertFalse(hasNotificationWithText(context.getResources().getQuantityString(
-                R.plurals.new_episode_notification_message, 1, 1, "Silent")));
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> hasNotificationWithText(newEpisodeMessage(
+                "Also notified")));
+        assertEquals(3, titlesOf(silent).size());
+        assertFalse(hasNotificationWithText(newEpisodeMessage("Silent")));
     }
 
     @Test
@@ -376,6 +401,10 @@ public class FeedUpdateWorkerTest {
             }
             return false;
         });
+    }
+
+    private String newEpisodeMessage(String feedTitle) {
+        return context.getResources().getQuantityString(R.plurals.new_episode_notification_message, 1, 1, feedTitle);
     }
 
     private boolean hasNotificationWithText(String text) {
