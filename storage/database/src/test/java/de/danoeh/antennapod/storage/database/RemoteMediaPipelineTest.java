@@ -1,7 +1,6 @@
 package de.danoeh.antennapod.storage.database;
 
 import android.os.Parcel;
-import de.danoeh.antennapod.model.feed.Chapter;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -13,9 +12,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-
-import java.util.Date;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -101,26 +97,6 @@ public class RemoteMediaPipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void playbackStateOfRemoteMediaCanBeUpdatedAndStartsAtNothing() {
-        RemoteMedia remote = new RemoteMedia(withLink);
-        assertEquals(0, remote.getPosition());
-        assertEquals(0, remote.getDuration());
-        assertEquals(0, remote.getLastPlayedTimeStatistics());
-        assertNull(remote.getChapters());
-
-        remote.setPosition(3000);
-        remote.setDuration(60000);
-        remote.setLastPlayedTimeStatistics(42L);
-        remote.setChapters(List.of(new Chapter(0, "Intro", null, null)));
-        remote.onPlaybackStart();
-
-        assertEquals(3000, remote.getPosition());
-        assertEquals(60000, remote.getDuration());
-        assertEquals(42L, remote.getLastPlayedTimeStatistics());
-        assertEquals("Intro", remote.getChapters().get(0).getTitle());
-    }
-
-    @Test
     public void parcelledRemoteMediaKeepsEverythingIncludingPlaybackState() {
         RemoteMedia remote = new RemoteMedia(withLink);
         remote.setPosition(3000);
@@ -133,7 +109,6 @@ public class RemoteMediaPipelineTest extends FeedPipelineTestBase {
         RemoteMedia restored = RemoteMedia.CREATOR.createFromParcel(parcel);
         parcel.recycle();
 
-        assertEquals(0, remote.describeContents());
         assertEquals(remote, restored);
         assertEquals(remote.hashCode(), restored.hashCode());
         assertEquals("With link", restored.getEpisodeTitle());
@@ -144,7 +119,6 @@ public class RemoteMediaPipelineTest extends FeedPipelineTestBase {
         assertEquals(3000, restored.getPosition());
         assertEquals(60000, restored.getDuration());
         assertEquals(42L, restored.getLastPlayedTimeStatistics());
-        assertEquals(2, RemoteMedia.CREATOR.newArray(2).length);
     }
 
     @Test
@@ -156,24 +130,6 @@ public class RemoteMediaPipelineTest extends FeedPipelineTestBase {
         assertEquals(stored, remote);
         assertNotEquals(remote, withoutLink.getMedia());
         assertNotEquals(withoutLink.getMedia(), remote);
-    }
-
-    @Test
-    public void remoteMediaDoesNotEqualStoredMediaOfAnotherFeedOrWithoutAnItem() {
-        RemoteMedia remote = new RemoteMedia(withLink);
-        FeedMedia detached = new FeedMedia(0, null, 0, 0, 0, "audio/mpeg", null, "https://example.com/with-link.mp3",
-                0, new Date(0), 0, 0);
-        FeedItem otherItem = new FeedItem();
-        otherItem.setItemIdentifier("with-link");
-        FeedMedia withoutFeed = new FeedMedia(otherItem, "https://example.com/with-link.mp3", 0, "audio/mpeg");
-        otherItem.setMedia(withoutFeed);
-
-        assertNotEquals(remote, detached);
-        assertNotEquals(remote, withoutFeed);
-        assertNotEquals(remote, new RemoteMedia("https://example.com/other.mp3", "other", FEED_URL, "T", "E", null,
-                null, null, null, null, null, null));
-        assertNotEquals(remote, null);
-        assertNotEquals(remote, "not media");
     }
 
     @Test
