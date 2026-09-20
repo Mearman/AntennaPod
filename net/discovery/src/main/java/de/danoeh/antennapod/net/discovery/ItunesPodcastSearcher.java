@@ -22,9 +22,18 @@ import java.util.regex.Pattern;
 
 public class ItunesPodcastSearcher implements PodcastSearcher {
     private static final String ITUNES_API_URL = "https://itunes.apple.com/search?media=podcast&term=%s";
+    private static final String ITUNES_LOOKUP_URL = "https://itunes.apple.com/lookup?id=";
     private static final String PATTERN_BY_ID = ".*/podcasts\\.apple\\.com/.*/podcast/.*/id(\\d+).*";
+    private final String searchApiUrl;
+    private final String lookupApiUrl;
 
     public ItunesPodcastSearcher() {
+        this(ITUNES_API_URL, ITUNES_LOOKUP_URL);
+    }
+
+    ItunesPodcastSearcher(String searchApiUrl, String lookupApiUrl) {
+        this.searchApiUrl = searchApiUrl;
+        this.lookupApiUrl = lookupApiUrl;
     }
 
     @Override
@@ -38,7 +47,7 @@ public class ItunesPodcastSearcher implements PodcastSearcher {
                 encodedQuery = query;
             }
 
-            String formattedUrl = String.format(ITUNES_API_URL, encodedQuery);
+            String formattedUrl = String.format(searchApiUrl, encodedQuery);
 
             OkHttpClient client = AntennapodHttpClient.getHttpClient();
             Request.Builder httpReq = new Request.Builder()
@@ -79,7 +88,7 @@ public class ItunesPodcastSearcher implements PodcastSearcher {
     public Single<String> lookupUrl(String url) {
         Pattern pattern = Pattern.compile(PATTERN_BY_ID);
         Matcher matcher = pattern.matcher(url);
-        final String lookupUrl = matcher.find() ? ("https://itunes.apple.com/lookup?id=" + matcher.group(1)) : url;
+        final String lookupUrl = matcher.find() ? (lookupApiUrl + matcher.group(1)) : url;
         return Single.create(emitter -> {
             OkHttpClient client = AntennapodHttpClient.getHttpClient();
             Request.Builder httpReq = new Request.Builder().url(lookupUrl);

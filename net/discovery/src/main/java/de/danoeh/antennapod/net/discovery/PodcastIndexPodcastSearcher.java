@@ -27,8 +27,14 @@ import okhttp3.Response;
 
 public class PodcastIndexPodcastSearcher implements PodcastSearcher {
     private static final String SEARCH_API_URL = "https://api.podcastindex.org/api/1.0/search/byterm?q=%s";
+    private final String searchApiUrl;
 
     public PodcastIndexPodcastSearcher() {
+        this(SEARCH_API_URL);
+    }
+
+    PodcastIndexPodcastSearcher(String searchApiUrl) {
+        this.searchApiUrl = searchApiUrl;
     }
 
     @Override
@@ -41,7 +47,7 @@ public class PodcastIndexPodcastSearcher implements PodcastSearcher {
                 // this won't ever be thrown
                 encodedQuery = query;
             }
-            String formattedUrl = String.format(SEARCH_API_URL, encodedQuery);
+            String formattedUrl = String.format(searchApiUrl, encodedQuery);
             List<PodcastSearchResult> podcasts = new ArrayList<>();
             try {
                 OkHttpClient client = AntennapodHttpClient.getHttpClient();

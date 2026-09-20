@@ -23,15 +23,23 @@ import java.util.concurrent.TimeUnit;
 public class ItunesTopListLoader {
     private static final String TAG = "ITunesTopListLoader";
     private final Context context;
+    private final String topListUrl;
     public static final String PREF_KEY_COUNTRY_CODE = "country_code";
     public static final String PREF_KEY_HIDDEN_DISCOVERY_COUNTRY = "hidden_discovery_country";
     public static final String PREF_KEY_NEEDS_CONFIRM = "needs_confirm";
     public static final String PREFS = "CountryRegionPrefs";
     public static final String COUNTRY_CODE_UNSET = "99";
     private static final int NUM_LOADED = 25;
+    private static final String TOP_LIST_URL =
+            "https://itunes.apple.com/%s/rss/toppodcasts/limit=" + NUM_LOADED + "/explicit=true/json";
 
     public ItunesTopListLoader(Context context) {
+        this(context, TOP_LIST_URL);
+    }
+
+    ItunesTopListLoader(Context context, String topListUrl) {
         this.context = context;
+        this.topListUrl = topListUrl;
     }
 
     public List<PodcastSearchResult> loadToplist(String country, int limit, List<Feed> subscribed)
@@ -76,11 +84,10 @@ public class ItunesTopListLoader {
     }
 
     private String getTopListFeed(OkHttpClient client, String country) throws IOException {
-        String url = "https://itunes.apple.com/%s/rss/toppodcasts/limit=" + NUM_LOADED + "/explicit=true/json";
-        Log.d(TAG, "Feed URL " + String.format(url, country));
+        Log.d(TAG, "Feed URL " + String.format(topListUrl, country));
         Request.Builder httpReq = new Request.Builder()
                 .cacheControl(new CacheControl.Builder().maxStale(1, TimeUnit.DAYS).build())
-                .url(String.format(url, country));
+                .url(String.format(topListUrl, country));
 
         try (Response response = client.newCall(httpReq.build()).execute()) {
             if (response.isSuccessful()) {
