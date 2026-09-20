@@ -14,7 +14,9 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
@@ -35,18 +37,29 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class AntennapodHttpClientTest {
-    private static final File CACHE_DIRECTORY = new File("antennapod-http-client-test-cache");
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    private File cacheDirectory;
     private String originalUserAgent;
+    private String originalMaxConnections;
 
     @Before
     public void setUp() {
         originalUserAgent = UserAgentInterceptor.USER_AGENT;
-        AntennapodHttpClient.setCacheDirectory(CACHE_DIRECTORY);
+        originalMaxConnections = System.getProperty("http.maxConnections");
+        cacheDirectory = temporaryFolder.getRoot();
+        AntennapodHttpClient.setCacheDirectory(cacheDirectory);
         AntennapodHttpClient.setProxyConfig(null);
     }
 
     @After
     public void tearDown() {
+        if (originalMaxConnections == null) {
+            System.clearProperty("http.maxConnections");
+        } else {
+            System.setProperty("http.maxConnections", originalMaxConnections);
+        }
         UserAgentInterceptor.USER_AGENT = originalUserAgent;
         AntennapodHttpClient.setProxyConfig(null);
         AntennapodHttpClient.reinit();
@@ -77,7 +90,7 @@ public class AntennapodHttpClientTest {
         assertTrue(client.followRedirects());
         assertTrue(client.followSslRedirects());
         assertNotNull(client.cache());
-        assertEquals(CACHE_DIRECTORY, client.cache().directory());
+        assertEquals(cacheDirectory, client.cache().directory());
         assertEquals(20L * 1000000, client.cache().maxSize());
     }
 
