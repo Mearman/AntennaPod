@@ -113,7 +113,7 @@ public class FeedAuthenticationTest {
         waitForViewGlobally(withId(R.id.usernameEditText), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.usernameEditText)).perform(replaceText(user));
         onView(withId(R.id.passwordEditText)).perform(replaceText(password));
-        FeedRobot.confirmDialog(R.string.confirm_label);
+        FeedRobot.confirmTypedDialog(R.string.confirm_label);
     }
 
     private Feed subscribeWithCredentials(String url) {

@@ -3,6 +3,7 @@ package de.test.antennapod.ui;
 import android.view.View;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
+import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.matcher.BoundedMatcher;
 import de.danoeh.antennapod.R;
@@ -101,8 +102,12 @@ public class FeedRobot {
     }
 
     public static void confirmDialog(int buttonTextRes) {
-        Espresso.closeSoftKeyboard();
         onView(withText(buttonTextRes)).inRoot(isDialog()).perform(click());
+    }
+
+    public static void confirmTypedDialog(int buttonTextRes) {
+        Espresso.closeSoftKeyboard();
+        confirmDialog(buttonTextRes);
     }
 
     public static void awaitAssertion(ThrowingRunnable assertion) {
@@ -155,8 +160,15 @@ public class FeedRobot {
     }
 
     public static void openFeedMenu(int titleRes) {
-        onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
-        onView(withText(titleRes)).perform(click());
+        awaitAssertion(() -> {
+            onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
+            try {
+                onView(withText(titleRes)).perform(click());
+            } catch (NoMatchingViewException e) {
+                Espresso.pressBack();
+                throw e;
+            }
+        });
     }
 
     public static void refreshFromMenu() throws Exception {

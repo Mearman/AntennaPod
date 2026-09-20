@@ -187,7 +187,7 @@ public class FeedPreferencesTest {
 
         FeedRobot.clickSetting(R.string.rename_feed_label);
         onView(withId(R.id.textInput)).perform(replaceText("My own name"));
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(android.R.string.ok);
 
         FeedRobot.awaitCondition(() -> "My own name".equals(FeedRobot.reload(feed).getTitle()));
         assertEquals("My own name", FeedRobot.reload(feed).getCustomTitle());
@@ -200,7 +200,7 @@ public class FeedPreferencesTest {
         onView(withText(R.string.reset)).inRoot(isDialog()).perform(click());
         onView(withId(R.id.textInput)).check(matches(withText("My own name")));
         onView(withId(R.id.textInput)).perform(replaceText("Preferences Feed"));
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(android.R.string.ok);
 
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getCustomTitle() == null);
         assertEquals("Preferences Feed", FeedRobot.reload(feed).getTitle());
@@ -217,7 +217,7 @@ public class FeedPreferencesTest {
         onView(allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(R.id.newTagTextInput))))
                 .perform(click());
         onView(withId(R.id.newTagEditText)).perform(replaceText("News"));
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(android.R.string.ok);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getTags().contains("Comedy")
                 && preferences(feed).getTags().contains("News"));
@@ -294,7 +294,7 @@ public class FeedPreferencesTest {
         waitForViewGlobally(withId(R.id.etxtSkipIntro), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.etxtSkipIntro)).perform(replaceText("12"));
         onView(withId(R.id.etxtSkipEnd)).perform(replaceText("7"));
-        FeedRobot.confirmDialog(R.string.confirm_label);
+        FeedRobot.confirmTypedDialog(R.string.confirm_label);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFeedSkipIntro() == 12);
         assertEquals(7, preferences(feed).getFeedSkipEnding());
@@ -304,7 +304,7 @@ public class FeedPreferencesTest {
         onView(withId(R.id.etxtSkipIntro)).check(matches(withText("12")));
         onView(withId(R.id.etxtSkipIntro)).perform(replaceText(""));
         onView(withId(R.id.etxtSkipEnd)).perform(replaceText(""));
-        FeedRobot.confirmDialog(R.string.confirm_label);
+        FeedRobot.confirmTypedDialog(R.string.confirm_label);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFeedSkipIntro() == 0);
         assertEquals(0, preferences(feed).getFeedSkipEnding());
@@ -412,7 +412,7 @@ public class FeedPreferencesTest {
         addFilterTerm("Special edition");
         onView(withId(R.id.durationCheckBox)).perform(click());
         onView(withId(R.id.episodeFilterDurationText)).perform(replaceText("5"));
-        FeedRobot.confirmDialog(R.string.confirm_label);
+        FeedRobot.confirmTypedDialog(R.string.confirm_label);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFilter().hasIncludeFilter());
         FeedFilter filter = preferences(feed).getFilter();
@@ -439,7 +439,7 @@ public class FeedPreferencesTest {
         waitForViewGlobally(withId(R.id.excludeRadio), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.excludeRadio)).perform(click());
         addFilterTerm("Trailer");
-        FeedRobot.confirmDialog(R.string.confirm_label);
+        FeedRobot.confirmTypedDialog(R.string.confirm_label);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFilter().excludeOnly()
                 && !preferences(feed).getFilter().getExcludeFilter().isEmpty());
