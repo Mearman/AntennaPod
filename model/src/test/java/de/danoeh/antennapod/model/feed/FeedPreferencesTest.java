@@ -207,7 +207,8 @@ public class FeedPreferencesTest {
 
     @Test
     public void autoDownloadSetting_fromBoolean_mapsToEnabledOrDisabled() {
-        assertEquals(FeedPreferences.AutoDownloadSetting.ENABLED, FeedPreferences.AutoDownloadSetting.fromBoolean(true));
+        assertEquals(FeedPreferences.AutoDownloadSetting.ENABLED,
+                FeedPreferences.AutoDownloadSetting.fromBoolean(true));
         assertEquals(FeedPreferences.AutoDownloadSetting.DISABLED,
                 FeedPreferences.AutoDownloadSetting.fromBoolean(false));
     }
