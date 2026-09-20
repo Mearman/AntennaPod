@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.net.download.service.episode;
 
+import android.media.MediaMetadataRetriever;
 import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.download.DownloadRequest;
 import de.danoeh.antennapod.model.download.DownloadResult;
@@ -16,6 +17,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
+import org.robolectric.shadows.ShadowMediaMetadataRetriever;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -201,5 +203,31 @@ public class MediaDownloadedHandlerTest extends DownloadIntegrationTestBase {
 
         assertFalse(new File(file.getAbsolutePath() + ".transcript").exists());
         assertNotNull(DBReader.getFeedMedia(media.getId()).getLocalFileUrl());
+    }
+
+    @Test
+    public void durationOfDownloadedFileIsStoredWhenItsMetadataIsReadable() throws Exception {
+        FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
+        File file = downloadedFile();
+        ShadowMediaMetadataRetriever.addMetadata(file.getAbsolutePath(),
+                MediaMetadataRetriever.METADATA_KEY_DURATION, "123456");
+
+        runHandler(media, file);
+
+        assertEquals(123456, DBReader.getFeedMedia(media.getId()).getDuration());
+    }
+
+    @Test
+    public void unreadableDurationLeavesStoredDurationUntouched() throws Exception {
+        FeedMedia media = saveEpisode(server.url("/episode.mp3").toString());
+        File file = downloadedFile();
+        ShadowMediaMetadataRetriever.addMetadata(file.getAbsolutePath(),
+                MediaMetadataRetriever.METADATA_KEY_DURATION, "unknown");
+
+        runHandler(media, file);
+
+        FeedMedia stored = DBReader.getFeedMedia(media.getId());
+        assertTrue(stored.isDownloaded());
+        assertEquals(media.getDuration(), stored.getDuration());
     }
 }
