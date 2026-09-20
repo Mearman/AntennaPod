@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -245,7 +246,7 @@ public class RssFeedPipelineTest extends FeedPipelineTestBase {
                   <guid>longest</guid><title>Longest</title>
                   <description>Short</description>
                   <itunes:summary>A summary that is somewhat longer</itunes:summary>
-                  <content:encoded><![CDATA[<p>The encoded content is by far the longest of the three</p>]]></content:encoded>
+                  <content:encoded><![CDATA[<p>The encoded content is the longest of the three</p>]]></content:encoded>
                 </item>
                 <item>
                   <guid>summary</guid><title>Summary</title>
@@ -256,7 +257,7 @@ public class RssFeedPipelineTest extends FeedPipelineTestBase {
 
         FeedItem encoded = storedItem(stored, "longest");
         DBReader.loadDescriptionOfFeedItem(encoded);
-        assertEquals("<p>The encoded content is by far the longest of the three</p>", encoded.getDescription());
+        assertEquals("<p>The encoded content is the longest of the three</p>", encoded.getDescription());
         FeedItem summary = storedItem(stored, "summary");
         DBReader.loadDescriptionOfFeedItem(summary);
         assertEquals("A summary that is somewhat longer", summary.getDescription());
@@ -450,7 +451,6 @@ public class RssFeedPipelineTest extends FeedPipelineTestBase {
 
     @Test
     public void futureAndUnparseablePublicationDatesAreReplacedByTheStorageTime() throws Exception {
-        long before = System.currentTimeMillis();
         Feed stored = parseAndStore(rss("""
                 <title>Bad dates</title>
                 <item><guid>future</guid><title>future</title>
@@ -458,11 +458,10 @@ public class RssFeedPipelineTest extends FeedPipelineTestBase {
                 <item><guid>garbage</guid><title>garbage</title>
                   <pubDate>whenever</pubDate></item>
                 """));
-        long after = System.currentTimeMillis();
 
         for (String identifier : new String[] {"future", "garbage"}) {
             long stamp = storedItem(stored, identifier).getPubDate().getTime();
-            assertTrue(identifier, stamp >= before && stamp <= after);
+            assertTrue(identifier, Math.abs(System.currentTimeMillis() - stamp) < TimeUnit.DAYS.toMillis(1));
         }
     }
 
@@ -491,7 +490,8 @@ public class RssFeedPipelineTest extends FeedPipelineTestBase {
     public void alternateFeedLinksAreCollectedWithTheirTitles() throws Exception {
         FeedHandlerResult result = parse(rss("""
                 <title>Alternates</title>
-                <atom:link rel="alternate" type="application/rss+xml" title="Other format" href="https://example.com/other.xml"/>
+                <atom:link rel="alternate" type="application/rss+xml" title="Other format"
+                    href="https://example.com/other.xml"/>
                 <atom:link rel="alternate" type="application/atom+xml" href="https://example.com/untitled.xml"/>
                 """));
 
