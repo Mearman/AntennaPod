@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -136,7 +137,7 @@ public class StaticContentServer extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
         final String path = session.getUri();
         final Map<String, String> headers = session.getHeaders();
-        requests.add(new RecordedRequest(session.getMethod().name(), path, headers));
+        requests.add(new RecordedRequest(session.getMethod().name(), path, new HashMap<>(headers)));
 
         Document document = documents.get(path);
         if (document == null) {
