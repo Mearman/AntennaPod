@@ -9,6 +9,7 @@ import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.download.DownloadResult;
 import de.danoeh.antennapod.model.feed.Chapter;
+import de.danoeh.antennapod.model.feed.EmbeddedChapterImage;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.storage.database.DBReader;
@@ -214,6 +215,24 @@ public class EpisodeDownloadMetadataTest {
         assertEquals("Named", chapters.get(0).getTitle());
         assertEquals("1", chapters.get(1).getTitle());
         assertEquals("2", chapters.get(2).getTitle());
+    }
+
+    @Test
+    public void embeddedChapterPictureIsStoredAsAnOffsetIntoTheDownloadedFile() throws Exception {
+        byte[] picture = MediaFixtures.redPng();
+        List<ChapterSpec> chapters = Arrays.asList(
+                new ChapterSpec(0, "Without picture"), new ChapterSpec(30000, "With picture", picture));
+        Episode episode = episode("embedded", "audio/mpeg", MediaFixtures.mp3WithChapters(3, chapters, null));
+        Feed feed = subscribe(publishFeed(episode));
+
+        FeedItem item = downloadEpisode(feed, episode);
+
+        List<Chapter> stored = storedChapters(item);
+        assertNull(stored.get(0).getImageUrl());
+        byte[] file = FileUtils.readFileToByteArray(new File(item.getMedia().getLocalFileUrl()));
+        int offset = MediaFixtures.indexOf(file, picture);
+        assertEquals(EmbeddedChapterImage.makeUrl(offset, picture.length), stored.get(1).getImageUrl());
+        assertTrue(offset > 0);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package de.test.antennapod.util.media;
 
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import de.test.antennapod.util.TestAssets;
 
 import java.io.ByteArrayOutputStream;
@@ -16,6 +18,8 @@ public class MediaFixtures {
     public static final String AUDIO_ASSET = "3sec.mp3";
     public static final String LONG_AUDIO_ASSET = "30sec.mp3";
 
+    private static final int PICTURE_SIZE_PIXELS = 8;
+    private static final int PNG_QUALITY = 100;
     private static final int ID3_HEADER_LENGTH = 10;
     private static final int ID3_SYNCSAFE_BITS = 7;
     private static final int ID3_SYNCSAFE_MASK = 0x7F;
@@ -45,12 +49,22 @@ public class MediaFixtures {
         public final String title;
         public final String link;
         public final String imageUrl;
+        public final byte[] picture;
 
-        public ChapterSpec(long startMs, String title, String link, String imageUrl) {
+        public ChapterSpec(long startMs, String title, String link, String imageUrl, byte[] picture) {
             this.startMs = startMs;
             this.title = title;
             this.link = link;
             this.imageUrl = imageUrl;
+            this.picture = picture;
+        }
+
+        public ChapterSpec(long startMs, String title, String link, String imageUrl) {
+            this(startMs, title, link, imageUrl, null);
+        }
+
+        public ChapterSpec(long startMs, String title, byte[] picture) {
+            this(startMs, title, null, null, picture);
         }
 
         public ChapterSpec(long startMs, String title) {
@@ -59,6 +73,23 @@ public class MediaFixtures {
     }
 
     private MediaFixtures() {
+    }
+
+    public static byte[] redPng() {
+        Bitmap bitmap = Bitmap.createBitmap(PICTURE_SIZE_PIXELS, PICTURE_SIZE_PIXELS, Bitmap.Config.ARGB_8888);
+        bitmap.eraseColor(Color.RED);
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, png);
+        return png.toByteArray();
+    }
+
+    public static int indexOf(byte[] content, byte[] part) {
+        for (int start = 0; start <= content.length - part.length; start++) {
+            if (Arrays.equals(Arrays.copyOfRange(content, start, start + part.length), part)) {
+                return start;
+            }
+        }
+        return -1;
     }
 
     public static byte[] plainAudio() throws IOException {
@@ -333,6 +364,16 @@ public class MediaFixtures {
             picture.write(0);
             picture.write(chapter.imageUrl.getBytes(StandardCharsets.ISO_8859_1));
             picture.write(0);
+            payload.write(id3Frame(version, "APIC", picture.toByteArray()));
+        }
+        if (chapter.picture != null) {
+            ByteArrayOutputStream picture = new ByteArrayOutputStream();
+            picture.write(ENCODING_ISO);
+            picture.write("image/png".getBytes(StandardCharsets.ISO_8859_1));
+            picture.write(0);
+            picture.write(IMAGE_TYPE_COVER);
+            picture.write(0);
+            picture.write(chapter.picture);
             payload.write(id3Frame(version, "APIC", picture.toByteArray()));
         }
         return payload.toByteArray();
