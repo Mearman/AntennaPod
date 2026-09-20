@@ -2,6 +2,7 @@ package de.danoeh.antennapod.storage.database;
 
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry;
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -11,6 +12,7 @@ import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
@@ -25,6 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class NonSubscribedFeedsCleanerTest {
 

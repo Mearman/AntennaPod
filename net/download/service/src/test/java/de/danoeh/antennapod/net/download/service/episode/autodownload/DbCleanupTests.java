@@ -12,6 +12,7 @@ import java.util.List;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
@@ -27,6 +28,7 @@ import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
@@ -38,6 +40,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test class for DBTasks.
  */
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class DbCleanupTests {
 

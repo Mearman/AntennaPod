@@ -1,6 +1,7 @@
 package de.danoeh.antennapod.storage.database;
 
 import android.content.Context;
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.download.DownloadResult;
 import de.danoeh.antennapod.model.feed.Feed;
@@ -13,6 +14,7 @@ import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueueStub;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
@@ -30,6 +32,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class FeedDatabaseWriterTest {
     private Context context;

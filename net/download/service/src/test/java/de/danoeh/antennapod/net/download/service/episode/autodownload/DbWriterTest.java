@@ -9,6 +9,7 @@ import androidx.core.util.Consumer;
 import androidx.preference.PreferenceManager;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
@@ -22,6 +23,7 @@ import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
@@ -49,6 +51,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test class for {@link DBWriter}.
  */
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class DbWriterTest {
 

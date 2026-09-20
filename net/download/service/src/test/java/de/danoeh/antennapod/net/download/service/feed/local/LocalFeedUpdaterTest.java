@@ -8,6 +8,7 @@ import android.webkit.MimeTypeMap;
 import androidx.annotation.NonNull;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.danoeh.antennapod.test.categories.IntegrationTest;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
@@ -20,6 +21,7 @@ import de.danoeh.antennapod.storage.preferences.SynchronizationSettings;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -50,6 +52,7 @@ import static org.robolectric.Shadows.shadowOf;
 /**
  * Test local feeds handling in class LocalFeedUpdater.
  */
+@Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
 public class LocalFeedUpdaterTest {
 
