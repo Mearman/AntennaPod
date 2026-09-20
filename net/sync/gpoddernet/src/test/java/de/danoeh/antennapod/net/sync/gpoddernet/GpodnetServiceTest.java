@@ -10,7 +10,6 @@ import de.danoeh.antennapod.net.sync.serviceinterface.SyncServiceException;
 import de.danoeh.antennapod.net.sync.serviceinterface.UploadChangesResponse;
 import okhttp3.Credentials;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
