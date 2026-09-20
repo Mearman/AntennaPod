@@ -14,7 +14,6 @@ import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.databasemaintenanceservice.DatabaseMaintenanceWorker;
 import de.test.antennapod.EspressoTestUtils;
-import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,9 +25,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * Runs the periodic database maintenance that removes outdated download log entries.
- */
 @RunWith(AndroidJUnit4.class)
 public class DatabaseMaintenanceTest {
     private static final long DAY_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -85,7 +81,7 @@ public class DatabaseMaintenanceTest {
         DatabaseMaintenanceWorker.enqueueIfNeeded(context);
         DatabaseMaintenanceWorker.enqueueIfNeeded(context);
 
-        Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> !scheduled().isEmpty());
+        WorkManager.getInstance(context).pruneWork().getResult().get();
         assertEquals(1, scheduled().size());
     }
 
