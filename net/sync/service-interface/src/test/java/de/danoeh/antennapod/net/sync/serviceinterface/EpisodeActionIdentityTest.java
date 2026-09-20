@@ -6,11 +6,16 @@ import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class EpisodeActionIdentityTest {
     private static EpisodeAction.Builder builder() {
-        return new EpisodeAction.Builder("podcast", "episode", EpisodeAction.PLAY)
+        return builder("podcast", "episode", EpisodeAction.PLAY);
+    }
+
+    private static EpisodeAction.Builder builder(String podcast, String episode, EpisodeAction.Action kind) {
+        return new EpisodeAction.Builder(podcast, episode, kind)
                 .timestamp(new Date(1609488000000L))
                 .guid("guid")
                 .started(1)
@@ -19,15 +24,35 @@ public class EpisodeActionIdentityTest {
     }
 
     @Test
-    public void actionsBuiltFromTheSameValuesHaveTheSameHashCode() {
-        assertEquals(builder().build().hashCode(), builder().build().hashCode());
+    public void actionsBuiltFromTheSameValuesAreEqualWithTheSameHashCode() {
+        EpisodeAction first = builder().build();
+        EpisodeAction second = builder().build();
+
+        assertEquals(first, second);
+        assertEquals(first.hashCode(), second.hashCode());
     }
 
     @Test
-    public void hashCodeOfMinimalActionCanBeComputed() {
-        EpisodeAction minimal = new EpisodeAction.Builder(null, null, null).build();
+    public void actionsWithoutAnyOptionalValuesAreEqualWithTheSameHashCode() {
+        EpisodeAction first = new EpisodeAction.Builder(null, null, null).build();
+        EpisodeAction second = new EpisodeAction.Builder(null, null, null).build();
 
-        assertEquals(minimal.hashCode(), new EpisodeAction.Builder(null, null, null).build().hashCode());
+        assertEquals(first, second);
+        assertEquals(first.hashCode(), second.hashCode());
+    }
+
+    @Test
+    public void actionsDifferingInAnyValueAreNotEqual() {
+        EpisodeAction action = builder().build();
+
+        assertNotEquals(action, builder("other", "episode", EpisodeAction.PLAY).build());
+        assertNotEquals(action, builder("podcast", "other", EpisodeAction.PLAY).build());
+        assertNotEquals(action, builder("podcast", "episode", EpisodeAction.DELETE).build());
+        assertNotEquals(action, builder().guid("other").build());
+        assertNotEquals(action, builder().timestamp(new Date(1609488000001L)).build());
+        assertNotEquals(action, builder().started(4).build());
+        assertNotEquals(action, builder().position(5).build());
+        assertNotEquals(action, builder().total(6).build());
     }
 
     @Test
