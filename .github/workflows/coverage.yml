@@ -130,6 +130,10 @@ jobs:
           ./gradlew coverageReport -PcoverageSuite=integration
           ./gradlew coverageReport -PcoverageSuite=e2e
           ./gradlew coverageReport
+          ./gradlew coverageReport -PcoverageSuite=unit -PcoverageScope=logic
+          ./gradlew coverageReport -PcoverageSuite=integration -PcoverageScope=logic
+          ./gradlew coverageReport -PcoverageSuite=e2e -PcoverageScope=logic
+          ./gradlew coverageReport -PcoverageScope=logic
           cat build/reports/coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

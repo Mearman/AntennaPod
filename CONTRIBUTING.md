@@ -78,7 +78,7 @@ Coverage is only collected when the `coverage` property is set. Each run is stor
 1. `./gradlew testPlayDebugUnitTest -Pcoverage -PcoverageSuite=unit`
 2. `./gradlew coverageReport -PcoverageSuite=unit` (leave out `-PcoverageSuite` to merge all suites)
 
-The reports are written to `build/reports/coverage/<suite>/`, with a summary table in `build/reports/coverage/summary.md`. Coverage of the instrumented tests is reported as the suite `e2e` after running `./gradlew connectedPlayDebugAndroidTest -Pcoverage`.
+Add `-PcoverageScope=logic` to report only the non-UI modules (model, event, system, parser, net, storage and playback except the Chromecast module), and `-PcoverageMinimum=<percent>` to fail when the line coverage is below that value. The reports are written to `build/reports/coverage/<suite>/`, with a summary table in `build/reports/coverage/summary.md`. Coverage of the instrumented tests is reported as the suite `e2e` after running `./gradlew connectedPlayDebugAndroidTest -Pcoverage`.
 
 ### Running integration tests
 
