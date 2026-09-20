@@ -29,6 +29,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -39,9 +41,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Runs the worker that downloads an episode against the local test server and checks what it stores.
- */
 @RunWith(AndroidJUnit4.class)
 public class EpisodeDownloadWorkerTest {
     private static final int LAST_RUN_ATTEMPT = 2;
@@ -112,6 +111,14 @@ public class EpisodeDownloadWorkerTest {
         return null;
     }
 
+    private List<String> messageTexts() {
+        List<String> texts = new ArrayList<>();
+        for (MessageEvent message : messages) {
+            texts.add(message.message);
+        }
+        return texts;
+    }
+
     private void assertNotDownloaded() {
         assertFalse(DownloadTestFixture.reload(media).isDownloaded());
     }
@@ -140,7 +147,7 @@ public class EpisodeDownloadWorkerTest {
     }
 
     @Test
-    public void downloadedEpisodeIsNotDownloadedAgainAfterCleaningTheFile() throws Exception {
+    public void episodeCanBeDownloadedAgainAfterItsFileWasDeleted() throws Exception {
         assertEquals(ListenableWorker.Result.success(), runWorker(0));
         DownloadTestFixture.awaitDownloaded(media);
         String firstPath = DownloadTestFixture.reload(media).getLocalFileUrl();
@@ -152,6 +159,7 @@ public class EpisodeDownloadWorkerTest {
         assertEquals(ListenableWorker.Result.success(), runWorker(0));
         DownloadTestFixture.awaitDownloaded(media);
         assertTrue(new File(DownloadTestFixture.reload(media).getLocalFileUrl()).exists());
+        assertEquals(2, fixture.requestsFor(media.getDownloadUrl()).size());
     }
 
     @Test
@@ -351,7 +359,8 @@ public class EpisodeDownloadWorkerTest {
         DownloadTestFixture.awaitDownloaded(media);
         assertArrayEquals(full,
                 FileUtils.readFileToByteArray(new File(DownloadTestFixture.reload(media).getLocalFileUrl())));
-        assertEquals(1, messages.size());
+        assertEquals(Collections.singletonList(context.getString(R.string.download_error_retrying,
+                media.getEpisodeTitle())), messageTexts());
     }
 
     @Test
