@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+    <channel>
+        <title>Channel</title>
+        <itunes:author>Feed &amp;amp; Author</itunes:author>
+        <itunes:subtitle>Channel subtitle</itunes:subtitle>
+        <itunes:new-feed-url>  http://example.com/moved.xml  </itunes:new-feed-url>
+        <itunes:new-feed-url>ftp://example.com/ignored.xml</itunes:new-feed-url>
+        <item>
+            <title>With subtitle</title>
+            <itunes:author>Item Author</itunes:author>
+            <itunes:subtitle>Item subtitle</itunes:subtitle>
+        </item>
+        <item>
+            <title>With summary</title>
+            <itunes:subtitle>Sub</itunes:subtitle>
+            <itunes:summary>A considerably longer summary</itunes:summary>
+        </item>
+        <item>
+            <title>Summary shorter than existing</title>
+            <description>Existing description that is long</description>
+            <itunes:summary>Short</itunes:summary>
+        </item>
+        <item>
+            <title>Subtitle skipped when description exists</title>
+            <description>Existing</description>
+            <itunes:subtitle>Ignored subtitle text</itunes:subtitle>
+        </item>
+    </channel>
+    <itunes:summary>Not a channel child</itunes:summary>
+</rss>
