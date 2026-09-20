@@ -3,6 +3,7 @@ package de.danoeh.antennapod.playback.service.internal;
 import android.content.Context;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import de.danoeh.antennapod.playback.service.R;
 import de.danoeh.antennapod.test.categories.IntegrationTest;
 import org.junit.After;
 import org.junit.Before;
@@ -37,7 +38,7 @@ public class WearMediaSessionTest {
     @Test
     public void aCustomActionIsMarkedToShowOnTheWatch() {
         PlaybackStateCompat.CustomAction.Builder builder = new PlaybackStateCompat.CustomAction.Builder(
-                "rewind", "Rewind", android.R.drawable.ic_media_rew);
+                "rewind", "Rewind", R.drawable.ic_notification_fast_rewind);
 
         WearMediaSession.addWearExtrasToAction(builder);
 

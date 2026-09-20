@@ -149,10 +149,16 @@ public class PlaybackServiceNotificationBuilderTest {
     }
 
     @Test
-    public void aNotificationForAnEpisodeAlwaysCarriesTheStoredPlayerStatus() {
+    public void anEpisodeThatIsNotPlayingRightNowOffersPlayEvenWhileItIsSeeking() {
+        UserPreferences.setFullNotificationButtons(Collections.emptyList());
+        builder.setPlayable(storedMedia());
         builder.setPlayerStatus(PlayerStatus.SEEKING);
 
+        List<String> titles = actionTitles(builder.build());
+
         assertEquals(PlayerStatus.SEEKING, builder.getPlayerStatus());
+        assertTrue(titles.contains(context.getString(R.string.play_label)));
+        assertFalse(titles.contains(context.getString(R.string.pause_label)));
     }
 
     @Test

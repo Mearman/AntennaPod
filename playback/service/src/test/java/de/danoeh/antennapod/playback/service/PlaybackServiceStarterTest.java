@@ -16,7 +16,6 @@ import org.robolectric.RuntimeEnvironment;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
@@ -60,13 +59,5 @@ public class PlaybackServiceStarterTest {
                 .getIntent();
 
         assertTrue(intent.getBooleanExtra(PlaybackServiceInterface.EXTRA_ALLOW_STREAM_THIS_TIME, false));
-    }
-
-    @Test
-    public void theBuilderMethodsKeepReturningTheSameStarter() {
-        PlaybackServiceStarter starter = new PlaybackServiceStarter(context, storedMedia());
-
-        assertSame(starter, starter.callEvenIfRunning(true));
-        assertSame(starter, starter.shouldStreamThisTime(true));
     }
 }

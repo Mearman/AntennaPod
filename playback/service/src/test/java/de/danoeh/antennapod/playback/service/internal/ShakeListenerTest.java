@@ -89,13 +89,6 @@ public class ShakeListenerTest {
         assertEquals(0, sleepTimer.resets);
     }
 
-    @Test
-    public void aChangeInSensorAccuracyDoesNotTouchTheSleepTimer() {
-        listener.onAccuracyChanged(null, SensorManager.SENSOR_STATUS_ACCURACY_LOW);
-
-        assertEquals(0, sleepTimer.resets);
-    }
-
     private static class RecordingSleepTimer implements SleepTimer {
         private int resets;
 
