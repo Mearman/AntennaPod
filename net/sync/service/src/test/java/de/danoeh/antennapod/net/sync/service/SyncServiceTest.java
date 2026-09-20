@@ -140,10 +140,25 @@ public class SyncServiceTest {
         EventBus.getDefault().removeAllStickyEvents();
     }
 
+    private interface FeedUpdatePause {
+        void pause() throws InterruptedException;
+    }
+
     private SyncService createWorker() {
         WorkerParameters parameters = mock(WorkerParameters.class);
         when(parameters.getRunAttemptCount()).thenAnswer(invocation -> runAttemptCount);
         return new SyncService(context, parameters);
+    }
+
+    private SyncService createWorker(FeedUpdatePause feedUpdatePause) {
+        WorkerParameters parameters = mock(WorkerParameters.class);
+        when(parameters.getRunAttemptCount()).thenAnswer(invocation -> runAttemptCount);
+        return new SyncService(context, parameters) {
+            @Override
+            void pauseBeforeCheckingFeedUpdateAgain() throws InterruptedException {
+                feedUpdatePause.pause();
+            }
+        };
     }
 
     private ListenableWorker.Result doWork() {
@@ -310,10 +325,13 @@ public class SyncServiceTest {
     }
 
     @Test
-    public void emptyFeedQueuesAreClearedWithoutUploading() {
+    public void queuedFeedChangesTheServerAlreadyReportedAreDroppedWithoutUploading() {
         SynchronizationSettings.setLastSubscriptionSynchronizationAttemptTimestamp(60);
+        storage.enqueueFeedAdded("http://new.example/rss");
+        storage.enqueueFeedRemoved("http://old.example/rss");
         enqueueLogin();
-        enqueueUnchangedSubscriptions();
+        http.enqueue(200, "{\"add\": [\"http://new.example/rss\"], \"remove\": [\"http://old.example/rss\"],"
+                + " \"timestamp\": 100}");
         http.enqueue(200, NO_EPISODE_ACTIONS);
 
         assertSyncSucceeds();
@@ -321,6 +339,9 @@ public class SyncServiceTest {
         assertEquals(3, http.requests().size());
         assertEquals("GET", http.request(1).request.method());
         assertEquals("GET", http.request(2).request.method());
+        assertTrue(storage.getQueuedAddedFeeds().isEmpty());
+        assertTrue(storage.getQueuedRemovedFeeds().isEmpty());
+        assertEquals(100, SynchronizationSettings.getLastSubscriptionSynchronizationTimestamp());
     }
 
     @Test
@@ -584,61 +605,44 @@ public class SyncServiceTest {
         verify(feedUpdateManager, never()).runOnce(any(Context.class));
     }
 
-    private static boolean isSleeping(Thread thread) {
-        SyncServiceEvent event = EventBus.getDefault().getStickyEvent(SyncServiceEvent.class);
-        if (event == null || event.getMessageResId() != R.string.sync_status_wait_for_downloads) {
-            return false;
-        }
-        for (StackTraceElement frame : thread.getStackTrace()) {
-            if (frame.getClassName().equals(Thread.class.getName()) && frame.getMethodName().startsWith("sleep")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Thread actWhenSleeping(Thread sleeper, Runnable action) {
-        Thread observer = new Thread(() -> {
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-            while (!isSleeping(sleeper) && System.nanoTime() < deadline) {
-                Thread.yield();
-            }
-            action.run();
-        });
-        observer.start();
-        return observer;
-    }
-
     @Test
-    public void syncWaitsWhileFeedUpdateIsRunningAndContinuesAfterwards() throws Exception {
+    public void syncWaitsWhileFeedUpdateIsRunningAndContinuesAfterwards() {
         EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(true));
-        Thread syncThread = Thread.currentThread();
-        Thread observer = actWhenSleeping(syncThread,
-                () -> EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(false)));
+        List<Integer> requestsSeenWhileWaiting = new ArrayList<>();
+        SyncService worker = createWorker(() -> {
+            requestsSeenWhileWaiting.add(http.requests().size());
+            if (requestsSeenWhileWaiting.size() == 3) {
+                EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(false));
+            }
+        });
         enqueueLogin();
         enqueueUnchangedSubscriptions();
         http.enqueue(200, NO_EPISODE_ACTIONS);
 
-        assertSyncSucceeds();
+        assertEquals(ListenableWorker.Result.success(), worker.doWork());
 
-        observer.join();
+        assertEquals(Arrays.asList(2, 2, 2), requestsSeenWhileWaiting);
         assertEquals(3, http.requests().size());
         assertTrue(SynchronizationSettings.isLastSyncSuccessful());
     }
 
     @Test
-    public void interruptedWaitForFeedUpdateDoesNotAbortTheSync() throws Exception {
+    public void interruptedWaitForFeedUpdateDoesNotAbortTheSync() {
         EventBus.getDefault().postSticky(new FeedUpdateRunningEvent(true));
-        Thread syncThread = Thread.currentThread();
-        Thread observer = actWhenSleeping(syncThread, syncThread::interrupt);
+        int[] pauses = new int[1];
+        SyncService worker = createWorker(() -> {
+            pauses[0]++;
+            throw new InterruptedException();
+        });
         enqueueLogin();
         enqueueUnchangedSubscriptions();
         http.enqueue(200, NO_EPISODE_ACTIONS);
 
-        assertSyncSucceeds();
+        assertEquals(ListenableWorker.Result.success(), worker.doWork());
 
-        observer.join();
+        assertEquals(1, pauses[0]);
         assertEquals(3, http.requests().size());
+        assertTrue(SynchronizationSettings.isLastSyncSuccessful());
     }
 
     @Test
