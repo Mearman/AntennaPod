@@ -68,6 +68,7 @@ public class AutoDownloadTest {
     @After
     public void tearDown() throws Exception {
         runShellCommand("dumpsys battery reset");
+        runAutoDownload();
         downloads.cancelAll(context);
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
                 () -> downloads.getNumberOfActiveDownloads(context) == 0);
@@ -127,7 +128,8 @@ public class AutoDownloadTest {
         return DBReader.getTotalEpisodeCount(new FeedItemFilter(FeedItemFilter.DOWNLOADED));
     }
 
-    private EpisodeCleanupAlgorithm cleanupWith(int cleanupValue) {
+    private EpisodeCleanupAlgorithm cleanupWith(int cleanupValue) throws Exception {
+        runAutoDownload();
         UserPreferences.setEpisodeCleanupValue(cleanupValue);
         return EpisodeCleanupAlgorithmFactory.build();
     }
