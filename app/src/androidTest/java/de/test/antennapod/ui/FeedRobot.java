@@ -1,6 +1,10 @@
 package de.test.antennapod.ui;
 
+import android.view.View;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
+import androidx.test.espresso.contrib.RecyclerViewActions;
+import androidx.test.espresso.matcher.BoundedMatcher;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
@@ -9,11 +13,15 @@ import de.danoeh.antennapod.storage.database.DBReader;
 import de.test.antennapod.EspressoTestUtils;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.awaitility.core.ThrowingRunnable;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
 
 import java.lang.reflect.Field;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static androidx.test.espresso.Espresso.onView;
@@ -21,6 +29,8 @@ import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
+import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
@@ -64,6 +74,84 @@ public class FeedRobot {
     public static void assertPreviewHeader(String title, String author) {
         waitForViewGlobally(allOf(withId(R.id.txtvTitle), withText(title)), UI_TIMEOUT_MS);
         onView(allOf(withId(R.id.txtvAuthor), withText(author))).check(matches(isDisplayed()));
+    }
+
+    public static void openFeedSettings() {
+        waitForViewGlobally(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
+        onView(withId(R.id.butShowSettings)).perform(click());
+        waitForViewGlobally(withText(R.string.keep_updated), UI_TIMEOUT_MS);
+    }
+
+    public static void clickSetting(int titleRes) {
+        onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.actionOnItem(
+                hasDescendant(withText(titleRes)), click()));
+    }
+
+    public static void awaitDialogText(int textRes) {
+        Awaitility.await().atMost(UI_TIMEOUT_MS, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .until(() -> {
+                    onView(withText(textRes)).inRoot(isDialog()).check(matches(isDisplayed()));
+                    return true;
+                });
+    }
+
+    public static void chooseOption(int textRes) {
+        awaitDialogText(textRes);
+        onView(withText(textRes)).inRoot(isDialog()).perform(click());
+    }
+
+    public static void confirmDialog(int buttonTextRes) {
+        Espresso.closeSoftKeyboard();
+        onView(withText(buttonTextRes)).inRoot(isDialog()).perform(click());
+    }
+
+    public static void awaitAssertion(ThrowingRunnable assertion) {
+        Awaitility.await().atMost(UI_TIMEOUT_MS, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .untilAsserted(assertion);
+    }
+
+    public static Matcher<View> itemAtPosition(int position, Matcher<View> itemMatcher) {
+        return new BoundedMatcher<View, RecyclerView>(RecyclerView.class) {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("item at position " + position + " matching ");
+                itemMatcher.describeTo(description);
+            }
+
+            @Override
+            protected boolean matchesSafely(RecyclerView recyclerView) {
+                RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(position);
+                return holder != null && itemMatcher.matches(holder.itemView);
+            }
+        };
+    }
+
+    public static Matcher<View> hasItemCount(int count) {
+        return new BoundedMatcher<View, RecyclerView>(RecyclerView.class) {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("adapter with " + count + " items");
+            }
+
+            @Override
+            protected boolean matchesSafely(RecyclerView recyclerView) {
+                return recyclerView.getAdapter() != null && recyclerView.getAdapter().getItemCount() == count;
+            }
+        };
+    }
+
+    public static void assertListedTitles(String... titles) {
+        awaitAssertion(() -> {
+            onView(withId(R.id.recyclerView)).check(matches(hasItemCount(titles.length)));
+            for (int i = 0; i < titles.length; i++) {
+                onView(withId(R.id.recyclerView)).check(matches(
+                        itemAtPosition(i, hasDescendant(withText(titles[i])))));
+            }
+        });
+    }
+
+    public static void awaitCondition(Callable<Boolean> condition) {
+        Awaitility.await().atMost(DB_TIMEOUT_SECONDS, TimeUnit.SECONDS).until(condition);
     }
 
     public static void openFeedMenu(int titleRes) {
