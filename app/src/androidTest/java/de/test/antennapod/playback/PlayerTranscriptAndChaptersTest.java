@@ -1,10 +1,20 @@
 package de.test.antennapod.playback;
 
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.view.View;
+import android.widget.ImageView;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
+import androidx.test.espresso.matcher.BoundedMatcher;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import com.bumptech.glide.Glide;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.model.download.DownloadResult;
@@ -21,8 +31,10 @@ import de.test.antennapod.util.TestAssets;
 import de.test.antennapod.util.media.MediaFixtures;
 import de.test.antennapod.util.media.MediaFixtures.ChapterSpec;
 import de.test.antennapod.util.service.download.StaticContentServer;
+import de.test.antennapod.util.service.download.StaticContentServer.RecordedRequest;
 import org.apache.commons.io.FileUtils;
 import org.awaitility.Awaitility;
+import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
@@ -31,6 +43,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +63,7 @@ import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -70,6 +84,7 @@ public class PlayerTranscriptAndChaptersTest {
     public void setUp() throws Exception {
         EspressoTestUtils.clearPreferences();
         EspressoTestUtils.clearDatabase();
+        clearImageCaches();
         UserPreferences.setAllowMobileFeedRefresh(true);
         UserPreferences.setAllowMobileStreaming(true);
         UserPreferences.setAllowMobileEpisodeDownload(true);
@@ -78,6 +93,12 @@ public class PlayerTranscriptAndChaptersTest {
         server = new StaticContentServer();
         server.start();
         activityRule.launchActivity(new Intent());
+    }
+
+    private static void clearImageCaches() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> Glide.get(context).clearMemory());
+        Glide.get(context).clearDiskCache();
     }
 
     @After
@@ -141,6 +162,48 @@ public class PlayerTranscriptAndChaptersTest {
     private void openChapterList() {
         waitForViewGlobally(allOf(withId(R.id.chapterButton), isDisplayed()), PLAYER_TIMEOUT_MS);
         onView(allOf(withId(R.id.chapterButton), isDisplayed())).perform(click());
+    }
+
+    private static Matcher<View> showsRedPicture() {
+        return new BoundedMatcher<View, ImageView>(ImageView.class) {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("an image view showing a red bitmap");
+            }
+
+            @Override
+            protected boolean matchesSafely(ImageView imageView) {
+                Drawable drawable = imageView.getDrawable();
+                if (drawable instanceof TransitionDrawable) {
+                    TransitionDrawable transition = (TransitionDrawable) drawable;
+                    drawable = transition.getDrawable(transition.getNumberOfLayers() - 1);
+                }
+                if (!(drawable instanceof BitmapDrawable)) {
+                    return false;
+                }
+                Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap().copy(Bitmap.Config.ARGB_8888, false);
+                return bitmap.getPixel(bitmap.getWidth() / 2, bitmap.getHeight() / 2) == Color.RED;
+            }
+        };
+    }
+
+    private void assertChapterPictureShown(String chapterTitle) {
+        FeedRobot.awaitAssertion(() -> onView(allOf(withId(R.id.container),
+                hasDescendant(withText(chapterTitle)), hasDescendant(showsRedPicture())))
+                .check(matches(isDisplayed())));
+    }
+
+    private static String pictureRange(byte[] audio, byte[] picture) {
+        int offset = MediaFixtures.indexOf(audio, picture);
+        return "bytes=" + offset + "-" + (offset + picture.length);
+    }
+
+    private List<String> requestedRanges() {
+        List<String> ranges = new ArrayList<>();
+        for (RecordedRequest request : server.requestsFor("/media/episode.mp3")) {
+            ranges.add(request.header("Range"));
+        }
+        return ranges;
     }
 
     private void assertTranscriptShows(String text, String speaker) {
@@ -235,5 +298,42 @@ public class PlayerTranscriptAndChaptersTest {
         waitForViewGlobally(withText("File chapter one"), PLAYER_TIMEOUT_MS);
         onView(withText("File chapter two")).check(matches(isDisplayed()));
         onView(withText("https://example.com/file-two")).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void embeddedChapterPictureIsFetchedByRangeWhileStreaming() throws Exception {
+        byte[] picture = MediaFixtures.redPng();
+        byte[] audio = MediaFixtures.mp3WithChapters(MediaFixtures.LONG_AUDIO_ASSET, 3, Arrays.asList(
+                new ChapterSpec(0, "Plain chapter"), new ChapterSpec(10000, "Pictured chapter", picture)), null);
+        Feed feed = subscribeToEpisode(audio, "");
+
+        startPlayback(feed);
+        openPlayer();
+        openChapterList();
+
+        assertChapterPictureShown("Pictured chapter");
+        assertTrue(requestedRanges().toString(), requestedRanges().contains(pictureRange(audio, picture)));
+    }
+
+    @Test
+    public void embeddedChapterPictureIsReadFromTheDownloadedFile() throws Exception {
+        UserPreferences.setStreamOverDownload(false);
+        byte[] picture = MediaFixtures.redPng();
+        byte[] audio = MediaFixtures.mp3WithChapters(MediaFixtures.LONG_AUDIO_ASSET, 3, Arrays.asList(
+                new ChapterSpec(0, "Plain chapter"), new ChapterSpec(10000, "Pictured chapter", picture)), null);
+        Feed feed = subscribeToEpisode(audio, "");
+        onView(withId(R.id.recyclerView)).perform(RecyclerViewActions.actionOnItem(
+                hasDescendant(withText("Playable episode")), clickChildViewWithId(R.id.secondaryActionButton)));
+        Awaitility.await().atMost(PLAYER_TIMEOUT_MS, TimeUnit.MILLISECONDS).until(() -> {
+            List<DownloadResult> log = DBReader.getDownloadLog();
+            return !log.isEmpty() && log.get(0).isSuccessful();
+        });
+
+        startPlayback(feed);
+        openPlayer();
+        openChapterList();
+
+        assertChapterPictureShown("Pictured chapter");
+        assertFalse(requestedRanges().toString(), requestedRanges().contains(pictureRange(audio, picture)));
     }
 }
