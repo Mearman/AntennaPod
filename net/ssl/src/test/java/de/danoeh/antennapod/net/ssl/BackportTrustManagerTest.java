@@ -3,9 +3,13 @@ package de.danoeh.antennapod.net.ssl;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -41,9 +45,24 @@ public class BackportTrustManagerTest {
     }
 
     @Test
-    public void testCreateReturnsTrustManagerCombiningBackportedAndSystemRoots() {
-        assertNotNull(trustManager);
-        assertTrue(trustManager instanceof CompositeX509TrustManager);
+    public void testAcceptedIssuersStillIncludeEverySystemRoot() throws GeneralSecurityException {
+        TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        factory.init((KeyStore) null);
+        X509TrustManager system = null;
+        for (TrustManager manager : factory.getTrustManagers()) {
+            if (manager instanceof X509TrustManager) {
+                system = (X509TrustManager) manager;
+            }
+        }
+        assertNotNull(system);
+        assertTrue(system.getAcceptedIssuers().length > 0);
+        List<String> acceptedSubjects = new ArrayList<>();
+        for (X509Certificate issuer : trustManager.getAcceptedIssuers()) {
+            acceptedSubjects.add(issuer.getSubjectX500Principal().getName());
+        }
+        for (X509Certificate systemIssuer : system.getAcceptedIssuers()) {
+            assertTrue(acceptedSubjects.contains(systemIssuer.getSubjectX500Principal().getName()));
+        }
     }
 
     @Test
