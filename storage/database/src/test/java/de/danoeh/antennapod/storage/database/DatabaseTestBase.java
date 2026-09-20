@@ -6,7 +6,6 @@ import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
-import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfaceStub;
 import de.danoeh.antennapod.net.download.serviceinterface.FeedUpdateManager;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
 import de.danoeh.antennapod.storage.preferences.PlaybackPreferences;
@@ -26,6 +25,7 @@ public abstract class DatabaseTestBase {
     private static final long TIMEOUT_SECONDS = 10;
 
     protected Context context;
+    protected RecordingDownloadServiceInterface downloadService;
     protected RecordingAutoDownloadManager autoDownloadManager;
     protected RecordingFeedUpdateManager feedUpdateManager;
     protected RecordingSynchronizationQueue synchronizationQueue;
@@ -36,7 +36,8 @@ public abstract class DatabaseTestBase {
         context = RuntimeEnvironment.getApplication();
         UserPreferences.init(context);
         PlaybackPreferences.init(context);
-        DownloadServiceInterface.setImpl(new DownloadServiceInterfaceStub());
+        downloadService = new RecordingDownloadServiceInterface();
+        DownloadServiceInterface.setImpl(downloadService);
         autoDownloadManager = new RecordingAutoDownloadManager();
         AutoDownloadManager.setInstance(autoDownloadManager);
         feedUpdateManager = new RecordingFeedUpdateManager();
