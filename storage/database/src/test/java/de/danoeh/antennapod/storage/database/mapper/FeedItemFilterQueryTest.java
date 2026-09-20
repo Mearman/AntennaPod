@@ -22,9 +22,17 @@ public class FeedItemFilterQueryTest {
         return FeedItemFilterQuery.generateFrom(new FeedItemFilter(new FeedItemFilter(properties), ALL_STATES));
     }
 
+    private static String normalised(String sql) {
+        return sql.replaceAll("\\s+", " ").replaceAll("\\s*([()])\\s*", "$1").trim();
+    }
+
+    private static void assertSql(String expected, String actual) {
+        assertEquals(normalised(expected), normalised(actual));
+    }
+
     @Test
     public void filterWithAllStatesAndNoOtherCriteriaProducesNoCondition() {
-        assertEquals("", queryWithAllStates());
+        assertSql("", queryWithAllStates());
     }
 
     @Test
@@ -52,38 +60,38 @@ public class FeedItemFilterQueryTest {
 
     @Test
     public void playedStateTakesPrecedenceOverUnplayedAndNew() {
-        assertEquals(" (FeedItems.read = 1 ) ",
+        assertSql(" (FeedItems.read = 1 ) ",
                 queryWithAllStates(FeedItemFilter.PLAYED, FeedItemFilter.UNPLAYED, FeedItemFilter.NEW));
     }
 
     @Test
     public void unplayedIncludesNewItems() {
-        assertEquals(" ( NOT FeedItems.read = 1 ) ",
+        assertSql(" ( NOT FeedItems.read = 1 ) ",
                 queryWithAllStates(FeedItemFilter.UNPLAYED, FeedItemFilter.NEW));
     }
 
     @Test
     public void newItemsHaveReadStateMinusOne() {
-        assertEquals(" (FeedItems.read = -1 ) ", queryWithAllStates(FeedItemFilter.NEW));
+        assertSql(" (FeedItems.read = -1 ) ", queryWithAllStates(FeedItemFilter.NEW));
     }
 
     @Test
     public void pausedItemsHavePositivePosition() {
-        assertEquals(" ( (FeedMedia.position NOT NULL AND FeedMedia.position > 0 ) ) ",
+        assertSql(" ( (FeedMedia.position NOT NULL AND FeedMedia.position > 0 ) ) ",
                 queryWithAllStates(FeedItemFilter.PAUSED, FeedItemFilter.NOT_PAUSED));
     }
 
     @Test
     public void notPausedItemsHaveNoPosition() {
-        assertEquals(" ( (FeedMedia.position IS NULL OR FeedMedia.position = 0 ) ) ",
+        assertSql(" ( (FeedMedia.position IS NULL OR FeedMedia.position = 0 ) ) ",
                 queryWithAllStates(FeedItemFilter.NOT_PAUSED));
     }
 
     @Test
     public void queuedFiltersUseQueueTable() {
-        assertEquals(" (FeedItems.id IN (SELECT feeditem FROM Queue) ) ",
+        assertSql(" (FeedItems.id IN (SELECT feeditem FROM Queue) ) ",
                 queryWithAllStates(FeedItemFilter.QUEUED, FeedItemFilter.NOT_QUEUED));
-        assertEquals(" (FeedItems.id NOT IN (SELECT feeditem FROM Queue) ) ",
+        assertSql(" (FeedItems.id NOT IN (SELECT feeditem FROM Queue) ) ",
                 queryWithAllStates(FeedItemFilter.NOT_QUEUED));
     }
 
@@ -92,49 +100,49 @@ public class FeedItemFilterQueryTest {
         String downloaded = queryWithAllStates(FeedItemFilter.DOWNLOADED, FeedItemFilter.NOT_DOWNLOADED);
         String localFeeds = "FeedItems.feed IN (SELECT id FROM Feeds WHERE download_url LIKE '"
                 + Feed.PREFIX_LOCAL_FOLDER + "%')";
-        assertEquals(" ((FeedMedia.downloaded > 0 OR (" + localFeeds + ")) ) ", downloaded);
+        assertSql(" ((FeedMedia.downloaded > 0 OR (" + localFeeds + ")) ) ", downloaded);
     }
 
     @Test
     public void notDownloadedFilterExcludesItemsOfLocalFeeds() {
         String localFeeds = "FeedItems.feed IN (SELECT id FROM Feeds WHERE download_url LIKE '"
                 + Feed.PREFIX_LOCAL_FOLDER + "%')";
-        assertEquals(" ((FeedMedia.downloaded = 0 AND NOT (" + localFeeds + ")) ) ",
+        assertSql(" ((FeedMedia.downloaded = 0 AND NOT (" + localFeeds + ")) ) ",
                 queryWithAllStates(FeedItemFilter.NOT_DOWNLOADED));
     }
 
     @Test
     public void mediaFiltersCheckExistenceOfMediaRow() {
-        assertEquals(" (FeedMedia.id NOT NULL ) ",
+        assertSql(" (FeedMedia.id NOT NULL ) ",
                 queryWithAllStates(FeedItemFilter.HAS_MEDIA, FeedItemFilter.NO_MEDIA));
-        assertEquals(" (FeedMedia.id IS NULL ) ", queryWithAllStates(FeedItemFilter.NO_MEDIA));
+        assertSql(" (FeedMedia.id IS NULL ) ", queryWithAllStates(FeedItemFilter.NO_MEDIA));
     }
 
     @Test
     public void favoriteFiltersUseFavoritesTable() {
-        assertEquals(" (FeedItems.id IN (SELECT feeditem FROM Favorites) ) ",
+        assertSql(" (FeedItems.id IN (SELECT feeditem FROM Favorites) ) ",
                 queryWithAllStates(FeedItemFilter.IS_FAVORITE, FeedItemFilter.NOT_FAVORITE));
-        assertEquals(" (FeedItems.id NOT IN (SELECT feeditem FROM Favorites) ) ",
+        assertSql(" (FeedItems.id NOT IN (SELECT feeditem FROM Favorites) ) ",
                 queryWithAllStates(FeedItemFilter.NOT_FAVORITE));
     }
 
     @Test
     public void historyFilterRequiresCompletionDate() {
-        assertEquals(" (FeedMedia.playback_completion_date > 0 ) ",
+        assertSql(" (FeedMedia.playback_completion_date > 0 ) ",
                 queryWithAllStates(FeedItemFilter.IS_IN_HISTORY));
     }
 
     @Test
     public void multipleConditionsAreCombinedWithAnd() {
         String query = queryWithAllStates(FeedItemFilter.NEW, FeedItemFilter.QUEUED, FeedItemFilter.HAS_MEDIA);
-        assertEquals(" (FeedItems.read = -1  AND FeedItems.id IN (SELECT feeditem FROM Queue)  AND "
+        assertSql(" (FeedItems.read = -1  AND FeedItems.id IN (SELECT feeditem FROM Queue)  AND "
                 + "FeedMedia.id NOT NULL ) ", query);
     }
 
     @Test
     public void stateRestrictionIsAppendedAfterOtherConditions() {
         String query = query(FeedItemFilter.PLAYED, FeedItemFilter.INCLUDE_ARCHIVED);
-        assertTrue(query.startsWith(" (FeedItems.read = 1  AND FeedItems.feed IN (SELECT id FROM Feeds "
-                + "WHERE state IN (" + Feed.STATE_ARCHIVED + "))"));
+        assertTrue(normalised(query).startsWith(normalised(" (FeedItems.read = 1  AND FeedItems.feed IN "
+                + "(SELECT id FROM Feeds WHERE state IN (" + Feed.STATE_ARCHIVED + "))")));
     }
 }
