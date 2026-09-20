@@ -45,7 +45,7 @@ public class OpmlBackupAgent extends BackupAgentHelper {
     /**
      * Class for backing up and restoring the OPML file.
      */
-    private static class OpmlBackupHelper implements BackupHelper {
+    static class OpmlBackupHelper implements BackupHelper {
         private static final String TAG = "OpmlBackupHelper";
 
         private static final String OPML_ENTITY_KEY = "antennapod-feeds.opml";
