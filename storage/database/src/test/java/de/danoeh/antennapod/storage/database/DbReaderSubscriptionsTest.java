@@ -168,6 +168,35 @@ public class DbReaderSubscriptionsTest extends DatabaseTestBase {
     }
 
     @Test
+    public void counterOrderFallsBackToTitleWhenNoCountersAreShown() {
+        NavDrawerData data = navDrawer("", FeedOrder.COUNTER, FeedCounter.SHOW_NONE);
+
+        assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"), feedTitles(data));
+    }
+
+    @Test
+    public void mostPlayedOrderFallsBackToTitleForFeedsWithSamePlayedCount() {
+        storeFeed("Aardvark");
+
+        NavDrawerData data = navDrawer("", FeedOrder.MOST_PLAYED, FeedCounter.SHOW_NONE);
+
+        assertEquals(Arrays.asList("Charlie", "Alpha", "Aardvark", "Bravo"), feedTitles(data));
+    }
+
+    @Test
+    public void alphabeticalOrderPutsFeedsWithoutTitleLast() {
+        Feed untitled = new Feed("https://example.com/untitled.xml", null, null);
+        untitled.setItems(new ArrayList<>());
+        await(DBWriter.setCompleteFeed(untitled));
+
+        NavDrawerData data = navDrawer("", FeedOrder.ALPHABETICAL, FeedCounter.SHOW_NONE);
+
+        assertEquals(4, data.feeds.size());
+        assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"), feedTitles(data).subList(0, 3));
+        assertEquals(untitled.getId(), data.feeds.get(3).getId());
+    }
+
+    @Test
     public void mostPlayedOrderShowsFeedsWithMostPlayedEpisodesFirst() {
         NavDrawerData data = navDrawer("", FeedOrder.MOST_PLAYED, FeedCounter.SHOW_NONE);
 
