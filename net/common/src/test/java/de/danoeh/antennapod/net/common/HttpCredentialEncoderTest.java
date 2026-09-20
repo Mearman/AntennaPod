@@ -7,6 +7,7 @@ import org.robolectric.RobolectricTestRunner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class HttpCredentialEncoderTest {
@@ -30,7 +31,7 @@ public class HttpCredentialEncoderTest {
     public void testEncodeDoesNotInsertLineBreaksForLongCredentials() {
         String longPassword = "p".repeat(200);
         String encoded = HttpCredentialEncoder.encode("user", longPassword, "UTF-8");
-        assertEquals(-1, encoded.indexOf('\n'));
+        assertTrue(encoded.matches("Basic [A-Za-z0-9+/]+=*"));
     }
 
     @Test
