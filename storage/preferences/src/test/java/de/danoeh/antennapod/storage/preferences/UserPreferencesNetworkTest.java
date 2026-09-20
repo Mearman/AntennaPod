@@ -12,6 +12,8 @@ import org.robolectric.RobolectricTestRunner;
 
 import java.io.File;
 import java.net.Proxy;
+import java.util.Arrays;
+import java.util.HashSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -49,13 +51,23 @@ public class UserPreferencesNetworkTest {
     }
 
     @Test
-    public void onlyImagesAreAllowedOnMobileDataByDefault() {
+    public void onlyImagesAreAllowedOnMobileDataByDefaultAndStoredSetReplacesThat() {
         assertTrue(UserPreferences.isAllowMobileImages());
         assertFalse(UserPreferences.isAllowMobileFeedRefresh());
         assertFalse(UserPreferences.isAllowMobileSync());
         assertFalse(UserPreferences.isAllowMobileEpisodeDownload());
         assertFalse(UserPreferences.isAllowMobileAutoDownload());
         assertFalse(UserPreferences.isAllowMobileStreaming());
+
+        prefs.edit().putStringSet(UserPreferences.PREF_MOBILE_UPDATE,
+                new HashSet<>(Arrays.asList("sync", "streaming"))).commit();
+
+        assertFalse(UserPreferences.isAllowMobileImages());
+        assertFalse(UserPreferences.isAllowMobileFeedRefresh());
+        assertTrue(UserPreferences.isAllowMobileSync());
+        assertFalse(UserPreferences.isAllowMobileEpisodeDownload());
+        assertFalse(UserPreferences.isAllowMobileAutoDownload());
+        assertTrue(UserPreferences.isAllowMobileStreaming());
     }
 
     @Test
@@ -93,10 +105,23 @@ public class UserPreferencesNetworkTest {
     }
 
     @Test
-    public void autoDownloadDefaults() {
+    public void autoDownloadDefaultsAndStoredValues() {
         assertFalse(UserPreferences.isEnableAutodownloadGlobal());
         assertFalse(UserPreferences.isEnableAutodownloadQueue());
         assertTrue(UserPreferences.isEnableAutodownloadOnBattery());
+
+        prefs.edit()
+                .putBoolean(UserPreferences.PREF_AUTODL_GLOBAL, true)
+                .putBoolean(UserPreferences.PREF_ENABLE_AUTODL_ON_BATTERY, false)
+                .commit();
+
+        assertTrue(UserPreferences.isEnableAutodownloadGlobal());
+        assertFalse(UserPreferences.isEnableAutodownloadQueue());
+        assertFalse(UserPreferences.isEnableAutodownloadOnBattery());
+
+        prefs.edit().putBoolean(UserPreferences.PREF_AUTODL_QUEUE, true).commit();
+
+        assertTrue(UserPreferences.isEnableAutodownloadQueue());
     }
 
     @Test
