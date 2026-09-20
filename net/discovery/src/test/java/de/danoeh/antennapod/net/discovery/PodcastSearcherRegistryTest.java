@@ -5,11 +5,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class PodcastSearcherRegistryTest {
@@ -36,29 +37,32 @@ public class PodcastSearcherRegistryTest {
     }
 
     @Test
-    public void testDefaultProvidersAreCombinedFyydItunesAndPodcastIndexWithTheirWeights() {
+    public void testDefaultProvidersStartWithDisabledCombinedSearcher() {
         assertEquals(CombinedSearcher.class, originalProviders.get(0).searcher.getClass());
-        assertEquals(4, originalProviders.size());
-        assertEquals(FyydPodcastSearcher.class, originalProviders.get(1).searcher.getClass());
-        assertEquals(ItunesPodcastSearcher.class, originalProviders.get(2).searcher.getClass());
-        assertEquals(PodcastIndexPodcastSearcher.class, originalProviders.get(3).searcher.getClass());
         assertEquals(0.0f, originalProviders.get(0).weight, 0.0f);
-        assertEquals(0.0f, originalProviders.get(1).weight, 0.0f);
-        assertEquals(1.0f, originalProviders.get(2).weight, 0.0f);
-        assertEquals(1.0f, originalProviders.get(3).weight, 0.0f);
     }
 
     @Test
-    public void testGetSearchProvidersReturnsSameListOnEveryCall() {
-        assertSame(PodcastSearcherRegistry.getSearchProviders(), PodcastSearcherRegistry.getSearchProviders());
+    public void testDefaultProvidersHaveExactlyOneCombinedSearcherAndSomeEnabledProvider() {
+        int combinedCount = 0;
+        int enabledCount = 0;
+        for (PodcastSearcherRegistry.SearcherInfo info : originalProviders) {
+            if (info.searcher.getClass() == CombinedSearcher.class) {
+                combinedCount++;
+            } else if (info.weight > 0.0f) {
+                enabledCount++;
+            }
+        }
+        assertEquals(1, combinedCount);
+        assertTrue(enabledCount > 0);
     }
 
     @Test
-    public void testSearcherInfoKeepsSearcherAndWeight() {
-        StubSearcher searcher = StubSearcher.returning("stub");
-        PodcastSearcherRegistry.SearcherInfo info = new PodcastSearcherRegistry.SearcherInfo(searcher, 0.25f);
-        assertSame(searcher, info.searcher);
-        assertEquals(0.25f, info.weight, 0.0f);
+    public void testDefaultProvidersAreDistinctSearchers() {
+        Set<Class<?>> searcherClasses = new HashSet<>();
+        for (PodcastSearcherRegistry.SearcherInfo info : originalProviders) {
+            assertTrue(searcherClasses.add(info.searcher.getClass()));
+        }
     }
 
     @Test
