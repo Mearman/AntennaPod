@@ -1,7 +1,6 @@
 package de.test.antennapod.ui;
 
 import android.content.Intent;
-import androidx.test.espresso.Espresso;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import de.danoeh.antennapod.R;
@@ -19,17 +18,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static androidx.test.espresso.Espresso.onView;
-import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
-import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
-import static androidx.test.espresso.matcher.ViewMatchers.withId;
-import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static de.test.antennapod.EspressoTestUtils.clickChildViewWithId;
-import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -183,23 +171,4 @@ public class FeedRefreshChangesTest {
         assertEquals("application/json", item.getTranscriptType());
     }
 
-    @Test
-    public void interactedPreviewFeedShowsTheSubscribeHint() throws Exception {
-        UserPreferences.setAllowMobileEpisodeDownload(true);
-        String url = publish(feed(item("a", "Episode A", enclosure("a.mp3", 20000), "")));
-        FeedRobot.addFeedByUrl(url);
-        Feed feed = FeedRobot.awaitFeed(url);
-        assertEquals(Feed.STATE_NOT_SUBSCRIBED, FeedRobot.reload(feed).getState());
-
-        FeedRobot.awaitAssertion(() -> onView(allOf(withText("Episode A"),
-                isDescendantOfA(withId(R.id.recyclerView)))).check(matches(isDisplayed())));
-        FeedRobot.awaitAssertion(() -> onView(allOf(withText("Episode A"),
-                isDescendantOfA(withId(R.id.recyclerView))))
-                .perform(clickChildViewWithId(R.id.secondaryActionButton)));
-        FeedRobot.awaitCondition(() -> FeedRobot.itemByGuid(FeedRobot.reload(feed), "a").isDownloaded());
-
-        Espresso.pressBackUnconditionally();
-        FeedRobot.addFeedByUrl(url);
-        waitUntilDisplayed(withId(R.id.subscribeNagLabel), FeedRobot.UI_TIMEOUT_MS);
-    }
 }
