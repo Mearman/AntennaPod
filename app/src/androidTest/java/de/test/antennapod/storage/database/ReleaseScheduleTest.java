@@ -20,6 +20,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -28,24 +29,30 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Guesses how often a subscribed podcast publishes from the release dates of its stored episodes.
- */
 @RunWith(AndroidJUnit4.class)
 public class ReleaseScheduleTest {
     private static final long DAY_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final int RELEASES = 10;
+    private static final int ANCHOR_YEAR = 2024;
 
     private final DownloadTestFixture fixture = new DownloadTestFixture();
+    private TimeZone originalTimeZone;
 
     @Before
     public void setUp() throws Exception {
+        originalTimeZone = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         fixture.setUp();
     }
 
     @After
     public void tearDown() throws Exception {
         fixture.tearDown();
+        TimeZone.setDefault(originalTimeZone);
+    }
+
+    private GregorianCalendar anchor() {
+        return new GregorianCalendar(ANCHOR_YEAR, Calendar.JUNE, 15);
     }
 
     private ReleaseScheduleGuesser.Guess guessFor(String title, List<Date> releases) throws IOException {
@@ -66,7 +73,7 @@ public class ReleaseScheduleTest {
 
     private List<Date> every(int stepDays, int hour, int count) {
         List<Date> dates = new ArrayList<>();
-        GregorianCalendar day = new GregorianCalendar();
+        GregorianCalendar day = anchor();
         day.add(Calendar.DAY_OF_MONTH, -stepDays * count);
         day.set(Calendar.HOUR_OF_DAY, hour);
         day.set(Calendar.MINUTE, 0);
@@ -112,7 +119,7 @@ public class ReleaseScheduleTest {
     @Test
     public void monthlyPodcastIsRecognised() throws Exception {
         List<Date> releases = new ArrayList<>();
-        GregorianCalendar month = new GregorianCalendar();
+        GregorianCalendar month = anchor();
         month.add(Calendar.MONTH, -RELEASES);
         month.set(Calendar.DAY_OF_MONTH, 15);
         month.set(Calendar.HOUR_OF_DAY, 12);
@@ -127,7 +134,7 @@ public class ReleaseScheduleTest {
     @Test
     public void podcastThatReleasesOnWeekdaysIsRecognised() throws Exception {
         List<Date> releases = new ArrayList<>();
-        GregorianCalendar day = new GregorianCalendar();
+        GregorianCalendar day = anchor();
         day.add(Calendar.DAY_OF_MONTH, -30);
         day.set(Calendar.HOUR_OF_DAY, 6);
         while (releases.size() < 15) {
@@ -158,9 +165,8 @@ public class ReleaseScheduleTest {
     @Test
     public void irregularPodcastHasNoKnownSchedule() throws Exception {
         List<Date> releases = new ArrayList<>();
-        long now = System.currentTimeMillis();
         long[] gapsInDays = {1, 9, 2, 23, 4, 40, 3};
-        long time = now - 120 * DAY_MILLIS;
+        long time = anchor().getTimeInMillis();
         for (long gap : gapsInDays) {
             time += gap * DAY_MILLIS;
             releases.add(new Date(time + gap * 3600 * 1000L));
