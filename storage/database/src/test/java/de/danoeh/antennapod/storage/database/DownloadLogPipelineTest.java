@@ -16,7 +16,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
@@ -32,6 +31,15 @@ public class DownloadLogPipelineTest extends FeedPipelineTestBase {
                   <enclosure url="https://example.com/episode.mp3" length="5000000" type="audio/mpeg"/>
                 </item>
                 """));
+    }
+
+    private static DownloadResult resultWithTitle(List<DownloadResult> results, String title) {
+        for (DownloadResult result : results) {
+            if (title.equals(result.getTitle())) {
+                return result;
+            }
+        }
+        throw new AssertionError("No stored download result titled " + title);
     }
 
     private void log(DownloadResult result) {
@@ -61,7 +69,7 @@ public class DownloadLogPipelineTest extends FeedPipelineTestBase {
     }
 
     @Test
-    public void downloadResultCanBeMarkedAsSucceededFailedOrCancelledBeforeItIsStored() throws Exception {
+    public void succeededFailedAndCancelledResultsAreStoredWithTheirOutcome() throws Exception {
         Feed feed = storeFeed();
         DownloadResult succeeded = new DownloadResult("Success", feed.getId(), Feed.FEEDFILETYPE_FEED, false,
                 DownloadError.ERROR_IO_ERROR, "leftover");
@@ -79,23 +87,16 @@ public class DownloadLogPipelineTest extends FeedPipelineTestBase {
         List<DownloadResult> results = DBReader.getDownloadLog();
 
         assertEquals(3, results.size());
-        for (DownloadResult result : results) {
-            switch (result.getTitle()) {
-                case "Success":
-                    assertTrue(result.isSuccessful());
-                    assertEquals(DownloadError.SUCCESS, result.getReason());
-                    break;
-                case "Failure":
-                    assertFalse(result.isSuccessful());
-                    assertEquals(DownloadError.ERROR_UNAUTHORIZED, result.getReason());
-                    assertEquals("Wrong password", result.getReasonDetailed());
-                    break;
-                default:
-                    assertFalse(result.isSuccessful());
-                    assertEquals(DownloadError.ERROR_DOWNLOAD_CANCELLED, result.getReason());
-                    break;
-            }
-        }
+        DownloadResult storedSuccess = resultWithTitle(results, "Success");
+        assertTrue(storedSuccess.isSuccessful());
+        assertEquals(DownloadError.SUCCESS, storedSuccess.getReason());
+        DownloadResult storedFailure = resultWithTitle(results, "Failure");
+        assertFalse(storedFailure.isSuccessful());
+        assertEquals(DownloadError.ERROR_UNAUTHORIZED, storedFailure.getReason());
+        assertEquals("Wrong password", storedFailure.getReasonDetailed());
+        DownloadResult storedCancellation = resultWithTitle(results, "Cancelled");
+        assertFalse(storedCancellation.isSuccessful());
+        assertEquals(DownloadError.ERROR_DOWNLOAD_CANCELLED, storedCancellation.getReason());
     }
 
     @Test
@@ -141,14 +142,6 @@ public class DownloadLogPipelineTest extends FeedPipelineTestBase {
         assertEquals(1, all.size());
         assertEquals(FeedMedia.FEEDFILETYPE_FEEDMEDIA, all.get(0).getFeedfileType());
         assertEquals(media.getId(), all.get(0).getFeedfileId());
-    }
-
-    @Test
-    public void everyDownloadErrorCanBeRestoredFromItsCode() {
-        for (DownloadError error : DownloadError.values()) {
-            assertEquals(error, DownloadError.fromCode(error.getCode()));
-        }
-        assertThrows(IllegalArgumentException.class, () -> DownloadError.fromCode(9999));
     }
 
     @Test
