@@ -45,6 +45,7 @@ public abstract class DatabaseTestBase {
         synchronizationQueue = new RecordingSynchronizationQueue();
         SynchronizationQueue.setInstance(synchronizationQueue);
         PodDBAdapter.init(context);
+        PodDBAdapter.tearDownTests();
         PodDBAdapter.deleteDatabase();
         events = new EventCollector();
         events.register();
