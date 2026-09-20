@@ -2,6 +2,7 @@ package de.test.antennapod.ui;
 
 import android.content.Context;
 import android.content.Intent;
+import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.ViewAction;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
@@ -106,6 +107,18 @@ public class EpisodeScreensTest {
         performWhenReady(allOf(withText(menuLabel), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
 
+    private void chooseFromOverflowMenu(int menuLabel) {
+        Awaitility.await().atMost(VIEW_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .untilAsserted(() -> {
+                    try {
+                        onView(allOf(withText(menuLabel), isDisplayed())).perform(click());
+                    } catch (NoMatchingViewException e) {
+                        onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
+                        throw e;
+                    }
+                });
+    }
+
     private void confirmDialog() {
         performWhenReady(allOf(withText(R.string.confirm_label), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
     }
@@ -116,8 +129,7 @@ public class EpisodeScreensTest {
         open(QueueFragment.TAG);
         waitForViewGlobally(withText(title(0)), VIEW_TIMEOUT_MILLIS);
 
-        performWhenReady(first(EspressoTestUtils.actionBarOverflow()), click(), VIEW_TIMEOUT_MILLIS);
-        performWhenReady(allOf(withText(R.string.clear_queue_label), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
+        chooseFromOverflowMenu(R.string.clear_queue_label);
         confirmDialog();
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> DBReader.getQueue().isEmpty());
@@ -227,8 +239,7 @@ public class EpisodeScreensTest {
         open(StatisticsFragment.TAG);
         onView(isRoot()).perform(waitForView(withText(feed.getTitle()), VIEW_TIMEOUT_MILLIS));
 
-        performWhenReady(first(EspressoTestUtils.actionBarOverflow()), click(), VIEW_TIMEOUT_MILLIS);
-        performWhenReady(allOf(withText(R.string.statistics_reset_data), isDisplayed()), click(), VIEW_TIMEOUT_MILLIS);
+        chooseFromOverflowMenu(R.string.statistics_reset_data);
         confirmDialog();
 
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(
