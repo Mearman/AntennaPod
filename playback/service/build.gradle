@@ -51,4 +51,6 @@ dependencies {
     testImplementation libs.mockito.core
     testImplementation libs.androidx.test.core
     testImplementation libs.robolectric
+    testImplementation libs.androidx.media3.test.utils
+    testImplementation libs.androidx.media3.test.utils.robolectric
 }
