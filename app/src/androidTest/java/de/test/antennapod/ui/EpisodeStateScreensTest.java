@@ -1,16 +1,21 @@
 package de.test.antennapod.ui;
 
+import android.content.Context;
 import android.content.Intent;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
+import de.danoeh.antennapod.model.feed.FeedItemFilter;
+import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.screen.AddFeedFragment;
+import de.danoeh.antennapod.ui.screen.AllEpisodesFragment;
 import de.danoeh.antennapod.ui.screen.FavoritesFragment;
 import de.danoeh.antennapod.ui.screen.InboxFragment;
 import de.test.antennapod.EspressoTestUtils;
@@ -21,8 +26,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
@@ -36,10 +43,13 @@ import static org.hamcrest.Matchers.allOf;
 @RunWith(AndroidJUnit4.class)
 public class EpisodeStateScreensTest {
     private static final String FEED_PATH = "/feeds/states.xml";
+    private static final int PAUSED_POSITION_MS = 60000;
     private static final String DOCUMENT = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>"
             + "<title>State Feed</title><link>https://example.com/states</link>"
-            + "<item><guid>alpha</guid><title>Alpha</title><pubDate>Wed, 04 Jan 2023 10:00:00 +0000</pubDate></item>"
-            + "<item><guid>bravo</guid><title>Bravo</title><pubDate>Tue, 03 Jan 2023 10:00:00 +0000</pubDate></item>"
+            + "<item><guid>alpha</guid><title>Alpha</title><pubDate>Wed, 04 Jan 2023 10:00:00 +0000</pubDate>"
+            + "<enclosure url=\"${BASE}/media/alpha.mp3\" length=\"20000\" type=\"audio/mpeg\"/></item>"
+            + "<item><guid>bravo</guid><title>Bravo</title><pubDate>Tue, 03 Jan 2023 10:00:00 +0000</pubDate>"
+            + "<enclosure url=\"${BASE}/media/bravo.mp3\" length=\"20000\" type=\"audio/mpeg\"/></item>"
             + "<item><guid>charlie</guid><title>Charlie</title><pubDate>Mon, 02 Jan 2023 10:00:00 +0000</pubDate>"
             + "</item></channel></rss>";
 
@@ -71,6 +81,21 @@ public class EpisodeStateScreensTest {
 
     private FeedItem item(String guid) {
         return FeedRobot.itemByGuid(FeedRobot.reload(feed), guid);
+    }
+
+    private void applyEveryState(String guid) throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(item(guid))).get();
+        DBWriter.addFavoriteItems(Collections.singletonList(item(guid))).get();
+        FeedMedia media = item(guid).getMedia();
+        media.setPosition(PAUSED_POSITION_MS);
+        media.setLastPlayedTimeHistory(new Date());
+        DBWriter.setFeedMediaPlaybackInformation(media).get();
+        DBWriter.addQueueItem(context, item(guid)).get();
+        media = item(guid).getMedia();
+        media.setDownloaded(true, System.currentTimeMillis());
+        media.setLocalFileUrl(new File(context.getFilesDir(), guid + ".mp3").getPath());
+        DBWriter.setMediaDownloadInformation(media).get();
     }
 
     private void openScreen(String tag) {
@@ -131,5 +156,61 @@ public class EpisodeStateScreensTest {
 
         assertNotListed("Alpha");
         onView(allOf(withId(R.id.txtvTitle), withText("Charlie"))).check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void episodesScreenListsEpisodesMatchingEveryChosenFilter() throws Exception {
+        applyEveryState("alpha");
+        UserPreferences.setPrefFilterAllEpisodes(String.join(",", FeedItemFilter.PLAYED, FeedItemFilter.PAUSED,
+                FeedItemFilter.QUEUED, FeedItemFilter.DOWNLOADED, FeedItemFilter.HAS_MEDIA,
+                FeedItemFilter.IS_FAVORITE));
+        openScreen(AllEpisodesFragment.TAG);
+        assertListed("Alpha");
+        assertNotListed("Bravo");
+        assertNotListed("Charlie");
+
+        DBWriter.setFeedItem(item("alpha"), false).get();
+        assertListed("Alpha");
+        applyEveryState("bravo");
+        DBWriter.setFeedItem(item("bravo"), false).get();
+
+        assertListed("Bravo");
+        assertListed("Alpha");
+        assertNotListed("Charlie");
+    }
+
+    @Test
+    public void episodesScreenListsUndownloadedEpisodesWithMediaThatHaveNoState() throws Exception {
+        UserPreferences.setPrefFilterAllEpisodes(String.join(",", FeedItemFilter.UNPLAYED,
+                FeedItemFilter.NOT_PAUSED, FeedItemFilter.NOT_QUEUED, FeedItemFilter.NOT_DOWNLOADED,
+                FeedItemFilter.HAS_MEDIA, FeedItemFilter.NOT_FAVORITE));
+        openScreen(AllEpisodesFragment.TAG);
+        assertListed("Alpha");
+        assertListed("Bravo");
+        assertNotListed("Charlie");
+
+        DBWriter.setFeedItem(item("bravo"), false).get();
+        assertListed("Bravo");
+        DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(item("bravo"))).get();
+
+        assertNotListed("Bravo");
+        assertListed("Alpha");
+    }
+
+    @Test
+    public void episodesScreenListsEpisodesWithoutMediaThatHaveNoState() throws Exception {
+        UserPreferences.setPrefFilterAllEpisodes(String.join(",", FeedItemFilter.UNPLAYED,
+                FeedItemFilter.NOT_PAUSED, FeedItemFilter.NOT_QUEUED, FeedItemFilter.NO_MEDIA,
+                FeedItemFilter.NOT_FAVORITE));
+        openScreen(AllEpisodesFragment.TAG);
+        assertListed("Charlie");
+        assertNotListed("Alpha");
+        assertNotListed("Bravo");
+
+        DBWriter.setFeedItem(item("charlie"), false).get();
+        assertListed("Charlie");
+        DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(item("charlie"))).get();
+
+        assertNotListed("Charlie");
     }
 }
