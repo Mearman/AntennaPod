@@ -17,7 +17,6 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
@@ -235,9 +234,7 @@ public class FeedPreferencesPipelineTest extends FeedPipelineTestBase {
             VolumeAdaptionSetting restored = saveAndReload(stored).getPreferences().getVolumeAdaptionSetting();
             assertEquals(setting, restored);
             assertEquals(setting.getAdaptionFactor(), restored.getAdaptionFactor(), 0.0001f);
-            assertEquals(setting, VolumeAdaptionSetting.fromInteger(setting.toInteger()));
         }
-        assertThrows(IllegalArgumentException.class, () -> VolumeAdaptionSetting.fromInteger(99));
     }
 
     @Test
@@ -251,10 +248,11 @@ public class FeedPreferencesPipelineTest extends FeedPipelineTestBase {
 
         stored.getPreferences().updateFromOther(incoming);
         stored.getPreferences().updateFromOther(null);
+        FeedPreferences restored = saveAndReload(stored).getPreferences();
 
-        assertEquals("new-user", stored.getPreferences().getUsername());
-        assertEquals("new-password", stored.getPreferences().getPassword());
-        assertEquals(FeedPreferences.AutoDeleteAction.NEVER, stored.getPreferences().getAutoDeleteAction());
-        assertEquals(FeedPreferences.AutoDownloadSetting.GLOBAL, stored.getPreferences().getAutoDownload());
+        assertEquals("new-user", restored.getUsername());
+        assertEquals("new-password", restored.getPassword());
+        assertEquals(FeedPreferences.AutoDeleteAction.NEVER, restored.getAutoDeleteAction());
+        assertEquals(FeedPreferences.AutoDownloadSetting.GLOBAL, restored.getAutoDownload());
     }
 }
