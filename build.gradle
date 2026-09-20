@@ -53,7 +53,7 @@ tasks.register('coverageReport', JacocoReport) {
     }
 
     doLast {
-        def slurper = new groovy.xml.XmlSlurper()
+        def slurper = new groovy.xml.XmlSlurper(false, false, true)
         slurper.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
         def counters = slurper.parse(reports.xml.outputLocation.get().asFile).counter
         def percentage = { String type ->
