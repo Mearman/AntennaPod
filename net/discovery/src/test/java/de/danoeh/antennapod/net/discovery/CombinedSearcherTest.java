@@ -26,6 +26,7 @@ public class CombinedSearcherTest extends SearcherTestBase {
     private static final String APPLE_PATH = "/apple";
     private static final String INDEX_PATH = "/index";
     private static final String FYYD_PATH = "/fyyd";
+    private static final String LOOKUP_PATH = "/lookup";
     private List<PodcastSearcherRegistry.SearcherInfo> originalProviders;
     private int appleStatus = 200;
     private final List<String> requestedPaths = new ArrayList<>();
@@ -44,6 +45,9 @@ public class CombinedSearcherTest extends SearcherTestBase {
                             + appleEntry("X") + "," + appleEntry("Y") + "]}");
                 } else if (INDEX_PATH.equals(path)) {
                     return new MockResponse().setBody("{\"feeds\":[" + indexEntry("Y") + "," + indexEntry("Z") + "]}");
+                } else if (LOOKUP_PATH.equals(path)) {
+                    return new MockResponse()
+                            .setBody("{\"results\":[{\"feedUrl\":\"https://feeds.example/L.xml\"}]}");
                 } else if (FYYD_PATH.equals(path)) {
                     return new MockResponse().setBody("{\"data\":[{\"xmlURL\":\"https://feeds.example/F.xml\"}]}");
                 }
@@ -56,7 +60,7 @@ public class CombinedSearcherTest extends SearcherTestBase {
         providers.add(new PodcastSearcherRegistry.SearcherInfo(
                 new FyydPodcastSearcher(urlOf(FYYD_PATH + "?title=%s")), 0.0f));
         providers.add(new PodcastSearcherRegistry.SearcherInfo(
-                new ItunesPodcastSearcher(urlOf(APPLE_PATH + "?term=%s"), urlOf("/lookup?id=")), 1.0f));
+                new ItunesPodcastSearcher(urlOf(APPLE_PATH + "?term=%s"), urlOf(LOOKUP_PATH + "?id=")), 1.0f));
         providers.add(new PodcastSearcherRegistry.SearcherInfo(
                 new PodcastIndexPodcastSearcher(urlOf(INDEX_PATH + "?q=%s")), 1.0f));
     }
@@ -130,11 +134,20 @@ public class CombinedSearcherTest extends SearcherTestBase {
     }
 
     @Test
-    public void lookupIsDelegatedToTheProviderResponsibleForTheUrl() {
+    public void lookupOfAppleDirectoryUrlIsAnsweredByTheAppleProvider() {
         CombinedSearcher searcher = new CombinedSearcher();
-        String appleUrl = "https://itunes.apple.com/us/podcast/some-show/id123";
+        String appleUrl = "https://podcasts.apple.com/us/podcast/some-show/id123";
 
         assertTrue(searcher.urlNeedsLookup(appleUrl));
+        searcher.lookupUrl(appleUrl).test().assertValue("https://feeds.example/L.xml");
+
+        assertEquals(Arrays.asList(LOOKUP_PATH), requestedPaths);
+    }
+
+    @Test
+    public void plainFeedUrlNeedsNoLookupAndIsReturnedWithoutRequests() {
+        CombinedSearcher searcher = new CombinedSearcher();
+
         assertFalse(searcher.urlNeedsLookup("https://feeds.example/X.xml"));
         searcher.lookupUrl("https://feeds.example/X.xml").test().assertValue("https://feeds.example/X.xml");
         assertEquals(0, requestedPaths.size());
