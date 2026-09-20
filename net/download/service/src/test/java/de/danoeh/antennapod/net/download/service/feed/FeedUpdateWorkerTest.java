@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -182,7 +183,8 @@ public class FeedUpdateWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), worker(data).doWork());
 
-        cleaner.verify(() -> NonSubscribedFeedsCleaner.deleteOldNonSubscribedFeeds(any(Context.class)), Mockito.never());
+        cleaner.verify(() -> NonSubscribedFeedsCleaner.deleteOldNonSubscribedFeeds(any(Context.class)),
+                Mockito.never());
     }
 
     @Test
@@ -197,13 +199,19 @@ public class FeedUpdateWorkerTest {
     }
 
     @Test
-    public void episodeCountersAreLoadedBeforeRefreshing() {
-        provideFeeds();
+    public void episodeCountersAreLoadedBeforeTheFeedListIsRead() {
         FeedUpdateWorker worker = worker();
+        NewEpisodesNotification counters = notification.constructed().get(0);
+        AtomicBoolean loadedWhenFeedsWereRead = new AtomicBoolean();
+        reader.when(DBReader::getFeedList).thenAnswer(invocation -> {
+            loadedWhenFeedsWereRead.set(Mockito.mockingDetails(counters).getInvocations().stream()
+                    .anyMatch(call -> call.getMethod().getName().equals("loadCountersBeforeRefresh")));
+            return new ArrayList<Feed>();
+        });
 
         worker.doWork();
 
-        Mockito.verify(notification.constructed().get(0)).loadCountersBeforeRefresh();
+        assertTrue(loadedWhenFeedsWereRead.get());
     }
 
     @Test
@@ -298,7 +306,9 @@ public class FeedUpdateWorkerTest {
         factory = Mockito.mockConstruction(DefaultDownloaderFactory.class, (mock, ctx) ->
                 Mockito.when(mock.create(any(DownloadRequest.class))).thenReturn(null));
 
-        assertThrows(Exception.class, () -> worker().refreshFeed(feed, false));
+        Exception thrown = assertThrows(Exception.class, () -> worker().refreshFeed(feed, false));
+
+        assertEquals("Unable to create downloader", thrown.getMessage());
     }
 
     @Test
