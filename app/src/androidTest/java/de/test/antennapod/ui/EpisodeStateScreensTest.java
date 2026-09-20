@@ -213,4 +213,41 @@ public class EpisodeStateScreensTest {
 
         assertNotListed("Charlie");
     }
+
+    private void assertOnlyListed(String filter, String... titles) throws Exception {
+        UserPreferences.setPrefFilterAllEpisodes(filter);
+        openScreen(AllEpisodesFragment.TAG);
+        for (String title : titles) {
+            assertListed(title);
+        }
+        for (String other : Arrays.asList("Alpha", "Bravo", "Charlie")) {
+            if (!Arrays.asList(titles).contains(other)) {
+                assertNotListed(other);
+            }
+        }
+        for (String guid : Arrays.asList("alpha", "bravo", "charlie")) {
+            DBWriter.setFeedItem(item(guid), false).get();
+        }
+        for (String title : titles) {
+            assertListed(title);
+        }
+    }
+
+    @Test
+    public void everyEpisodeFilterListsExactlyTheMatchingEpisodes() throws Exception {
+        applyEveryState("alpha");
+
+        assertOnlyListed(FeedItemFilter.PLAYED, "Alpha");
+        assertOnlyListed(FeedItemFilter.UNPLAYED, "Bravo", "Charlie");
+        assertOnlyListed(FeedItemFilter.PAUSED, "Alpha");
+        assertOnlyListed(FeedItemFilter.NOT_PAUSED, "Bravo", "Charlie");
+        assertOnlyListed(FeedItemFilter.QUEUED, "Alpha");
+        assertOnlyListed(FeedItemFilter.NOT_QUEUED, "Bravo", "Charlie");
+        assertOnlyListed(FeedItemFilter.DOWNLOADED, "Alpha");
+        assertOnlyListed(FeedItemFilter.NOT_DOWNLOADED, "Bravo");
+        assertOnlyListed(FeedItemFilter.HAS_MEDIA, "Alpha", "Bravo");
+        assertOnlyListed(FeedItemFilter.NO_MEDIA, "Charlie");
+        assertOnlyListed(FeedItemFilter.IS_FAVORITE, "Alpha");
+        assertOnlyListed(FeedItemFilter.NOT_FAVORITE, "Bravo", "Charlie");
+    }
 }
