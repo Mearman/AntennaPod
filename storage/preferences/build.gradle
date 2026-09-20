@@ -19,4 +19,5 @@ dependencies {
     implementation libs.androidx.preference
 
     testImplementation libs.junit
+    testImplementation libs.androidx.test.core
 }
