@@ -19,6 +19,7 @@ import de.danoeh.antennapod.net.common.AntennapodHttpClient;
 import de.danoeh.antennapod.net.common.RedirectChecker;
 import de.danoeh.antennapod.net.download.serviceinterface.FeedUpdateManager;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
+import de.danoeh.antennapod.net.sync.testsupport.FakeHttpClient;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.database.FeedDatabaseWriter;
@@ -80,7 +81,7 @@ public class SyncServiceTest {
         }
     }
 
-    private InMemoryPreferencesContext context;
+    private Context context;
     private FakeHttpClient http;
     private SynchronizationQueueStorage storage;
     private int runAttemptCount;
@@ -95,7 +96,7 @@ public class SyncServiceTest {
 
     @Before
     public void setUp() {
-        context = new InMemoryPreferencesContext(RuntimeEnvironment.getApplication());
+        context = RuntimeEnvironment.getApplication();
         SynchronizationSettings.init(context);
         SynchronizationCredentials.init(context);
         SynchronizationSettings.setSelectedSyncProvider("GPODDER_NET");

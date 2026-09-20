@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.net.sync.service;
 
+import android.content.Context;
 import androidx.work.BackoffPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
@@ -45,7 +46,7 @@ public class SynchronizationQueueImplTest {
     private static final String WORK_ID = "SyncServiceWorkId";
     private static final String FEED_URL = "http://feed.example/rss";
 
-    private InMemoryPreferencesContext context;
+    private Context context;
     private SynchronizationQueueImpl queue;
     private SynchronizationQueueStorage storage;
     private WorkManager workManager;
@@ -55,7 +56,7 @@ public class SynchronizationQueueImplTest {
 
     @Before
     public void setUp() {
-        context = new InMemoryPreferencesContext(RuntimeEnvironment.getApplication());
+        context = RuntimeEnvironment.getApplication();
         SynchronizationSettings.init(context);
         storage = new SynchronizationQueueStorage(context);
         queue = new SynchronizationQueueImpl(context);
@@ -163,8 +164,10 @@ public class SynchronizationQueueImplTest {
 
     @Test
     public void syncIfNotSyncedRecentlySyncsAfterTenMinutesWithoutAttempt() {
-        context.preferences("synchronization").edit().putLong(SynchronizationSettings.LAST_SYNC_ATTEMPT_TIMESTAMP,
-                System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(11)).apply();
+        context.getSharedPreferences("synchronization", Context.MODE_PRIVATE).edit()
+                .putLong(SynchronizationSettings.LAST_SYNC_ATTEMPT_TIMESTAMP,
+                        System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(11))
+                .apply();
 
         queue.syncIfNotSyncedRecently();
 

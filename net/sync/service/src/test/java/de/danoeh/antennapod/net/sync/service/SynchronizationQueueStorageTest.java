@@ -1,5 +1,6 @@
 package de.danoeh.antennapod.net.sync.service;
 
+import android.content.Context;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
 import de.danoeh.antennapod.storage.preferences.SynchronizationSettings;
 import org.junit.Before;
@@ -18,12 +19,12 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class SynchronizationQueueStorageTest {
-    private InMemoryPreferencesContext context;
+    private Context context;
     private SynchronizationQueueStorage storage;
 
     @Before
     public void setUp() {
-        context = new InMemoryPreferencesContext(RuntimeEnvironment.getApplication());
+        context = RuntimeEnvironment.getApplication();
         SynchronizationSettings.init(context);
         storage = new SynchronizationQueueStorage(context);
     }
@@ -151,7 +152,7 @@ public class SynchronizationQueueStorageTest {
 
     @Test
     public void corruptedQueuesAreTreatedAsEmpty() {
-        context.preferences("synchronization").edit()
+        context.getSharedPreferences("synchronization", Context.MODE_PRIVATE).edit()
                 .putString("sync_removed", "{broken")
                 .putString("sync_added", "{broken")
                 .putString("sync_queued_episode_actions", "{broken")
