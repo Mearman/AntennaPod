@@ -23,9 +23,12 @@ import org.robolectric.RuntimeEnvironment;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @Category(IntegrationTest.class)
 @RunWith(RobolectricTestRunner.class)
@@ -33,6 +36,7 @@ public class PlaybackVolumeUpdateTest {
     private static final String FEED_URL = "http://example.com/feed";
     private Context context;
     private Feed feed;
+    private RecordingCallback callback;
     private LocalPSMP player;
     private PlaybackVolumeUpdater updater;
 
@@ -41,7 +45,8 @@ public class PlaybackVolumeUpdateTest {
         context = RuntimeEnvironment.getApplication();
         PlaybackTestDatabase.setUp(context);
         feed = PlaybackTestDatabase.storeFeed(context, FEED_URL, "Main", 1);
-        player = new LocalPSMP(context, new IgnoringCallback());
+        callback = new RecordingCallback();
+        player = new LocalPSMP(context, callback);
         updater = new PlaybackVolumeUpdater();
     }
 
@@ -64,28 +69,33 @@ public class PlaybackVolumeUpdateTest {
     }
 
     @Test
-    public void changingTheVolumeSettingOfTheFeedBeingPlayedAppliesItAndKeepsPlaying()
+    public void changingTheVolumeSettingOfTheEpisodeBeingPlayedReappliesItWithoutStopping()
             throws IOException, ExecutionException, InterruptedException {
         FeedMedia media = downloadedMedia();
         player.playMediaObject(media, false, true, true);
+        callback.statuses.clear();
 
         updater.updateVolumeIfNecessary(player, feed.getId(), VolumeAdaptionSetting.HEAVY_REDUCTION);
 
         assertEquals(VolumeAdaptionSetting.HEAVY_REDUCTION,
                 media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting());
+        assertTrue(callback.statuses.contains(PlayerStatus.PAUSED));
+        assertEquals(PlayerStatus.PLAYING, callback.statuses.get(callback.statuses.size() - 1));
         assertEquals(PlayerStatus.PLAYING, player.getPlayerStatus());
     }
 
     @Test
-    public void changingTheVolumeSettingOfAPausedEpisodeLeavesItPaused()
+    public void changingTheVolumeSettingOfAPausedEpisodeStoresItWithoutTouchingThePlayer()
             throws IOException, ExecutionException, InterruptedException {
         FeedMedia media = downloadedMedia();
         player.playMediaObject(media, false, false, true);
+        callback.statuses.clear();
 
         updater.updateVolumeIfNecessary(player, feed.getId(), VolumeAdaptionSetting.LIGHT_BOOST);
 
         assertEquals(VolumeAdaptionSetting.LIGHT_BOOST,
                 media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting());
+        assertTrue(callback.statuses.isEmpty());
         assertEquals(PlayerStatus.PREPARED, player.getPlayerStatus());
     }
 
@@ -93,24 +103,35 @@ public class PlaybackVolumeUpdateTest {
     public void changingTheVolumeSettingOfAnotherFeedLeavesTheCurrentEpisodeAlone()
             throws IOException, ExecutionException, InterruptedException {
         FeedMedia media = downloadedMedia();
-        VolumeAdaptionSetting before = media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting();
+        media.getItem().getFeed().getPreferences().setVolumeAdaptionSetting(VolumeAdaptionSetting.LIGHT_REDUCTION);
         player.playMediaObject(media, false, true, true);
+        callback.statuses.clear();
 
         updater.updateVolumeIfNecessary(player, feed.getId() + 1, VolumeAdaptionSetting.HEAVY_BOOST);
 
-        assertEquals(before, media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting());
+        assertEquals(VolumeAdaptionSetting.LIGHT_REDUCTION,
+                media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting());
+        assertTrue(callback.statuses.isEmpty());
+        assertEquals(PlayerStatus.PLAYING, player.getPlayerStatus());
     }
 
     @Test
     public void changingTheVolumeSettingWhileNothingIsLoadedIsIgnored() {
         updater.updateVolumeIfNecessary(player, feed.getId(), VolumeAdaptionSetting.HEAVY_BOOST);
 
+        assertTrue(callback.statuses.isEmpty());
+        assertEquals(VolumeAdaptionSetting.OFF,
+                PlaybackTestDatabase.storedItems(feed.getId()).get(0)
+                        .getFeed().getPreferences().getVolumeAdaptionSetting());
         assertEquals(PlayerStatus.STOPPED, player.getPlayerStatus());
     }
 
-    private static class IgnoringCallback implements PlaybackServiceMediaPlayer.PSMPCallback {
+    private static class RecordingCallback implements PlaybackServiceMediaPlayer.PSMPCallback {
+        private final List<PlayerStatus> statuses = new ArrayList<>();
+
         @Override
         public void statusChanged(PlaybackServiceMediaPlayer.PSMPInfo newInfo) {
+            statuses.add(newInfo.getPlayerStatus());
         }
 
         @Override

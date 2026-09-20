@@ -7,7 +7,6 @@ import de.danoeh.antennapod.event.PlayerErrorEvent;
 import de.danoeh.antennapod.event.playback.SpeedChangedEvent;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedMedia;
-import de.danoeh.antennapod.model.feed.VolumeAdaptionSetting;
 import de.danoeh.antennapod.model.playback.MediaType;
 import de.danoeh.antennapod.model.playback.Playable;
 import de.danoeh.antennapod.playback.base.PlaybackServiceMediaPlayer;
@@ -315,21 +314,6 @@ public class LocalPSMPTest {
     public void aStoppedPlayerAlwaysReportsNormalSpeedAndNoSilenceSkipping() {
         assertEquals(1.0f, player.getPlaybackSpeed(), 0.0001f);
         assertFalse(player.getSkipSilence());
-    }
-
-    @Test
-    public void theVolumeOfAQuietFeedIsBoostedByItsVolumeAdaption()
-            throws IOException, ExecutionException, InterruptedException {
-        feed.getPreferences().setVolumeAdaptionSetting(VolumeAdaptionSetting.LIGHT_BOOST);
-        DBWriter.setFeedPreferences(feed.getPreferences()).get();
-        FeedMedia media = downloadedMedia(0);
-        player.playMediaObject(media, false, false, true);
-
-        player.setVolume(1.0f, 1.0f);
-
-        assertEquals(VolumeAdaptionSetting.LIGHT_BOOST,
-                media.getItem().getFeed().getPreferences().getVolumeAdaptionSetting());
-        assertEquals(PlayerStatus.PREPARED, player.getPlayerStatus());
     }
 
     @Test
