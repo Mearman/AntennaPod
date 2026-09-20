@@ -18,5 +18,11 @@ dependencies {
     annotationProcessor libs.androidx.annotation
     implementation libs.glide
 
+    testImplementation project(':net:download:service-interface')
+    testImplementation project(':net:sync:service-interface')
+    testImplementation project(':storage:database')
+    testImplementation project(':storage:preferences')
     testImplementation libs.junit
+    testImplementation libs.androidx.test.core
+    testImplementation libs.robolectric
 }
