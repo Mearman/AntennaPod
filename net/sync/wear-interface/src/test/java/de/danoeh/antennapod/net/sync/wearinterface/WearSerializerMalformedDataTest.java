@@ -28,7 +28,9 @@ public class WearSerializerMalformedDataTest {
 
     @Test
     public void episodesBeforeTheFirstMalformedEntryAreKept() {
-        List<FeedItem> items = WearSerializer.episodesFromBytes(bytes("[{\"episode_id\": 5, \"title\": \"Kept\"}, 17]"));
+        byte[] data = bytes("[{\"episode_id\": 5, \"title\": \"Kept\"}, 17]");
+
+        List<FeedItem> items = WearSerializer.episodesFromBytes(data);
 
         assertEquals(1, items.size());
         assertEquals(5, items.get(0).getId());
