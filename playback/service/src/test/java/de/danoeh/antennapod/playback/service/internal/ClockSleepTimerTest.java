@@ -1,6 +1,12 @@
 package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.hardware.Sensor;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import de.danoeh.antennapod.event.playback.PlaybackPositionEvent;
 import de.danoeh.antennapod.event.playback.SleepTimerUpdatedEvent;
 import de.danoeh.antennapod.storage.preferences.SleepTimerPreferences;
@@ -13,6 +19,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +27,14 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(RobolectricTestRunner.class)
 public class ClockSleepTimerTest {
@@ -167,6 +182,63 @@ public class ClockSleepTimerTest {
 
         assertEquals(1, vibrating.vibrations);
         vibrating.stop();
+    }
+
+    @Test
+    public void anExpiringTimerVibratesThroughTheVibratorManagerOnNewerVersions() {
+        SleepTimerPreferences.setVibrate(true);
+        VibratorManager manager = (VibratorManager) RuntimeEnvironment.getApplication()
+                .getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+        timer.start(600000);
+
+        timer.notifyAboutExpiry();
+
+        assertTrue(shadowOf(manager.getDefaultVibrator()).isVibrating());
+    }
+
+    @Test
+    @Config(sdk = 30)
+    public void anExpiringTimerVibratesThroughThePlainVibratorOnOlderVersions() {
+        SleepTimerPreferences.setVibrate(true);
+        Vibrator vibrator = (Vibrator) RuntimeEnvironment.getApplication()
+                .getSystemService(Context.VIBRATOR_SERVICE);
+        timer.start(600000);
+
+        timer.notifyAboutExpiry();
+
+        assertTrue(shadowOf(vibrator).isVibrating());
+    }
+
+    @Test
+    public void anExpiringTimerListensForShakesOnlyWhileShakeToResetIsEnabled() {
+        SensorManager sensorManager = mock(SensorManager.class);
+        Sensor accelerometer = mock(Sensor.class);
+        when(sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)).thenReturn(accelerometer);
+        when(sensorManager.registerListener(any(), any(Sensor.class), anyInt())).thenReturn(true);
+        ClockSleepTimer shakeable = new ClockSleepTimer(contextWithSensors(sensorManager));
+        shakeable.start(600000);
+
+        shakeable.notifyAboutExpiry();
+        verify(sensorManager, never()).registerListener(any(), any(Sensor.class), anyInt());
+
+        SleepTimerPreferences.setShakeToReset(true);
+        shakeable.notifyAboutExpiry();
+        verify(sensorManager).registerListener(any(), eq(accelerometer), anyInt());
+
+        shakeable.stop();
+        verify(sensorManager).unregisterListener(any(SensorEventListener.class));
+    }
+
+    private static Context contextWithSensors(SensorManager sensorManager) {
+        return new ContextWrapper(RuntimeEnvironment.getApplication()) {
+            @Override
+            public Object getSystemService(String name) {
+                if (Context.SENSOR_SERVICE.equals(name)) {
+                    return sensorManager;
+                }
+                return super.getSystemService(name);
+            }
+        };
     }
 
     private static class VibrationCountingTimer extends ClockSleepTimer {
