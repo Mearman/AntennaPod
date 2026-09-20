@@ -1,6 +1,6 @@
 package de.danoeh.antennapod.net.sync.gpoddernet;
 
-import de.danoeh.antennapod.net.sync.FakeHttpClient;
+import de.danoeh.antennapod.net.sync.testsupport.FakeHttpClient;
 import de.danoeh.antennapod.net.sync.gpoddernet.model.GpodnetDevice;
 import de.danoeh.antennapod.net.sync.gpoddernet.model.GpodnetUploadChangesResponse;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;

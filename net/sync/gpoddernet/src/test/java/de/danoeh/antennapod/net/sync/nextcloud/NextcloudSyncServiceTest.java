@@ -1,6 +1,6 @@
 package de.danoeh.antennapod.net.sync.nextcloud;
 
-import de.danoeh.antennapod.net.sync.FakeHttpClient;
+import de.danoeh.antennapod.net.sync.testsupport.FakeHttpClient;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeActionChanges;
 import de.danoeh.antennapod.net.sync.serviceinterface.SubscriptionChanges;

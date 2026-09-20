@@ -2,7 +2,7 @@ package de.danoeh.antennapod.net.sync.nextcloud;
 
 import android.app.Activity;
 import android.content.Intent;
-import de.danoeh.antennapod.net.sync.FakeHttpClient;
+import de.danoeh.antennapod.net.sync.testsupport.FakeHttpClient;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.schedulers.TestScheduler;
