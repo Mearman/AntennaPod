@@ -50,6 +50,7 @@ dependencies {
     testImplementation project(':net:download:service-interface')
     testImplementation libs.junit
     testImplementation libs.androidx.preference
+    testImplementation libs.okhttp.mockwebserver
     testImplementation libs.mockito.core
     testImplementation libs.androidx.test.core
     testImplementation libs.robolectric
