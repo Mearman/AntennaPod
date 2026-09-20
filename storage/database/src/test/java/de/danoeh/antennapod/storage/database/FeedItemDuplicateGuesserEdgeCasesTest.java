@@ -106,8 +106,8 @@ public class FeedItemDuplicateGuesserEdgeCasesTest {
 
     @Test
     public void canonicalizedTitleUnifiesQuotesAndDashes() {
-        assertEquals("\"Quoted\" - title", FeedItemDuplicateGuesser.canonicalizeTitle("“Quoted” — title"));
-        assertEquals("\"Quoted\"", FeedItemDuplicateGuesser.canonicalizeTitle("„Quoted”"));
+        assertEquals("\"Quoted\" - title", FeedItemDuplicateGuesser.canonicalizeTitle("\u201CQuoted\u201D \u2014 title"));
+        assertEquals("\"Quoted\"", FeedItemDuplicateGuesser.canonicalizeTitle("\u201EQuoted\u201D"));
     }
 
     @Test
@@ -123,7 +123,7 @@ public class FeedItemDuplicateGuesserEdgeCasesTest {
     @Test
     public void titlesDifferingOnlyInQuoteStyleAreSimilar() {
         FeedItem straight = item("id1", "Say \"hello\"", SAME_DAY, media("url1", 0, "audio/mpeg"));
-        FeedItem curly = item("id2", "Say “hello”", SAME_DAY, media("url2", 0, "audio/mpeg"));
+        FeedItem curly = item("id2", "Say \u201Chello\u201D", SAME_DAY, media("url2", 0, "audio/mpeg"));
         assertTrue(FeedItemDuplicateGuesser.seemDuplicates(straight, curly));
     }
 
