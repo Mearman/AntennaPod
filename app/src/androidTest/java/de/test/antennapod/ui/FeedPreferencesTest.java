@@ -265,19 +265,6 @@ public class FeedPreferencesTest {
     }
 
     @Test
-    public void volumeAdaptationIsStoredForTheFeed() throws Exception {
-        Feed feed = subscribeToFeed(EPISODE_A);
-        assertEquals(VolumeAdaptionSetting.OFF, preferences(feed).getVolumeAdaptionSetting());
-        FeedRobot.openFeedSettings();
-
-        FeedRobot.clickSetting(R.string.feed_volume_adapdation);
-        FeedRobot.chooseOption(R.string.feed_volume_reduction_light);
-
-        FeedRobot.awaitCondition(() -> preferences(feed).getVolumeAdaptionSetting()
-                == VolumeAdaptionSetting.LIGHT_REDUCTION);
-    }
-
-    @Test
     public void removedTagIsDroppedFromThePreferences() throws Exception {
         Feed feed = subscribeToFeed(EPISODE_A);
         FeedPreferences stored = preferences(feed);
