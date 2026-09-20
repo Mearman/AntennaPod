@@ -184,8 +184,7 @@ public class OnlineFeedViewTest {
     public void missingFeedShowsAnErrorWithTheReason() throws Exception {
         open(fixture.url("/status/404"));
 
-        waitForViewGlobally(withText(R.string.error_label), VIEW_TIMEOUT_MILLIS);
-        onView(withText(android.R.string.ok)).perform(click());
+        dismissErrorDialogShowing(context.getString(R.string.download_error_not_found));
 
         assertTrue(DBReader.getFeedList().isEmpty());
     }
@@ -200,19 +199,22 @@ public class OnlineFeedViewTest {
         return nodes.isEmpty() ? null : nodes.get(0);
     }
 
-    @Test
-    public void webPageInsteadOfAFeedShowsAnError() throws Exception {
-        String pageUrl = fixture.hostText("page.html", "<html><head><title>Website</title></head></html>");
-        open(pageUrl);
-
-        String message = context.getString(R.string.download_error_unsupported_type_html);
+    private void dismissErrorDialogShowing(String message) {
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> findNode(message) != null);
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> {
             AccessibilityNodeInfo ok = findNode(context.getString(android.R.string.ok));
             return ok != null && ok.performAction(AccessibilityNodeInfo.ACTION_CLICK);
         });
-
         Awaitility.await().atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS).until(() -> findNode(message) == null);
+    }
+
+    @Test
+    public void webPageInsteadOfAFeedShowsAnError() throws Exception {
+        String pageUrl = fixture.hostText("page.html", "<html><head><title>Website</title></head></html>");
+        open(pageUrl);
+
+        dismissErrorDialogShowing(context.getString(R.string.download_error_unsupported_type_html));
+
         assertTrue(DBReader.getFeedList().isEmpty());
     }
 }
