@@ -118,8 +118,6 @@ public class PlaybackStatePersistenceTest {
         startPlaybackOfFirstEpisode("3sec.mp3");
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() ->
                 PlaybackPreferences.getCurrentlyPlayingFeedMediaId()
-                        == PlaybackPreferences.NO_MEDIA_PLAYING
-                        || PlaybackPreferences.getCurrentPlayerStatus()
-                        == PlaybackPreferences.PLAYER_STATUS_OTHER);
+                        == PlaybackPreferences.NO_MEDIA_PLAYING);
     }
 }
