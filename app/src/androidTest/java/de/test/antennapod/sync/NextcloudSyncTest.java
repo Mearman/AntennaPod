@@ -69,6 +69,7 @@ public class NextcloudSyncTest {
 
     @Before
     public void setUp() throws Exception {
+        EspressoTestUtils.cancelPendingSyncWork();
         EspressoTestUtils.clearDatabase();
         EspressoTestUtils.clearPreferences();
         EspressoTestUtils.enableSyncOverAnyConnection();

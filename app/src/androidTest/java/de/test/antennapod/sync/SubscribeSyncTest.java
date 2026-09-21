@@ -32,7 +32,6 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertTrue;
 
 @LargeTest
 @RunWith(AndroidJUnit4.class)
@@ -48,6 +47,7 @@ public class SubscribeSyncTest {
 
     @Before
     public void setUp() throws Exception {
+        EspressoTestUtils.cancelPendingSyncWork();
         EspressoTestUtils.clearDatabase();
         EspressoTestUtils.clearPreferences();
         EspressoTestUtils.enableSyncOverAnyConnection();
@@ -95,6 +95,7 @@ public class SubscribeSyncTest {
 
         await().atMost(150, TimeUnit.SECONDS)
                 .until(() -> server.uploadedAddedFeeds.contains(feedUrl));
-        assertTrue(SynchronizationSettings.isLastSyncSuccessful());
+        await().atMost(60, TimeUnit.SECONDS)
+                .until(SynchronizationSettings::isLastSyncSuccessful);
     }
 }

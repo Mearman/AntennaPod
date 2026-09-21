@@ -24,6 +24,7 @@ import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.screen.drawer.NavDrawerFragment;
+import androidx.work.WorkManager;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.hamcrest.Matcher;
@@ -202,6 +203,13 @@ public class EspressoTestUtils {
                         new HashSet<>(Arrays.asList("images", "feed_refresh", "sync",
                                 "episode_download", "auto_download")))
                 .commit();
+    }
+
+    public static void cancelPendingSyncWork() {
+        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
+                .cancelUniqueWork("SyncServiceWorkId");
+        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
+                .pruneWork();
     }
 
     public static void setLaunchScreen(String tag) {

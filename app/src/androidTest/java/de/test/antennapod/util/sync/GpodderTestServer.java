@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
+import android.util.Log;
+
 import fi.iki.elonen.NanoHTTPD;
 
 /**
@@ -141,6 +143,7 @@ public class GpodderTestServer extends NanoHTTPD {
         requests.add(new RecordedRequest(method, path, body));
 
         if (!path.startsWith("/api/2/")) {
+            Log.w("GpodderTestServer", "Unexpected request: " + method + " " + path);
             return statusResponse(404);
         }
 
@@ -208,8 +211,10 @@ public class GpodderTestServer extends NanoHTTPD {
                     return new Response(Response.Status.OK, MIME_JSON, response.toString());
                 }
             }
+            Log.w("GpodderTestServer", "Unhandled request: " + method + " " + path);
             return statusResponse(404);
         } catch (Exception e) {
+            Log.w("GpodderTestServer", "Failed request: " + method + " " + path, e);
             return statusResponse(500);
         }
     }

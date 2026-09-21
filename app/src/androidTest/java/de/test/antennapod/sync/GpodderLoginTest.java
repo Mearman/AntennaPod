@@ -46,6 +46,7 @@ public class GpodderLoginTest {
 
     @Before
     public void setUp() throws Exception {
+        EspressoTestUtils.cancelPendingSyncWork();
         EspressoTestUtils.clearDatabase();
         EspressoTestUtils.clearPreferences();
         server = new GpodderTestServer();
