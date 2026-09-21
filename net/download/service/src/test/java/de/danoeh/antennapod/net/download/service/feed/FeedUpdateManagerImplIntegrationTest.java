@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static android.R.id.message;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -250,10 +251,10 @@ public class FeedUpdateManagerImplIntegrationTest extends DownloadIntegrationTes
         AlertDialog dialog = showMobileRefreshDialog(feedWithId(FEED_ID));
 
         TextView title = dialog.findViewById(R.id.alertTitle);
-        TextView message = dialog.findViewById(android.R.id.message);
+        TextView messageView = dialog.findViewById(message);
         assertEquals(context.getString(R.string.feed_refresh_title), title.getText().toString());
         assertEquals(context.getString(R.string.confirm_mobile_feed_refresh_dialog_message),
-                message.getText().toString());
+                messageView.getText().toString());
         verify(workManager, never()).enqueueUniqueWork(any(String.class), any(ExistingWorkPolicy.class),
                 any(OneTimeWorkRequest.class));
     }

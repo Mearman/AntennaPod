@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static android.R.string.ok;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
@@ -187,7 +188,7 @@ public class FeedPreferencesTest {
 
         FeedRobot.clickSetting(R.string.rename_feed_label);
         onView(withId(R.id.textInput)).perform(replaceText("My own name"));
-        FeedRobot.confirmTypedDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(ok);
 
         FeedRobot.awaitCondition(() -> "My own name".equals(FeedRobot.reload(feed).getTitle()));
         assertEquals("My own name", FeedRobot.reload(feed).getCustomTitle());
@@ -200,7 +201,7 @@ public class FeedPreferencesTest {
         onView(withText(R.string.reset)).inRoot(isDialog()).perform(click());
         onView(withId(R.id.textInput)).check(matches(withText("My own name")));
         onView(withId(R.id.textInput)).perform(replaceText("Preferences Feed"));
-        FeedRobot.confirmTypedDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(ok);
 
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getCustomTitle() == null);
         assertEquals("Preferences Feed", FeedRobot.reload(feed).getTitle());
@@ -215,7 +216,7 @@ public class FeedPreferencesTest {
         waitUntilDisplayed(withId(R.id.newTagEditText), FeedRobot.UI_TIMEOUT_MS);
         addChip(R.id.newTagTextInput, R.id.tagsRecycler, "Comedy");
         addChip(R.id.newTagTextInput, R.id.tagsRecycler, "News");
-        FeedRobot.confirmTypedDialog(android.R.string.ok);
+        FeedRobot.confirmTypedDialog(ok);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getTags().contains("Comedy")
                 && preferences(feed).getTags().contains("News"));
@@ -236,7 +237,7 @@ public class FeedPreferencesTest {
         FeedRobot.clickSetting(R.string.feed_tags_label);
         waitUntilDisplayed(withText("Temporary"), FeedRobot.UI_TIMEOUT_MS);
         onView(allOf(instanceOf(Chip.class), withText("Temporary"))).perform(clickCloseIcon());
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmDialog(ok);
 
         FeedRobot.awaitCondition(() -> !preferences(feed).getTags().contains("Temporary"));
     }
@@ -252,7 +253,7 @@ public class FeedPreferencesTest {
         onView(withId(R.id.useGlobalCheckbox)).check(matches(isChecked()));
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
         onView(withId(R.id.skipSilenceFeed)).perform(click());
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmDialog(ok);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFeedSkipSilence()
                 == FeedPreferences.SkipSilence.AGGRESSIVE);
@@ -263,7 +264,7 @@ public class FeedPreferencesTest {
         onView(withId(R.id.useGlobalCheckbox)).check(matches(isNotChecked()));
         onView(withId(R.id.skipSilenceFeed)).check(matches(isChecked()));
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmDialog(ok);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFeedSkipSilence()
                 == FeedPreferences.SkipSilence.GLOBAL);
@@ -278,7 +279,7 @@ public class FeedPreferencesTest {
         FeedRobot.clickSetting(R.string.playback_speed);
         waitUntilDisplayed(withId(R.id.useGlobalCheckbox), FeedRobot.UI_TIMEOUT_MS);
         onView(withId(R.id.useGlobalCheckbox)).perform(click());
-        FeedRobot.confirmDialog(android.R.string.ok);
+        FeedRobot.confirmDialog(ok);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFeedSkipSilence() == FeedPreferences.SkipSilence.OFF);
     }

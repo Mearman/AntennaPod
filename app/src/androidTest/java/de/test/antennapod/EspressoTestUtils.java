@@ -32,6 +32,7 @@ import java.io.File;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static android.R.id.widget_frame;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
@@ -213,7 +214,7 @@ public class EspressoTestUtils {
         onView(withId(R.id.recycler_view)).perform(
                 RecyclerViewActions.actionOnItem(
                         allOf(hasDescendant(withText(title)),
-                                hasDescendant(withId(android.R.id.widget_frame))),
+                                hasDescendant(withId(widget_frame))),
                         click()));
     }
 
