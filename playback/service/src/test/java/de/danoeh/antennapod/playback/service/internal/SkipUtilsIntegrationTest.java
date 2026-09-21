@@ -2,6 +2,7 @@ package de.danoeh.antennapod.playback.service.internal;
 
 import android.content.Context;
 import de.danoeh.antennapod.event.MessageEvent;
+import de.danoeh.antennapod.playback.service.R;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
@@ -82,7 +83,8 @@ public class SkipUtilsIntegrationTest {
 
         assertEquals(30000, startPosition);
         assertEquals(1, messages.size());
-        assertEquals("Skipped first 30 seconds", messages.get(0).message);
+        assertEquals(context.getResources().getQuantityString(
+                R.plurals.pref_feed_skip_intro_snackbar, 30, 30), messages.get(0).message);
     }
 
     @Test
@@ -125,7 +127,8 @@ public class SkipUtilsIntegrationTest {
 
         assertTrue(skipped);
         assertEquals(1, messages.size());
-        assertEquals("Skipped last 20 seconds", messages.get(0).message);
+        assertEquals(context.getResources().getQuantityString(
+                R.plurals.pref_feed_skip_ending_snackbar, 20, 20), messages.get(0).message);
     }
 
     @Test
