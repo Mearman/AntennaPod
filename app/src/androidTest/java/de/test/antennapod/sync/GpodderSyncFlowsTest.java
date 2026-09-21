@@ -90,6 +90,7 @@ public class GpodderSyncFlowsTest {
         server.start();
         uiTestUtils = new UITestUtils(InstrumentationRegistry.getInstrumentation().getTargetContext());
         uiTestUtils.setup();
+        EventBus.getDefault().removeStickyEvent(SyncServiceEvent.class);
         EventBus.getDefault().register(this);
         lastSyncEventMessage = -1;
     }
@@ -155,6 +156,7 @@ public class GpodderSyncFlowsTest {
         if (syncScreenOpen) {
             pressBack();
         }
+        lastSyncEventMessage = -1;
         clickPreference(R.string.synchronization_pref);
         clickPreference(R.string.synchronization_sync_changes_title);
         syncScreenOpen = true;
@@ -378,6 +380,7 @@ public class GpodderSyncFlowsTest {
 
         server.clearRecordedRequests();
         pressBack();
+        lastSyncEventMessage = -1;
         clickPreference(R.string.synchronization_pref);
         clickPreference(R.string.synchronization_full_sync_title);
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
