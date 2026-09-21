@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.test.espresso.intent.rule.IntentsTestRule;
@@ -28,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -51,6 +55,8 @@ public class StaleMainActivityTeardownTest {
     private MainActivity firstInstance;
     private UITestUtils uiTestUtils;
     private volatile Activity resumedMainActivity;
+    private CountDownLatch teardownHeld;
+    private CountDownLatch teardownRelease;
 
     private final Application.ActivityLifecycleCallbacks lifecycleLogger = new Application.ActivityLifecycleCallbacks() {
         @Override
@@ -119,24 +125,29 @@ public class StaleMainActivityTeardownTest {
 
     @After
     public void tearDown() throws Exception {
+        if (teardownRelease != null) {
+            teardownRelease.countDown();
+        }
         application.unregisterActivityLifecycleCallbacks(lifecycleLogger);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(this::finishEverythingLeftOpen);
         uiTestUtils.tearDown();
     }
 
     @Test
-    public void relaunchWhilePreviousMainActivityIsFinishingResumesFreshInstance() throws Exception {
+    public void relaunchWhilePreviousMainActivityIsFinishingCreatesFreshInstance() throws Exception {
         firstInstance = activityRule.launchActivity(new Intent());
         log("first MainActivity instance " + identity(firstInstance));
-        InstrumentationRegistry.getInstrumentation().runOnMainSync(firstInstance::finish);
-        log("previous MainActivity finished, destroy still pending, relaunching now");
-        issueRelaunch();
-        Activity resumed = waitForResumedMainActivity(25000);
+        holdTeardown();
+        log("ready to relaunch");
+        Thread.sleep(2000);
         log("distinct MainActivity instances started: " + mainActivityInstances.size());
-        log("resumed after relaunch: " + identity(resumed));
+        log("resumed MainActivity: " + identity(resumedMainActivity));
+        assertTrue("A relaunch issued while the previous MainActivity was still finishing created no fresh"
+                + " instance; the previous, still finishing activity remained the resumed one",
+                mainActivityInstances.size() > 1);
+        Activity resumed = resumedMainActivity;
         assertNotNull("No MainActivity was resumed after the relaunch", resumed);
-        assertNotSame("Relaunch resolved against the previous, still finishing MainActivity", firstInstance, resumed);
-        assertTrue("The MainActivity resumed after the relaunch is still finishing", !resumed.isFinishing());
+        assertNotSame("The resumed MainActivity is the previous, still finishing instance", firstInstance, resumed);
     }
 
     @Test
@@ -145,33 +156,32 @@ public class StaleMainActivityTeardownTest {
         final Feed feed = uiTestUtils.hostedFeeds.get(0);
         firstInstance = activityRule.launchActivity(new Intent());
         log("first MainActivity instance " + identity(firstInstance));
-        InstrumentationRegistry.getInstrumentation().runOnMainSync(firstInstance::finish);
-        log("previous MainActivity finished, destroy still pending, relaunching now");
         EspressoTestUtils.setLaunchScreen("" + feed.getId());
-        issueRelaunch();
+        holdTeardown();
+        log("ready to relaunch");
+        Thread.sleep(2000);
+        teardownRelease.countDown();
         onView(withText(feed.getItemAtIndex(0).getTitle())).perform(click());
         onView(isRoot()).perform(waitForView(withText(R.string.mark_read_no_media_label), 3000));
         onView(allOf(withText(R.string.mark_read_no_media_label), isDisplayed())).perform(click());
         EspressoTestUtils.waitForViewToDisappear(withText(R.string.mark_read_no_media_label), 3000);
     }
 
-    private void issueRelaunch() {
-        Intent intent = new Intent(InstrumentationRegistry.getInstrumentation().getTargetContext(), MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        InstrumentationRegistry.getInstrumentation().getTargetContext().startActivity(intent);
-        log("relaunch issued while previous finishing=" + firstInstance.isFinishing());
-    }
-
-    private Activity waitForResumedMainActivity(long timeoutMillis) throws InterruptedException {
-        long endTime = System.currentTimeMillis() + timeoutMillis;
-        while (System.currentTimeMillis() < endTime) {
-            Activity resumed = resumedMainActivity;
-            if (resumed != null) {
-                return resumed;
+    private void holdTeardown() throws InterruptedException {
+        teardownHeld = new CountDownLatch(1);
+        teardownRelease = new CountDownLatch(1);
+        new Handler(Looper.getMainLooper()).post(() -> {
+            firstInstance.finish();
+            teardownHeld.countDown();
+            try {
+                teardownRelease.await(destroyHoldMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-            Thread.sleep(50);
-        }
-        return null;
+        });
+        assertTrue("Previous MainActivity did not start finishing", teardownHeld.await(15, TimeUnit.SECONDS));
+        log("previous MainActivity finishing with teardown held, still resumed="
+                + (resumedMainActivity == firstInstance));
     }
 
     private void finishEverythingLeftOpen() {
@@ -182,6 +192,10 @@ public class StaleMainActivityTeardownTest {
         for (Activity activity : openActivities) {
             activity.finish();
         }
+    }
+
+    private static long destroyHoldMillis() {
+        return Long.parseLong(InstrumentationRegistry.getArguments().getString("destroyHoldMillis", "3000"));
     }
 
     private static String identity(Object object) {
