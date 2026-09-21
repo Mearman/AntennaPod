@@ -344,7 +344,7 @@ public class FeedManagementDatabaseTest {
     @Test
     public void navigationDrawerFiltersFeedsBySettings() throws Exception {
         createCounterFeeds();
-        Feed busy = DBReader.getFeedList().get(0);
+        Feed busy = null;
         for (Feed feed : DBReader.getFeedList()) {
             if (feed.getTitle().equals("Busy")) {
                 busy = feed;
