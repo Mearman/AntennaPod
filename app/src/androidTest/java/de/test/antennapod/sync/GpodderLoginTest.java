@@ -168,6 +168,33 @@ public class GpodderLoginTest {
     }
 
     @Test
+    public void testUnavailableServerShowsServerError() {
+        server.setLoginStatus(500);
+        openSynchronizationScreen();
+        openGpodderLoginDialog();
+        enterHostAndProceed();
+        enterCredentialsAndLogIn(GpodderTestServer.USERNAME, GpodderTestServer.PASSWORD);
+
+        waitForViewGlobally(withText(containsString("unavailable")), 15000);
+        onView(withId(R.id.etxtUsername)).check(matches(isDisplayed()));
+        assertFalse(SynchronizationSettings.isProviderConnected());
+    }
+
+    @Test
+    public void testBrokenDeviceListShowsError() {
+        server.setDevicesJson("this is not json");
+        openSynchronizationScreen();
+        openGpodderLoginDialog();
+        enterHostAndProceed();
+        enterCredentialsAndLogIn(GpodderTestServer.USERNAME, GpodderTestServer.PASSWORD);
+
+        waitForViewGlobally(withId(R.id.credentialsError), 15000);
+        onView(withId(R.id.etxtUsername)).check(matches(isDisplayed()));
+        assertFalse(SynchronizationSettings.isProviderConnected());
+        assertTrue(server.hasRequest("GET", "/api/2/devices/"));
+    }
+
+    @Test
     public void testLogoutClearsProviderAndShowsChooserAgain() {
         openSynchronizationScreen();
         openGpodderLoginDialog();
