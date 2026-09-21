@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.work.Data;
 import androidx.work.ListenableWorker;
+import androidx.work.WorkManager;
 import androidx.work.testing.TestListenableWorkerBuilder;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.model.download.DownloadError;
@@ -18,6 +19,7 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.net.download.service.feed.FeedUpdateManagerImpl;
 import de.danoeh.antennapod.net.download.service.feed.FeedUpdateWorker;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
@@ -60,7 +62,12 @@ public class FeedUpdateWorkerTest {
     @After
     public void tearDown() throws Exception {
         notificationManager.cancelAll();
+        DownloadServiceInterface.get().cancelAll(context);
+        Awaitility.await().atMost(90, TimeUnit.SECONDS).until(
+                () -> DownloadServiceInterface.get().getNumberOfActiveDownloads(context) == 0);
+        WorkManager.getInstance(context).pruneWork().getResult().get();
         fixture.tearDown();
+        PlatformNetwork.activateUnmeteredWifiNetwork();
     }
 
     private ListenableWorker.Result refresh(Feed feed) throws Exception {
