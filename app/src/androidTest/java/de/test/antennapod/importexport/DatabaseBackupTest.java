@@ -75,6 +75,7 @@ public class DatabaseBackupTest {
         activityTestRule.finishActivity();
         UserPreferences.setAutomaticExportFolder(null);
         uiTestUtils.tearDown();
+        PodDBAdapter.tearDownTests();
     }
 
     private File exportFile(String name) {
