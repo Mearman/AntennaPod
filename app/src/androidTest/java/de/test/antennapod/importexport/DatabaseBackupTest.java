@@ -289,4 +289,28 @@ public class DatabaseBackupTest {
             EventBus.getDefault().unregister(this);
         }
     }
+
+    @Test
+    public void testEnablingAutomaticBackupSchedulesThePeriodicExportWork() throws Exception {
+        UserPreferences.setAutomaticExportFolder("content://mock/tree");
+        WorkManager workManager = WorkManager.getInstance(
+                InstrumentationRegistry.getInstrumentation().getTargetContext());
+        AutomaticDatabaseExportWorker.enqueueIfNeeded(
+                InstrumentationRegistry.getInstrumentation().getTargetContext(), true);
+        await().atMost(10, TimeUnit.SECONDS).until(() ->
+                !workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get().isEmpty());
+
+        openImportExportScreen();
+        clickPreference(R.string.automatic_database_export_label);
+
+        await().atMost(5, TimeUnit.SECONDS)
+                .until(() -> UserPreferences.getAutomaticExportFolder() == null);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get();
+            return !infos.isEmpty() && infos.stream().allMatch(info ->
+                    info.getState() == WorkInfo.State.CANCELLED
+                            || info.getState() == WorkInfo.State.FAILED
+                            || info.getState() == WorkInfo.State.SUCCEEDED);
+        });
+    }
 }
