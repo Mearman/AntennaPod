@@ -18,10 +18,6 @@ public class PlatformNetwork {
         return network == null ? null : manager.getNetworkCapabilities(network);
     }
 
-    public static boolean isConnected() {
-        return activeCapabilities() != null;
-    }
-
     public static boolean isMeteredOrCellular() {
         NetworkCapabilities capabilities = activeCapabilities();
         if (capabilities == null) {

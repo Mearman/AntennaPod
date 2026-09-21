@@ -6,6 +6,9 @@ import de.danoeh.antennapod.net.common.RedirectChecker;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.service.download.DownloadTestFixture;
 import de.test.antennapod.util.PlatformNetwork;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,8 +49,15 @@ public class NetworkHelpersTest {
     }
 
     @Test
-    public void networkAvailabilityFollowsTheConnectivityOfThePlatform() {
-        assertEquals(PlatformNetwork.isConnected(), NetworkUtils.networkAvailable());
+    public void networkAvailabilityReportsTrueWhileTheDeviceIsTransferringData() throws Exception {
+        OkHttpClient client = new OkHttpClient();
+
+        try (Response response = client.newCall(new Request.Builder().url(mediaUrl).build()).execute()) {
+            assertTrue(response.isSuccessful());
+            assertEquals(fixture.hostedFile(mediaUrl).length(), response.body().contentLength());
+        }
+
+        assertTrue(NetworkUtils.networkAvailable());
     }
 
     @Test
