@@ -85,12 +85,15 @@ public class FeedRobot {
     public static void openFeedSettings() {
         waitUntilDisplayed(withId(R.id.butShowSettings), UI_TIMEOUT_MS);
         onView(withId(R.id.butShowSettings)).perform(click());
-        waitUntilDisplayed(withText(R.string.keep_updated), UI_TIMEOUT_MS);
+        waitUntilDisplayed(withId(R.id.recycler_view), UI_TIMEOUT_MS);
+        onView(withId(R.id.recycler_view)).perform(EspressoTestUtils.scrollRecyclerUntilItemMatches(
+                hasDescendant(withText(R.string.keep_updated))));
     }
 
     public static void clickSetting(int titleRes) {
-        onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.actionOnItem(
-                hasDescendant(withText(titleRes)), click()));
+        onView(withId(R.id.recycler_view))
+                .perform(EspressoTestUtils.scrollRecyclerUntilItemMatches(hasDescendant(withText(titleRes))))
+                .perform(RecyclerViewActions.actionOnItem(hasDescendant(withText(titleRes)), click()));
     }
 
     public static void awaitDialogText(int textRes) {
