@@ -131,6 +131,7 @@ public class PreferencesApiTest {
         assertTrue(UserPreferences.shouldShowRemainingTime());
         put(UserPreferences.PREF_EXPANDED_NOTIFICATION, true);
         assertTrue(UserPreferences.getNotifyPriority() > 0);
+        put(UserPreferences.PREF_PERSISTENT_NOTIFICATION, false);
         assertFalse(UserPreferences.isPersistNotify());
         assertTrue(UserPreferences.getShowDownloadReportRaw());
         assertTrue(UserPreferences.enqueueDownloadedEpisodes());
@@ -172,6 +173,7 @@ public class PreferencesApiTest {
         assertEquals(88, UserPreferences.getHardwareForwardButton());
         put(UserPreferences.PREF_HARDWARE_PREVIOUS_BUTTON, "87");
         assertEquals(87, UserPreferences.getHardwarePreviousButton());
+        put("prefPlaybackTimeRespectsSpeed", true);
         assertTrue(UserPreferences.timeRespectsSpeed());
     }
 
@@ -303,6 +305,7 @@ public class PreferencesApiTest {
     @Test
     public void testCustomDataFolderIsUsedForTypeSubfolders() {
         File custom = new File(context.getExternalFilesDir(null), "custom-data-folder");
+        assertTrue(custom.mkdirs());
         UserPreferences.setDataFolder(custom.getAbsolutePath());
         File mediaFolder = UserPreferences.getDataFolder("media");
         assertEquals(new File(custom, "media").getAbsolutePath(), mediaFolder.getAbsolutePath());

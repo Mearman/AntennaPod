@@ -1,7 +1,6 @@
 package de.test.antennapod.sync;
 
 import android.content.Intent;
-import androidx.preference.PreferenceManager;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -15,12 +14,13 @@ import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.SortOrder;
+import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationProvider;
+import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationQueue;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.storage.preferences.SynchronizationCredentials;
 import de.danoeh.antennapod.storage.preferences.SynchronizationSettings;
-import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.screen.preferences.PreferenceActivity;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.ui.UITestUtils;
@@ -38,7 +38,7 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -79,7 +79,7 @@ public class GpodderSyncFlowsTest {
     public void setUp() throws Exception {
         EspressoTestUtils.clearDatabase();
         EspressoTestUtils.clearPreferences();
-        enableSyncOverAnyConnection();
+        EspressoTestUtils.enableSyncOverAnyConnection();
         server = new GpodderTestServer();
         server.start();
         uiTestUtils = new UITestUtils(InstrumentationRegistry.getInstrumentation().getTargetContext());
@@ -104,16 +104,6 @@ public class GpodderSyncFlowsTest {
     @Subscribe(threadMode = ThreadMode.MAIN, sticky = true)
     public void onSyncServiceEvent(SyncServiceEvent event) {
         lastSyncEventMessage = event.getMessageResId();
-    }
-
-    private void enableSyncOverAnyConnection() {
-        PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation()
-                        .getTargetContext())
-                .edit()
-                .putStringSet(UserPreferences.PREF_MOBILE_UPDATE,
-                        new HashSet<>(Arrays.asList("images", "feed_refresh", "sync",
-                                "episode_download", "auto_download")))
-                .commit();
     }
 
     private void connectProvider() {
@@ -275,6 +265,10 @@ public class GpodderSyncFlowsTest {
                 .put("total", 300)
                 .put("timestamp", "2026-01-01T12:00:00"));
         server.setEpisodeActions(actions);
+        SynchronizationQueue.getInstance().enqueueEpisodeAction(
+                new EpisodeAction.Builder(finishedItem, EpisodeAction.PLAY)
+                        .timestamp(new Date(System.currentTimeMillis() - 86400000L))
+                        .started(50).position(50).total(300).build());
 
         preferenceActivityRule.launchActivity(new Intent());
         clickSyncNow();
@@ -289,6 +283,10 @@ public class GpodderSyncFlowsTest {
         assertEquals(42000, storedProgressItem.getMedia().getPosition());
         assertFalse(storedProgressItem.isPlayed());
         assertTrue(SynchronizationSettings.isLastSyncSuccessful());
+        await().atMost(30, TimeUnit.SECONDS).until(() ->
+                server.uploadedEpisodeActions.stream().anyMatch(action ->
+                        finishedItem.getMedia().getDownloadUrl().equals(action.optString("episode"))
+                                && "play".equals(action.optString("action"))));
     }
 
     @Test
