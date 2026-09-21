@@ -39,6 +39,7 @@ public class NetworkHelpersTest {
     @After
     public void tearDown() throws Exception {
         fixture.tearDown();
+        PlatformNetwork.activateUnmeteredWifiNetwork();
     }
 
     private void allowMobile(boolean feedRefresh, boolean episodeDownload, boolean streaming, boolean images) {
@@ -61,9 +62,13 @@ public class NetworkHelpersTest {
     }
 
     @Test
-    public void networkRestrictionFollowsTheMeteredAndCellularStateOfThePlatform() {
-        assertEquals(PlatformNetwork.isMeteredOrCellular(), NetworkUtils.isNetworkRestricted());
-        assertEquals(PlatformNetwork.isVpnOverWifi(), NetworkUtils.isVpnOverWifi());
+    public void networkRestrictionFollowsTheMeteredAndCellularStateOfThePlatform() throws Exception {
+        PlatformNetwork.activateUnmeteredWifiNetwork();
+        assertFalse(NetworkUtils.isNetworkRestricted());
+        assertFalse(NetworkUtils.isVpnOverWifi());
+
+        PlatformNetwork.activateMeteredCellularNetwork();
+        assertTrue(NetworkUtils.isNetworkRestricted());
     }
 
     @Test
@@ -78,31 +83,39 @@ public class NetworkHelpersTest {
     }
 
     @Test
-    public void mobileDataSettingsAllowOnlyTheirOwnTransferOnARestrictedNetwork() {
-        boolean restricted = PlatformNetwork.isMeteredOrCellular();
+    public void mobileDataSettingsAllowOnlyTheirOwnTransferOnARestrictedNetwork() throws Exception {
+        PlatformNetwork.activateMeteredCellularNetwork();
 
         allowMobile(true, false, false, false);
         assertTrue(NetworkUtils.isFeedRefreshAllowed());
-        assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
-        assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
-        assertEquals(!restricted, NetworkUtils.isImageAllowed());
+        assertFalse(NetworkUtils.isEpisodeDownloadAllowed());
+        assertFalse(NetworkUtils.isStreamingAllowed());
+        assertFalse(NetworkUtils.isImageAllowed());
+        assertFalse(NetworkUtils.isEpisodeHeadDownloadAllowed());
 
         allowMobile(false, true, false, false);
-        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
+        assertFalse(NetworkUtils.isFeedRefreshAllowed());
         assertTrue(NetworkUtils.isEpisodeDownloadAllowed());
-        assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
-        assertEquals(!restricted, NetworkUtils.isImageAllowed());
+        assertFalse(NetworkUtils.isStreamingAllowed());
+        assertFalse(NetworkUtils.isImageAllowed());
 
         allowMobile(false, false, true, false);
-        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
-        assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
+        assertFalse(NetworkUtils.isFeedRefreshAllowed());
+        assertFalse(NetworkUtils.isEpisodeDownloadAllowed());
         assertTrue(NetworkUtils.isStreamingAllowed());
-        assertEquals(!restricted, NetworkUtils.isImageAllowed());
+        assertFalse(NetworkUtils.isImageAllowed());
 
         allowMobile(false, false, false, true);
-        assertEquals(!restricted, NetworkUtils.isFeedRefreshAllowed());
-        assertEquals(!restricted, NetworkUtils.isEpisodeDownloadAllowed());
-        assertEquals(!restricted, NetworkUtils.isStreamingAllowed());
+        assertFalse(NetworkUtils.isFeedRefreshAllowed());
+        assertFalse(NetworkUtils.isEpisodeDownloadAllowed());
+        assertFalse(NetworkUtils.isStreamingAllowed());
+        assertTrue(NetworkUtils.isImageAllowed());
+        assertTrue(NetworkUtils.isEpisodeHeadDownloadAllowed());
+
+        PlatformNetwork.activateUnmeteredWifiNetwork();
+        assertTrue(NetworkUtils.isFeedRefreshAllowed());
+        assertTrue(NetworkUtils.isEpisodeDownloadAllowed());
+        assertTrue(NetworkUtils.isStreamingAllowed());
         assertTrue(NetworkUtils.isImageAllowed());
         assertTrue(NetworkUtils.isEpisodeHeadDownloadAllowed());
     }
