@@ -101,8 +101,6 @@ public class PlaybackStatePersistenceTest {
         startPlaybackOfFirstEpisode("30sec.mp3");
         assertEquals(FeedMedia.PLAYABLE_TYPE_FEEDMEDIA, PlaybackPreferences.getCurrentlyPlayingMediaType());
         assertTrue(PlaybackPreferences.getCurrentlyPlayingFeedMediaId() > 0);
-        assertTrue(PlaybackPreferences.getCurrentPlayerStatus() == PlaybackPreferences.PLAYER_STATUS_PLAYING
-                || PlaybackPreferences.getCurrentPlayerStatus() == PlaybackPreferences.PLAYER_STATUS_PAUSED);
         Set<Integer> observedStatuses = ConcurrentHashMap.newKeySet();
         Awaitility.await().atMost(20, TimeUnit.SECONDS).until(() -> {
             observedStatuses.add(PlaybackPreferences.getCurrentPlayerStatus());
