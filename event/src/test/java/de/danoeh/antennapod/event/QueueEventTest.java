@@ -41,7 +41,10 @@ public class QueueEventTest {
         assertEquals(QueueEvent.Action.IRREVERSIBLE_REMOVED, irreversible.action);
         assertSame(item, removed.item);
         assertSame(item, irreversible.item);
+        assertNull(removed.items);
+        assertNull(irreversible.items);
         assertEquals(-1, removed.position);
+        assertEquals(-1, irreversible.position);
     }
 
     @Test
@@ -59,6 +62,7 @@ public class QueueEventTest {
         assertEquals(QueueEvent.Action.SORTED, event.action);
         assertSame(items, event.items);
         assertNull(event.item);
+        assertEquals(-1, event.position);
     }
 
     @Test
