@@ -233,6 +233,9 @@ public class NextcloudSyncTest {
         clickSyncNow();
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> !SynchronizationSettings.isLastSyncSuccessful());
-        assertFalse(server.hasRequest("/index.php/apps/gpoddersync/episode_action"));
+        long settlingWindowEnd = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5);
+        await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
+                .until(() -> !server.hasRequest("/index.php/apps/gpoddersync/episode_action")
+                        && System.currentTimeMillis() >= settlingWindowEnd);
     }
 }
