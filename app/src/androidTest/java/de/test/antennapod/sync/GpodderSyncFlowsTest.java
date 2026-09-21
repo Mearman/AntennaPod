@@ -267,7 +267,7 @@ public class GpodderSyncFlowsTest {
         server.setEpisodeActions(actions);
         SynchronizationQueue.getInstance().enqueueEpisodeAction(
                 new EpisodeAction.Builder(finishedItem, EpisodeAction.PLAY)
-                        .timestamp(new Date(System.currentTimeMillis() - 86400000L))
+                        .timestamp(new Date(0))
                         .started(50).position(50).total(300).build());
 
         preferenceActivityRule.launchActivity(new Intent());
@@ -351,6 +351,7 @@ public class GpodderSyncFlowsTest {
         assertTrue(SynchronizationSettings.getLastSubscriptionSynchronizationTimestamp() > 0);
 
         server.clearRecordedRequests();
+        pressBack();
         clickPreference(R.string.synchronization_pref);
         clickPreference(R.string.synchronization_full_sync_title);
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
@@ -364,17 +365,29 @@ public class GpodderSyncFlowsTest {
     @Test
     public void testSyncWaitsForFeedRefreshOfNewSubscription() throws Exception {
         connectProvider();
-        uiTestUtils.addLocalFeedData(false);
+        uiTestUtils.addHostedFeedData();
+        Feed neverRefreshedFeed = new Feed(0, null, "Existing feed", "http://example.com/existing",
+                "Description", "http://example.com/pay", "author", "en", Feed.TYPE_RSS2,
+                "existingfeed", null, null, uiTestUtils.hostedFeeds.get(4).getDownloadUrl(), 0);
+        neverRefreshedFeed.setItems(new ArrayList<>());
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
+        adapter.setCompleteFeed(neverRefreshedFeed);
+        adapter.close();
 
         preferenceActivityRule.launchActivity(new Intent());
         clickSyncNow();
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> server.hasRequest("POST", "/api/2/subscriptions/"));
+                .until(() -> server.uploadedAddedFeeds
+                        .contains(uiTestUtils.hostedFeeds.get(4).getDownloadUrl()));
         await().atMost(60, TimeUnit.SECONDS)
                 .until(() -> lastSyncEventMessage == R.string.sync_status_wait_for_downloads);
         assertFalse(server.hasRequest("GET", "/api/2/episodes/"));
 
-        markAllFeedsRefreshed();
+        await().atMost(90, TimeUnit.SECONDS).until(() ->
+                !DBReader.getFeedItemList(DBReader.getFeed(neverRefreshedFeed.getId(), false, 0,
+                        Integer.MAX_VALUE), FeedItemFilter.unfiltered(),
+                        SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE).isEmpty());
         server.clearRecordedRequests();
         clickSyncNow();
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
