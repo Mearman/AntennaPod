@@ -192,9 +192,6 @@ public class EspressoTestUtils {
                 .commit();
     }
 
-    /**
-     * Allow every background transfer over any connection type, so tests do not depend on the emulator reporting an unmetered network.
-     */
     public static void enableSyncOverAnyConnection() {
         PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation()
                         .getTargetContext())

@@ -14,9 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import fi.iki.elonen.NanoHTTPD;
 
-/**
- * Minimal in-process stand-in for a Nextcloud server with the Gpodder Sync app installed. Implements the login-v2 flow (whose poll endpoint keeps failing until the test approves the login) and the gpoddersync subscription and episode action endpoints.
- */
 public class NextcloudTestServer extends NanoHTTPD {
     public static final String USERNAME = "ncuser";
     public static final String APP_PASSWORD = "nc-app-password";

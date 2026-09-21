@@ -16,9 +16,6 @@ import android.util.Log;
 
 import fi.iki.elonen.NanoHTTPD;
 
-/**
- * Minimal in-process gpodder.net server that the synchronization code of the app can log into. Records every incoming request so tests can wait for and assert on the traffic the app produced.
- */
 public class GpodderTestServer extends NanoHTTPD {
     public static final String USERNAME = "testuser";
     public static final String PASSWORD = "testpass";
