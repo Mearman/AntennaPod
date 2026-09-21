@@ -181,7 +181,9 @@ public class GpodderLoginTest {
         clickPreference(R.string.synchronization_logout);
         await().atMost(5, TimeUnit.SECONDS)
                 .until(() -> !SynchronizationSettings.isProviderConnected());
-        assertNull(SynchronizationCredentials.getHosturl());
+        assertNull(SynchronizationCredentials.getUsername());
+        assertNull(SynchronizationCredentials.getPassword());
+        assertNull(SynchronizationCredentials.getDeviceId());
         onView(withText(R.string.synchronization_choose_title)).check(matches(isDisplayed()));
     }
 }

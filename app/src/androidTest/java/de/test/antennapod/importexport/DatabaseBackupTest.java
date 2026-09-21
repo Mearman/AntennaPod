@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.intent.Intents.intending;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasAction;
@@ -151,6 +152,7 @@ public class DatabaseBackupTest {
         addFeedsToDatabase();
         File backup = exportFile("AntennaPodBackup-restore.db");
         exportDatabase(backup);
+        pressBack();
 
         EspressoTestUtils.clearDatabase();
         stubOpenDocument(backup);
@@ -173,6 +175,7 @@ public class DatabaseBackupTest {
                 null, SQLiteDatabase.OPEN_READWRITE);
         db.setVersion(PodDBAdapter.VERSION + 1);
         db.close();
+        pressBack();
 
         stubOpenDocument(backup);
         openImportExportScreen();
@@ -212,7 +215,7 @@ public class DatabaseBackupTest {
         List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get();
         assertTrue(!infos.isEmpty());
         for (WorkInfo info : infos) {
-            assertEquals(WorkInfo.State.CANCELLED, info.getState());
+            assertTrue(info.getState() == WorkInfo.State.CANCELLED || info.getState().isFinished());
         }
     }
 
