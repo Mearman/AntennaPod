@@ -120,7 +120,8 @@ public class FeedEpisodeListTest {
         DBWriter.setMediaDownloadInformation(echo.getMedia()).get();
     }
 
-    private void chooseSort(String label) {
+    private void chooseSort(int labelRes) {
+        String label = InstrumentationRegistry.getInstrumentation().getTargetContext().getString(labelRes);
         FeedRobot.openFeedMenu(R.string.sort);
         onView(withText(startsWith(label))).inRoot(isDialog()).perform(click());
         Espresso.pressBack();
@@ -155,12 +156,12 @@ public class FeedEpisodeListTest {
 
     @Test
     public void episodesCanBeSortedByTitleInBothDirections() {
-        chooseSort("Episode title");
+        chooseSort(R.string.episode_title);
 
         FeedRobot.assertListedTitles("Alpha", "Bravo", "Charlie", "Delta", "Echo");
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getSortOrder() == SortOrder.EPISODE_TITLE_A_Z);
 
-        chooseSort("Episode title");
+        chooseSort(R.string.episode_title);
 
         FeedRobot.assertListedTitles("Echo", "Delta", "Charlie", "Bravo", "Alpha");
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getSortOrder() == SortOrder.EPISODE_TITLE_Z_A);
@@ -168,27 +169,26 @@ public class FeedEpisodeListTest {
 
     @Test
     public void episodesCanBeSortedByDuration() {
-        chooseSort("Duration");
+        chooseSort(R.string.duration);
 
         FeedRobot.assertListedTitles("Delta", "Alpha", "Charlie", "Bravo", "Echo");
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getSortOrder() == SortOrder.DURATION_SHORT_LONG);
 
-        chooseSort("Duration");
+        chooseSort(R.string.duration);
 
         FeedRobot.assertListedTitles("Echo", "Bravo", "Charlie", "Alpha", "Delta");
     }
 
     @Test
     public void episodesCanBeSortedOldestFirstAndBackToTheGlobalDefault() {
-        chooseSort("Date");
+        chooseSort(R.string.date);
         FeedRobot.assertListedTitles("Alpha", "Charlie", "Bravo", "Delta", "Echo");
-        chooseSort("Date");
+        chooseSort(R.string.date);
 
         FeedRobot.assertListedTitles("Echo", "Delta", "Bravo", "Charlie", "Alpha");
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getSortOrder() == SortOrder.DATE_OLD_NEW);
 
-        chooseSort(InstrumentationRegistry.getInstrumentation().getTargetContext()
-                .getString(R.string.global_default));
+        chooseSort(R.string.global_default);
 
         FeedRobot.assertListedTitles("Alpha", "Charlie", "Bravo", "Delta", "Echo");
         FeedRobot.awaitCondition(() -> FeedRobot.reload(feed).getSortOrder() == SortOrder.GLOBAL_DEFAULT);
