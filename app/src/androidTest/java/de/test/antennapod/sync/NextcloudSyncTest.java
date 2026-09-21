@@ -8,6 +8,7 @@ import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
 import de.danoeh.antennapod.R;
+import de.danoeh.antennapod.event.SyncServiceEvent;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
@@ -22,6 +23,8 @@ import de.danoeh.antennapod.ui.screen.preferences.PreferenceActivity;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.ui.UITestUtils;
 import de.test.antennapod.util.sync.NextcloudTestServer;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -60,6 +63,7 @@ public class NextcloudSyncTest {
     private NextcloudTestServer server;
     private UITestUtils uiTestUtils;
     private Instrumentation.ActivityMonitor browserMonitor;
+    private volatile int lastSyncEventMessage = -1;
 
     @Rule
     public ActivityTestRule<PreferenceActivity> activityTestRule =
@@ -80,11 +84,14 @@ public class NextcloudSyncTest {
         browserFilter.addDataScheme("https");
         browserMonitor = new Instrumentation.ActivityMonitor(browserFilter, null, true);
         InstrumentationRegistry.getInstrumentation().addMonitor(browserMonitor);
+        EventBus.getDefault().removeStickyEvent(SyncServiceEvent.class);
+        EventBus.getDefault().register(this);
         activityTestRule.launchActivity(new Intent());
     }
 
     @After
     public void tearDown() throws Exception {
+        EventBus.getDefault().unregister(this);
         EspressoTestUtils.cancelPendingSyncWork();
         InstrumentationRegistry.getInstrumentation().removeMonitor(browserMonitor);
         activityTestRule.finishActivity();
@@ -224,18 +231,21 @@ public class NextcloudSyncTest {
                 .until(SynchronizationSettings::isLastSyncSuccessful);
     }
 
+    @Subscribe
+    public void onSyncServiceEvent(SyncServiceEvent event) {
+        lastSyncEventMessage = event.getMessageResId();
+    }
+
     @Test
     public void testWrongAppPasswordFailsSync() throws Exception {
         connectProvider(NextcloudTestServer.USERNAME, "wrong-password");
         uiTestUtils.addLocalFeedData(false);
         markAllFeedsRefreshed();
 
+        lastSyncEventMessage = -1;
         clickSyncNow();
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !SynchronizationSettings.isLastSyncSuccessful());
-        long settlingWindowEnd = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5);
-        await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !server.hasRequest("/index.php/apps/gpoddersync/episode_action")
-                        && System.currentTimeMillis() >= settlingWindowEnd);
+                .until(() -> lastSyncEventMessage == R.string.sync_status_error);
+        assertFalse(server.hasRequest("/index.php/apps/gpoddersync/episode_action"));
     }
 }
