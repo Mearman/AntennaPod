@@ -208,6 +208,8 @@ public class OpmlImportExportTest {
                 + "<outline text=\"Imported feed A\" xmlUrl=\"" + urlA + "\" type=\"rss\"/>"
                 + "<outline text=\"Imported feed B\" xmlUrl=\"" + urlB + "\" type=\"rss\"/>"
                 + "<outline xmlUrl=\"" + urlB + "\" type=\"rss\"/>"
+                + "<outline title=\"Title only feed\" xmlUrl=\"" + urlB + "\" type=\"rss\"/>"
+                + "<outline text=\"Feed without a url\" type=\"rss\"/>"
                 + "</body></opml>";
         File opmlFile = writeOpmlFile("import.opml", opml);
         stubGetContent(opmlFile);
