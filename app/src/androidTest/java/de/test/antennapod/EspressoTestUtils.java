@@ -2,6 +2,7 @@ package de.test.antennapod;
 
 import android.content.Context;
 import android.content.Intent;
+import android.widget.EditText;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
@@ -154,6 +155,46 @@ public class EspressoTestUtils {
             public void perform(UiController uiController, View view) {
                 View v = view.findViewById(id);
                 v.performClick();
+            }
+        };
+    }
+
+    public static ViewAction clickViewDirectly() {
+        return new ViewAction() {
+            @Override
+            public Matcher<View> getConstraints() {
+                return isDisplayed();
+            }
+
+            @Override
+            public String getDescription() {
+                return "Click the view itself even if a dialog window covers part of it.";
+            }
+
+            @Override
+            public void perform(UiController uiController, View view) {
+                view.performClick();
+                uiController.loopMainThreadUntilIdle();
+            }
+        };
+    }
+
+    public static ViewAction replaceTextDirectly(final String text) {
+        return new ViewAction() {
+            @Override
+            public Matcher<View> getConstraints() {
+                return isAssignableFrom(EditText.class);
+            }
+
+            @Override
+            public String getDescription() {
+                return "Replace the text of the view itself even if a dialog window covers part of it.";
+            }
+
+            @Override
+            public void perform(UiController uiController, View view) {
+                ((EditText) view).setText(text);
+                uiController.loopMainThreadUntilIdle();
             }
         };
     }

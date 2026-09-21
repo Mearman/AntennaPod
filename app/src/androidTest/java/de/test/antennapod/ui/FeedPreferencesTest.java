@@ -40,6 +40,7 @@ import static android.R.string.ok;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
@@ -417,8 +418,9 @@ public class FeedPreferencesTest {
         onView(withId(R.id.includeRadio)).check(matches(isChecked()));
         addFilterTerm("Interview");
         addFilterTerm("Special edition");
-        onView(withId(R.id.durationCheckBox)).perform(click());
-        onView(withId(R.id.episodeFilterDurationText)).perform(replaceText("5"));
+        Espresso.closeSoftKeyboard();
+        onView(withId(R.id.durationCheckBox)).perform(EspressoTestUtils.clickViewDirectly());
+        onView(withId(R.id.episodeFilterDurationText)).perform(EspressoTestUtils.replaceTextDirectly("5"));
         FeedRobot.confirmTypedDialog(R.string.confirm_label);
 
         FeedRobot.awaitCondition(() -> preferences(feed).getFilter().hasIncludeFilter());
