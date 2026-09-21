@@ -43,13 +43,16 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickPreference;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -104,7 +107,9 @@ public class NextcloudSyncTest {
     private void openNextcloudLoginDialog() {
         clickPreference(R.string.synchronization_pref);
         onView(withText(R.string.synchronization_choose_title)).perform(click());
-        onView(withText(R.string.synchronization_summary_nextcloud)).perform(click());
+        onView(allOf(withText(R.string.synchronization_summary_nextcloud),
+                isDescendantOfA(withId(R.id.provider_list))))
+                .perform(scrollTo(), click());
         onView(withId(R.id.serverUrlText)).check(matches(isDisplayed()));
     }
 

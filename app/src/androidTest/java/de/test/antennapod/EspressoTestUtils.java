@@ -286,11 +286,11 @@ public class EspressoTestUtils {
     }
 
     public static void clickPreference(@StringRes int title) {
-        onView(withId(R.id.recycler_view)).perform(
-                RecyclerViewActions.actionOnItem(
-                        allOf(hasDescendant(withText(title)),
-                                hasDescendant(withId(android.R.id.widget_frame))),
-                        click()));
+        Matcher<View> preferenceRow = allOf(hasDescendant(withText(title)),
+                hasDescendant(withId(android.R.id.widget_frame)));
+        onView(withId(R.id.recycler_view))
+                .perform(scrollRecyclerUntilItemMatches(preferenceRow))
+                .perform(RecyclerViewActions.actionOnItem(preferenceRow, click()));
     }
 
     public static ViewAction scrollRecyclerUntilItemMatches(final Matcher<View> itemViewMatcher) {
