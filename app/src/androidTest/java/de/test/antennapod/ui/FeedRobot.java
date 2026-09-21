@@ -172,6 +172,10 @@ public class FeedRobot {
         Awaitility.await().atMost(DB_TIMEOUT_SECONDS, TimeUnit.SECONDS).until(condition);
     }
 
+    public static void awaitCondition(long timeoutSeconds, Callable<Boolean> condition) {
+        Awaitility.await().atMost(timeoutSeconds, TimeUnit.SECONDS).until(condition);
+    }
+
     public static void openFeedMenu(int titleRes) {
         awaitAssertion(() -> {
             onView(first(EspressoTestUtils.actionBarOverflow())).perform(click());
