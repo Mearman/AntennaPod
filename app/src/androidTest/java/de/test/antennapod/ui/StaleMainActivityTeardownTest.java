@@ -138,6 +138,7 @@ public class StaleMainActivityTeardownTest {
         firstInstance = activityRule.launchActivity(new Intent());
         log("first MainActivity instance " + identity(firstInstance));
         holdTeardown();
+        EspressoTestUtils.finishOpenActivities();
         log("ready to relaunch");
         Thread.sleep(2000);
         log("distinct MainActivity instances started: " + mainActivityInstances.size());
@@ -158,6 +159,7 @@ public class StaleMainActivityTeardownTest {
         log("first MainActivity instance " + identity(firstInstance));
         EspressoTestUtils.setLaunchScreen("" + feed.getId());
         holdTeardown();
+        EspressoTestUtils.finishOpenActivities();
         log("ready to relaunch");
         Thread.sleep(2000);
         teardownRelease.countDown();
