@@ -168,9 +168,9 @@ public class FeedPreferencesTest {
         int requestsBefore = server.requestsFor(FEED_PATH).size();
         int otherRequestsBefore = server.requestsFor(OTHER_FEED_PATH).size();
 
-        FeedRobot.refreshAllFromSubscriptions();
+        FeedRobot.refreshAllFromSubscriptionsAndAwaitCompletion();
 
-        FeedRobot.awaitCondition(() -> server.requestsFor(OTHER_FEED_PATH).size() > otherRequestsBefore);
+        assertTrue(server.requestsFor(OTHER_FEED_PATH).size() > otherRequestsBefore);
         assertEquals(requestsBefore, server.requestsFor(FEED_PATH).size());
     }
 

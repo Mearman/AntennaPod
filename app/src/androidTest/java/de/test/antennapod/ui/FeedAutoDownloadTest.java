@@ -13,6 +13,7 @@ import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedFilter;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
+import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterface;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
@@ -115,6 +116,12 @@ public class FeedAutoDownloadTest {
         assertEquals(requested, !server.requestsFor("/media/" + guid + ".mp3").isEmpty());
     }
 
+    private void awaitAutomaticDownloadsSettled() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        FeedRobot.awaitCondition(() ->
+                DownloadServiceInterface.get().getNumberOfActiveDownloads(context) == 0);
+    }
+
     @Test
     public void includeTermsLimitAutomaticDownloadsToMatchingTitles() throws Exception {
         String old = episode("old", "Old episode", "Mon, 02 Jan 2023 10:00:00 +0000", "00:20:00");
@@ -127,6 +134,7 @@ public class FeedAutoDownloadTest {
         FeedRobot.refreshFromMenu();
 
         FeedRobot.awaitCondition(() -> isDownloaded(feed, "guest"));
+        awaitAutomaticDownloadsSettled();
         assertFalse(isDownloaded(feed, "ad"));
         assertFalse(isDownloaded(feed, "old"));
         assertRequested("ad", false);
@@ -147,6 +155,7 @@ public class FeedAutoDownloadTest {
         FeedRobot.refreshFromMenu();
 
         FeedRobot.awaitCondition(() -> isDownloaded(feed, "talk"));
+        awaitAutomaticDownloadsSettled();
         assertFalse(isDownloaded(feed, "bonus"));
         assertFalse(isDownloaded(feed, "short"));
         assertRequested("bonus", false);
@@ -172,10 +181,11 @@ public class FeedAutoDownloadTest {
                 episode("second", "Following one", "Mon, 02 Jan 2023 10:00:00 +0000", "00:20:00"),
                 episode("fourth", "Following two", "Tue, 03 Jan 2023 10:00:00 +0000", "00:20:00"));
 
-        FeedRobot.refreshAllFromSubscriptions();
+        FeedRobot.refreshAllFromSubscriptionsAndAwaitCompletion();
 
         FeedRobot.awaitCondition(() -> isDownloaded(following, "fourth"));
         FeedRobot.awaitCondition(() -> FeedRobot.reload(optedOut).getItems().size() == 2);
+        awaitAutomaticDownloadsSettled();
         assertFalse(isDownloaded(optedOut, "third"));
         assertRequested("third", false);
     }

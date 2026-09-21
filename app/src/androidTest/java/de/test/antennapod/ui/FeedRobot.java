@@ -6,6 +6,9 @@ import androidx.test.espresso.Espresso;
 import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.matcher.BoundedMatcher;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
@@ -194,6 +197,24 @@ public class FeedRobot {
         FeedUpdateManagerImpl.resetManualRefreshCooldown();
         clickBottomNavItem(R.string.subscriptions_label_short);
         openFeedMenu(R.string.refresh_label);
+    }
+
+    public static void refreshFromMenuAndAwaitCompletion() throws Exception {
+        long finishedBefore = finishedManualRefreshes();
+        refreshFromMenu();
+        FeedRobot.awaitCondition(() -> finishedManualRefreshes() > finishedBefore);
+    }
+
+    public static void refreshAllFromSubscriptionsAndAwaitCompletion() throws Exception {
+        long finishedBefore = finishedManualRefreshes();
+        refreshAllFromSubscriptions();
+        FeedRobot.awaitCondition(() -> finishedManualRefreshes() > finishedBefore);
+    }
+
+    private static long finishedManualRefreshes() throws Exception {
+        return WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
+                .getWorkInfosByTag(FeedUpdateManagerImpl.WORK_TAG_FEED_UPDATE).get().stream()
+                .filter(workInfo -> workInfo.getState() == WorkInfo.State.SUCCEEDED).count();
     }
 
     public static Feed awaitFeed(String downloadUrl) {
