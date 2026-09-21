@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Date Formats</title>
+    <link>https://example.com/dates</link>
+    <description>Every item uses another date notation</description>
+    <item><guid>rfc822</guid><title>RFC 822</title><pubDate>Mon, 02 Jan 2023 10:00:00 +0000</pubDate></item>
+    <item><guid>short-year</guid><title>Short year</title><pubDate>02 Jan 23 10:00:00 +0000</pubDate></item>
+    <item><guid>cet</guid><title>Central European</title><pubDate>Mon, 02 Jan 2023 12:00:00 CET</pubDate></item>
+    <item><guid>cest</guid><title>Central European summer</title><pubDate>Mon, 03 Jul 2023 12:00:00 CEST</pubDate></item>
+    <item><guid>iso-micro</guid><title>ISO with microseconds</title><pubDate>2023-01-02T10:00:00.123456Z</pubDate></item>
+    <item><guid>iso-short-fraction</guid><title>ISO with short fraction</title><pubDate>2023-01-02T10:00:00.5Z</pubDate></item>
+    <item><guid>iso-date-only</guid><title>ISO date only</title><pubDate>2023-01-02</pubDate></item>
+    <item><guid>no-seconds</guid><title>Without seconds</title><pubDate>Mon, 2 Jan 2023 10:00 +0200</pubDate></item>
+    <item><guid>sept</guid><title>Sept spelled out</title><pubDate>Tue, 05 Sept 2023 10:00:00 +0000</pubDate></item>
+    <item><guid>iso-offset</guid><title>ISO with offset colon</title><pubDate>2023-01-02T10:00:00+02:00</pubDate></item>
+    <item><guid>slashes</guid><title>Slashes</title><pubDate>2023/01/02</pubDate></item>
+    <item><guid>wrong-weekday</guid><title>Wrong weekday</title><pubDate>Fri, 02 Jan 2023 10:00:00 +0000</pubDate></item>
+    <item><guid>dublin-core</guid><title>Dublin Core date</title><dc:date>2023-01-02T10:00:00Z</dc:date></item>
+    <item><guid>garbage</guid><title>Unparseable date</title><pubDate>yesterday afternoon</pubDate></item>
+  </channel>
+</rss>

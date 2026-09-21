@@ -1,0 +1,19 @@
+1
+00:00:00,000 --> 00:00:03,000
+Alice: Welcome to the subtitle show.
+
+2
+00:00:03,000 --> 00:00:06,500
+Alice: Today we talk about parsers.
+
+3
+00:00:06,500 --> 00:00:10,000
+Bob: Thanks for inviting me.
+
+4
+00:00:10,000 --> 00:00:14,000
+Bob: I really like subtitle files.
+
+5
+00:00:14,000 --> 00:00:19,500
+Closing remarks without a speaker.
