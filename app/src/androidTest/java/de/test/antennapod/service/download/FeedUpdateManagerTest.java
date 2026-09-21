@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -45,9 +46,19 @@ public class FeedUpdateManagerTest {
     public void setUp() throws Exception {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         fixture.setUp();
+        resetManualRefreshCooldown();
         workManager = WorkManager.getInstance(context);
         manager = FeedUpdateManager.getInstance();
         EventBus.getDefault().register(this);
+    }
+
+    private void resetManualRefreshCooldown() throws Exception {
+        Field lastRefreshTime = FeedUpdateManagerImpl.class.getDeclaredField("lastManualRefreshTime");
+        Field lastRefreshFeedId = FeedUpdateManagerImpl.class.getDeclaredField("lastManualRefreshFeedId");
+        lastRefreshTime.setAccessible(true);
+        lastRefreshFeedId.setAccessible(true);
+        lastRefreshTime.setLong(null, 0);
+        lastRefreshFeedId.setLong(null, -1);
     }
 
     @After
