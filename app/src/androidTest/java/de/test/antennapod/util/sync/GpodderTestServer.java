@@ -136,14 +136,12 @@ public class GpodderTestServer extends NanoHTTPD {
         String method = session.getMethod().name();
         String path = session.getUri();
         String query = session.getQueryParameterString();
-        if (query != null && query.length() > 0) {
-            path = path + "?" + query;
-        }
+        String fullPath = query != null && query.length() > 0 ? path + "?" + query : path;
         String body = readBody(session);
-        requests.add(new RecordedRequest(method, path, body));
+        requests.add(new RecordedRequest(method, fullPath, body));
 
         if (!path.startsWith("/api/2/")) {
-            Log.w("GpodderTestServer", "Unexpected request: " + method + " " + path);
+            Log.w("GpodderTestServer", "Unexpected request: " + method + " " + fullPath);
             return statusResponse(404);
         }
 
@@ -211,10 +209,10 @@ public class GpodderTestServer extends NanoHTTPD {
                     return new Response(Response.Status.OK, MIME_JSON, response.toString());
                 }
             }
-            Log.w("GpodderTestServer", "Unhandled request: " + method + " " + path);
+            Log.w("GpodderTestServer", "Unhandled request: " + method + " " + fullPath);
             return statusResponse(404);
         } catch (Exception e) {
-            Log.w("GpodderTestServer", "Failed request: " + method + " " + path, e);
+            Log.w("GpodderTestServer", "Failed request: " + method + " " + fullPath, e);
             return statusResponse(500);
         }
     }

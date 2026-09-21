@@ -265,6 +265,16 @@ public class GpodderSyncFlowsTest {
                 .put("started", 0)
                 .put("total", 300)
                 .put("timestamp", "2026-01-01T12:00:00"));
+        actions.put(new JSONObject()
+                .put("podcast", feed.getDownloadUrl())
+                .put("episode", progressItem.getMedia().getDownloadUrl())
+                .put("action", "new")
+                .put("timestamp", "2026-01-01T13:00:00"));
+        actions.put(new JSONObject()
+                .put("podcast", feed.getDownloadUrl())
+                .put("episode", progressItem.getMedia().getDownloadUrl())
+                .put("action", "delete")
+                .put("timestamp", "2026-01-01T14:00:00"));
         server.setEpisodeActions(actions);
         SynchronizationQueue.getInstance().enqueueEpisodeAction(
                 new EpisodeAction.Builder(finishedItem, EpisodeAction.PLAY)
