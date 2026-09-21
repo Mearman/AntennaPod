@@ -31,12 +31,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import androidx.test.espresso.intent.rule.IntentsTestRule;
 
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intending;
@@ -172,6 +175,80 @@ public class OpmlImportExportTest {
         assertTrue(html.contains(items.get(0).getTitle()));
         assertTrue(html.contains(items.get(1).getTitle()));
         assertFalse(html.contains(items.get(5).getTitle()));
+    }
+
+    @Test
+    public void testOpmlAndHtmlExportsSkipFeedsThatAreNotSubscribed() throws Exception {
+        addFeedsToDatabase();
+        Feed unsubscribed = uiTestUtils.hostedFeeds.get(0);
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
+        adapter.setFeedState(unsubscribed.getId(), Feed.STATE_NOT_SUBSCRIBED);
+        adapter.close();
+
+        File opmlTarget = exportTargetFile("subscriptions-filtered.opml");
+        stubCreateDocument(opmlTarget, "text/x-opml", "antennapod-feeds");
+        openImportExportScreen();
+        clickPreference(R.string.opml_export_label);
+        waitForViewGlobally(withText(R.string.export_success_title), 15000);
+        String opml = readFile(opmlTarget);
+        assertFalse(opml.contains(unsubscribed.getDownloadUrl()));
+        for (Feed feed : uiTestUtils.hostedFeeds) {
+            if (feed.getId() != unsubscribed.getId()) {
+                assertTrue(opml.contains(feed.getDownloadUrl()));
+            }
+        }
+        pressBack();
+
+        File htmlTarget = exportTargetFile("subscriptions-filtered.html");
+        stubCreateDocument(htmlTarget, "text/html", "antennapod-feeds");
+        openImportExportScreen();
+        clickPreference(R.string.html_export_label);
+        waitForViewGlobally(withText(R.string.export_success_title), 15000);
+        String html = readFile(htmlTarget);
+        assertFalse(html.contains(unsubscribed.getTitle()));
+        for (Feed feed : uiTestUtils.hostedFeeds) {
+            if (feed.getId() != unsubscribed.getId()) {
+                assertTrue(html.contains(feed.getTitle()));
+            }
+        }
+    }
+
+    @Test
+    public void testFavoritesExportHandlesItemsWithoutLinkAndMedia() throws Exception {
+        addFeedsToDatabase();
+        List<FeedItem> items = DBReader.getEpisodes(0, Integer.MAX_VALUE,
+                FeedItemFilter.unfiltered(), SortOrder.DATE_NEW_OLD);
+        FeedItem withMedia = null;
+        for (FeedItem item : items) {
+            if (item.getMedia() != null && item.getMedia().getDownloadUrl() != null) {
+                withMedia = item;
+                break;
+            }
+        }
+        assertTrue(withMedia != null);
+        Feed feed = withMedia.getFeed();
+        FeedItem withoutMedia = new FeedItem(0, "Favorite without link or media", "no-media-item",
+                null, new Date(), FeedItem.UNPLAYED, feed);
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
+        adapter.setSingleFeedItem(withoutMedia);
+        adapter.close();
+        DBWriter.addFavoriteItems(Arrays.asList(withMedia, withoutMedia)).get();
+
+        File target = exportTargetFile("favorites-missing-fields.html");
+        stubCreateDocument(target, "text/html", "antennapod-favorites");
+
+        openImportExportScreen();
+        clickPreference(R.string.favorites_export_label);
+
+        waitForViewGlobally(withText(R.string.export_success_title), 15000);
+        String html = readFile(target);
+        assertTrue(html.contains(withMedia.getTitle()));
+        assertTrue(html.contains(withoutMedia.getTitle()));
+        assertTrue(html.contains(withMedia.getMedia().getDownloadUrl()));
+        assertFalse(html.contains("{FAV_WEBSITE}"));
+        assertFalse(html.contains("{FAV_MEDIA}"));
     }
 
     private File writeOpmlFile(String name, String xml) throws IOException {
