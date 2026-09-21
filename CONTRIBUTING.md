@@ -78,7 +78,12 @@ Coverage is only collected when the `coverage` property is set. Each run is stor
 1. `./gradlew testPlayDebugUnitTest -Pcoverage -PcoverageSuite=unit`
 2. `./gradlew coverageReport -PcoverageSuite=unit` (leave out `-PcoverageSuite` to merge all suites)
 
-Add `-PcoverageScope=logic` to report only the non-UI modules (model, event, system, parser, net, storage and playback except the Chromecast module and the old playback service classes that `USE_MEDIA3_PLAYBACK_SERVICE` disables in every build), and `-PcoverageMinimum=<percent>` to fail when the line coverage is below that value. The reports are written to `build/reports/coverage/<suite>/`, with a summary table in `build/reports/coverage/summary.md`. Coverage of the instrumented tests is reported as the suite `e2e` after running `./gradlew connectedPlayDebugAndroidTest -Pcoverage`.
+Add `-PcoverageScope=logic` to report only the non-UI modules (model, event, system, parser, net, storage and playback except the Chromecast module and the old playback service classes that `USE_MEDIA3_PLAYBACK_SERVICE` disables in every build), and `-PcoverageMinimum=<percent>` to fail when the line coverage is below that value. ### Mutation testing
+`model`, `parser:feed` and `parser:media` can run PIT mutation testing on their JVM tests. It is opt-in and slow (tens of minutes per module, because Robolectric boots in every minion).
+1. `./gradlew :model:pitest -Pmutation` (also `:parser:feed:pitest`, `:parser:media:pitest`)
+The HTML report in `build/reports/pitest/` lists every surviving mutant. Tests killed by a timeout are reported as `TIMED_OUT`; with Robolectric that can mean a slow boot rather than a hang, so treat a wall of timeouts as a sign to raise `--timeoutConst` in `mutation.gradle` before trusting the score.
+
+The reports are written to `build/reports/coverage/<suite>/`, with a summary table in `build/reports/coverage/summary.md`. Coverage of the instrumented tests is reported as the suite `e2e` after running `./gradlew connectedPlayDebugAndroidTest -Pcoverage`.
 
 ### Running integration tests
 

@@ -1,0 +1,34 @@
+configurations {
+    mutationRunner
+}
+
+dependencies {
+    mutationRunner "org.pitest:pitest:${libs.versions.pitest.get()}"
+    mutationRunner "org.pitest:pitest-command-line:${libs.versions.pitest.get()}"
+}
+
+if (project.hasProperty("mutation") && project.hasProperty("mutationTargets")) {
+    tasks.register('pitest', JavaExec) {
+        group = "verification"
+        dependsOn tasks.named('testDebugUnitTest')
+        def reportDir = layout.buildDirectory.dir('reports/pitest')
+
+        doFirst {
+            def testTask = tasks.named('testDebugUnitTest').get()
+            classpath = testTask.classpath + configurations.mutationRunner
+            def sourceDir = file('src/main/java')
+            args(
+                    '--reportDir', reportDir.get().asFile,
+                    '--targetClasses', project.property('mutationTargets'),
+                    '--targetTests', 'de.danoeh.antennapod.*',
+                    '--sourceDirs', sourceDir,
+                    '--outputFormats', 'XML,HTML',
+                    '--threads', String.valueOf(Runtime.getRuntime().availableProcessors() / 2),
+                    '--mutators', 'DEFAULTS',
+                    '--timeoutConst', '30000',
+            )
+        }
+
+        mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+    }
+}

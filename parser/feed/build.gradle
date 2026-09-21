@@ -21,3 +21,6 @@ dependencies {
     testImplementation libs.junit
     testImplementation libs.robolectric
 }
+
+project.ext.mutationTargets = "de.danoeh.antennapod.parser.feed.*"
+apply from: "../../mutation.gradle"
