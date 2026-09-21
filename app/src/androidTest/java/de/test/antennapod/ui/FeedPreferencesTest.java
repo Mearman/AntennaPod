@@ -1,15 +1,12 @@
 package de.test.antennapod.ui;
 
 import android.content.Intent;
-import android.view.InputDevice;
-import android.view.MotionEvent;
+import android.view.View;
 import android.widget.EditText;
 import androidx.test.espresso.Espresso;
 import androidx.test.espresso.PerformException;
+import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
-import androidx.test.espresso.action.GeneralClickAction;
-import androidx.test.espresso.action.Press;
-import androidx.test.espresso.action.Tap;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.intent.rule.IntentsTestRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -28,6 +25,7 @@ import de.danoeh.antennapod.ui.screen.AddFeedFragment;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.util.service.download.StaticContentServer;
 import com.google.android.material.chip.Chip;
+import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -65,7 +63,6 @@ public class FeedPreferencesTest {
     private static final String OTHER_FEED_PATH = "/feeds/other.xml";
     private static final String RSS_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>";
     private static final String RSS_TAIL = "</channel></rss>";
-    private static final float CLOSE_ICON_END_OFFSET_DP = 24;
 
     private StaticContentServer server;
 
@@ -120,12 +117,23 @@ public class FeedPreferencesTest {
     }
 
     private static ViewAction clickCloseIcon() {
-        return new GeneralClickAction(Tap.SINGLE, view -> {
-            int[] location = new int[2];
-            view.getLocationOnScreen(location);
-            float closeIconOffset = view.getResources().getDisplayMetrics().density * CLOSE_ICON_END_OFFSET_DP;
-            return new float[] {location[0] + view.getWidth() - closeIconOffset, location[1] + view.getHeight() / 2f};
-        }, Press.FINGER, InputDevice.SOURCE_UNKNOWN, MotionEvent.BUTTON_PRIMARY);
+        return new ViewAction() {
+            @Override
+            public Matcher<View> getConstraints() {
+                return instanceOf(Chip.class);
+            }
+
+            @Override
+            public String getDescription() {
+                return "click the close icon of the chip";
+            }
+
+            @Override
+            public void perform(UiController uiController, View view) {
+                ((Chip) view).performCloseIconClick();
+                uiController.loopMainThreadUntilIdle();
+            }
+        };
     }
 
     private static boolean isSettingListed(int titleRes) {
