@@ -23,9 +23,12 @@ import org.hamcrest.Matcher;
 
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -199,22 +202,24 @@ public class FeedRobot {
         openFeedMenu(R.string.refresh_label);
     }
 
-    public static void refreshFromMenuAndAwaitCompletion() throws Exception {
-        long finishedBefore = finishedManualRefreshes();
-        refreshFromMenu();
-        FeedRobot.awaitCondition(() -> finishedManualRefreshes() > finishedBefore);
-    }
-
     public static void refreshAllFromSubscriptionsAndAwaitCompletion() throws Exception {
-        long finishedBefore = finishedManualRefreshes();
+        Set<UUID> refreshesBefore = manualRefreshIds();
         refreshAllFromSubscriptions();
-        FeedRobot.awaitCondition(() -> finishedManualRefreshes() > finishedBefore);
+        FeedRobot.awaitCondition(() -> manualRefreshSucceededSince(refreshesBefore));
     }
 
-    private static long finishedManualRefreshes() throws Exception {
+    private static Set<UUID> manualRefreshIds() throws Exception {
+        return manualRefreshWorkInfos().stream().map(WorkInfo::getId).collect(Collectors.toSet());
+    }
+
+    private static boolean manualRefreshSucceededSince(Set<UUID> refreshesBefore) throws Exception {
+        return manualRefreshWorkInfos().stream().anyMatch(workInfo ->
+                workInfo.getState() == WorkInfo.State.SUCCEEDED && !refreshesBefore.contains(workInfo.getId()));
+    }
+
+    private static List<WorkInfo> manualRefreshWorkInfos() throws Exception {
         return WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .getWorkInfosByTag(FeedUpdateManagerImpl.WORK_TAG_FEED_UPDATE).get().stream()
-                .filter(workInfo -> workInfo.getState() == WorkInfo.State.SUCCEEDED).count();
+                .getWorkInfosByTag(FeedUpdateManagerImpl.WORK_TAG_FEED_UPDATE).get();
     }
 
     public static Feed awaitFeed(String downloadUrl) {
