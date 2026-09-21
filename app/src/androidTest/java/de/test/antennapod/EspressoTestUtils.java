@@ -29,6 +29,8 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.hamcrest.Matcher;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -186,6 +188,19 @@ public class EspressoTestUtils {
         PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation().getTargetContext())
                 .edit()
                 .putString(UserPreferences.PREF_UPDATE_INTERVAL_MINUTES, "0")
+                .commit();
+    }
+
+    /**
+     * Allow every background transfer over any connection type, so tests do not depend on the emulator reporting an unmetered network.
+     */
+    public static void enableSyncOverAnyConnection() {
+        PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation()
+                        .getTargetContext())
+                .edit()
+                .putStringSet(UserPreferences.PREF_MOBILE_UPDATE,
+                        new HashSet<>(Arrays.asList("images", "feed_refresh", "sync",
+                                "episode_download", "auto_download")))
                 .commit();
     }
 
