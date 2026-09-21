@@ -70,6 +70,8 @@ public class FeedUpdateManagerImplTest {
 
     @Before
     public void setUp() {
+        FeedUpdateManagerImpl.lastManualRefreshTime = 0;
+        FeedUpdateManagerImpl.lastManualRefreshFeedId = -1;
         workManager = new WorkManagerMocks();
         preferences = Mockito.mockStatic(UserPreferences.class);
         network = Mockito.mockStatic(NetworkUtils.class);

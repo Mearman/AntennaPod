@@ -34,8 +34,8 @@ public class FeedUpdateManagerImpl extends FeedUpdateManager {
     public static final String EXTRA_EVEN_ON_MOBILE = "even_on_mobile";
     public static final String EXTRA_MANUAL = "manual";
     private static final String TAG = "AutoUpdateManager";
-    private static long lastManualRefreshTime = 0;
-    private static long lastManualRefreshFeedId = -1;
+    static long lastManualRefreshTime = 0;
+    static long lastManualRefreshFeedId = -1;
     private static final long REFRESH_COOLDOWN_MS = 20_000;
 
     /**
