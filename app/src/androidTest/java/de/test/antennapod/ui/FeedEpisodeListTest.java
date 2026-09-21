@@ -32,11 +32,13 @@ import java.util.Date;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.replaceText;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static de.test.antennapod.ui.FeedRobot.awaitAssertion;
 import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.startsWith;
@@ -291,12 +293,13 @@ public class FeedEpisodeListTest {
     public void feedInfoShowsDescriptionAddressAndDeduplicatedFundingLinks() {
         onView(withId(R.id.butShowInfo)).perform(click());
 
-        waitUntilDisplayed(withId(R.id.descriptionLabel), FeedRobot.UI_TIMEOUT_MS);
+        awaitAssertion(() -> onView(withId(R.id.descriptionLabel)).perform(scrollTo()));
         onView(withId(R.id.descriptionLabel)).check(matches(withText("Everything about the list")));
-        onView(withId(R.id.urlLabel)).check(matches(withText(server.getBaseUrl() + FEED_PATH)));
+        onView(withId(R.id.urlLabel)).perform(scrollTo())
+                .check(matches(withText(server.getBaseUrl() + FEED_PATH)));
         String support = InstrumentationRegistry.getInstrumentation().getTargetContext()
                 .getString(R.string.support_podcast);
-        onView(withId(R.id.supportUrl)).check(matches(withText(
+        onView(withId(R.id.supportUrl)).perform(scrollTo()).check(matches(withText(
                 "Support the show " + DONATE_URL + "\n" + support + " " + OTHER_URL)));
     }
 

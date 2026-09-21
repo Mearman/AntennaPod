@@ -15,6 +15,8 @@ import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.util.HumanReadables;
 import androidx.test.espresso.util.TreeIterables;
 import android.view.View;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import de.danoeh.antennapod.playback.service.PlaybackService;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
@@ -37,6 +39,7 @@ import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
+import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
@@ -220,6 +223,54 @@ public class EspressoTestUtils {
                         allOf(hasDescendant(withText(title)),
                                 hasDescendant(withId(android.R.id.widget_frame))),
                         click()));
+    }
+
+    public static ViewAction scrollRecyclerUntilItemMatches(final Matcher<View> itemViewMatcher) {
+        return new ViewAction() {
+            @Override
+            public Matcher<View> getConstraints() {
+                return isAssignableFrom(RecyclerView.class);
+            }
+
+            @Override
+            public String getDescription() {
+                return "scroll recycler view until an item matches " + itemViewMatcher;
+            }
+
+            @Override
+            public void perform(UiController uiController, View rootView) {
+                RecyclerView recyclerView = (RecyclerView) rootView;
+                LinearLayoutManager layoutManager =
+                        (LinearLayoutManager) recyclerView.getLayoutManager();
+                int itemCount = recyclerView.getAdapter().getItemCount();
+                jumpToPosition(uiController, layoutManager, 0);
+                int pageSize = Math.max(1,
+                        layoutManager.findLastVisibleItemPosition() - layoutManager.findFirstVisibleItemPosition());
+                for (int anchor = 0; anchor < itemCount; anchor += pageSize) {
+                    for (int offset = 0; offset < pageSize && anchor + offset < itemCount; offset++) {
+                        RecyclerView.ViewHolder holder =
+                                recyclerView.findViewHolderForAdapterPosition(anchor + offset);
+                        if (holder != null && itemViewMatcher.matches(holder.itemView)) {
+                            jumpToPosition(uiController, layoutManager, anchor + offset);
+                            return;
+                        }
+                    }
+                    jumpToPosition(uiController, layoutManager, Math.min(anchor + pageSize, itemCount - 1));
+                }
+                throw new PerformException.Builder()
+                        .withActionDescription(getDescription())
+                        .withViewDescription(HumanReadables.describe(rootView))
+                        .withCause(new RuntimeException("No item matches " + itemViewMatcher))
+                        .build();
+            }
+        };
+    }
+
+    private static void jumpToPosition(UiController uiController, LinearLayoutManager layoutManager,
+            int position) {
+        layoutManager.scrollToPositionWithOffset(position, 0);
+        uiController.loopMainThreadForAtLeast(100);
+        uiController.loopMainThreadUntilIdle();
     }
 
     public static void clickBottomNavItem(@StringRes int text) {
