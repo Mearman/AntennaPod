@@ -41,7 +41,6 @@ import static org.mockito.Mockito.when;
 
 @Category(IntegrationTest.class)
 public class DownloadServiceInterfaceImplIntegrationTest extends DownloadIntegrationTestBase {
-    private static final String PREF_ENQUEUE_DOWNLOADED = "prefEnqueueDownloaded";
     private static final long ASYNC_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
 
     private DownloadServiceInterfaceImpl downloadService;
@@ -121,7 +120,7 @@ public class DownloadServiceInterfaceImplIntegrationTest extends DownloadIntegra
     @Test
     public void downloadLeavesQueueUntouchedWhenSettingDisabled() {
         PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putBoolean(PREF_ENQUEUE_DOWNLOADED, false).commit();
+                .putBoolean(UserPreferences.PREF_ENQUEUE_DOWNLOADED, false).commit();
 
         downloadService.download(context, item);
         DBWriter.tearDownTests();

@@ -33,7 +33,6 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
 public class DownloadServiceInterfaceTest {
-    private static final String PREF_ENQUEUE_DOWNLOADED = "prefEnqueueDownloaded";
     private static final long TIMEOUT_SECONDS = 60;
 
     private final DownloadTestFixture fixture = new DownloadTestFixture();
@@ -143,7 +142,7 @@ public class DownloadServiceInterfaceTest {
 
     @Test
     public void downloadingLeavesTheQueueAloneWhenTheUserDisabledEnqueueing() throws Exception {
-        DownloadTestFixture.putBoolean(PREF_ENQUEUE_DOWNLOADED, false);
+        DownloadTestFixture.putBoolean(UserPreferences.PREF_ENQUEUE_DOWNLOADED, false);
 
         downloads.downloadNow(context, item(0), true);
 

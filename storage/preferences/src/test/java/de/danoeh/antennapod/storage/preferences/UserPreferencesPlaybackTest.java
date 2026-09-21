@@ -246,7 +246,7 @@ public class UserPreferencesPlaybackTest {
     public void downloadedEpisodesAreEnqueuedByDefaultAndFollowStoredValue() {
         assertTrue(UserPreferences.enqueueDownloadedEpisodes());
 
-        prefs.edit().putBoolean("prefEnqueueDownloaded", false).commit();
+        prefs.edit().putBoolean(UserPreferences.PREF_ENQUEUE_DOWNLOADED, false).commit();
 
         assertFalse(UserPreferences.enqueueDownloadedEpisodes());
     }

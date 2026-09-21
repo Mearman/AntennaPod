@@ -95,7 +95,7 @@ public abstract class UserPreferences {
     public static final String PREF_STREAM_OVER_DOWNLOAD = "prefStreamOverDownload";
 
     // Network
-    private static final String PREF_ENQUEUE_DOWNLOADED = "prefEnqueueDownloaded";
+    public static final String PREF_ENQUEUE_DOWNLOADED = "prefEnqueueDownloaded";
     public static final String PREF_ENQUEUE_LOCATION = "prefEnqueueLocation";
     public static final String PREF_UPDATE_INTERVAL_MINUTES = "prefAutoUpdateIntervall";
     public static final String PREF_MOBILE_UPDATE = "prefMobileUpdateTypes";

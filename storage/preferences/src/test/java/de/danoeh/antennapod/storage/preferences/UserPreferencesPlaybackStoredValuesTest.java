@@ -255,7 +255,7 @@ public class UserPreferencesPlaybackStoredValuesTest extends StoredPreferencesTe
     public void downloadedEpisodesAreEnqueuedUnlessTurnedOff() {
         assertTrue(UserPreferences.enqueueDownloadedEpisodes());
 
-        stored.edit().putBoolean("prefEnqueueDownloaded", false).commit();
+        stored.edit().putBoolean(UserPreferences.PREF_ENQUEUE_DOWNLOADED, false).commit();
 
         assertFalse(UserPreferences.enqueueDownloadedEpisodes());
     }
