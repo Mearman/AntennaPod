@@ -190,6 +190,38 @@ public class DatabaseBackupTest {
     }
 
     @Test
+    public void testDatabaseExportRejectsDatabaseFromOlderAppVersion() throws Exception {
+        addFeedsToDatabase();
+        File backup = exportFile("AntennaPodBackup-old.db");
+        exportDatabase(backup);
+        SQLiteDatabase db = SQLiteDatabase.openDatabase(backup.getAbsolutePath(),
+                null, SQLiteDatabase.OPEN_READWRITE);
+        db.setVersion(PodDBAdapter.VERSION - 1);
+        db.close();
+
+        File currentDatabase = InstrumentationRegistry.getInstrumentation().getTargetContext()
+                .getDatabasePath(PodDBAdapter.DATABASE_NAME);
+        org.apache.commons.io.FileUtils.copyFile(backup, currentDatabase);
+        File target = exportFile("AntennaPodBackup-fromold.db");
+        stubCreateDocument(target);
+        clickPreference(R.string.database_export_label);
+        waitForViewGlobally(withText(R.string.export_error_label), 20000);
+    }
+
+    @Test
+    public void testDatabaseImportShowsErrorForCorruptBackup() throws Exception {
+        File corrupt = exportFile("AntennaPodBackup-corrupt.db");
+        java.io.FileOutputStream out = new java.io.FileOutputStream(corrupt);
+        out.write("this is definitely not a sqlite database".getBytes());
+        out.close();
+        stubOpenDocument(corrupt);
+        openImportExportScreen();
+        clickPreference(R.string.database_import_label);
+        onView(withText(R.string.confirm_label)).perform(click());
+        waitForViewGlobally(withText(R.string.import_error_label), 20000);
+    }
+
+    @Test
     public void testAutomaticBackupSwitchStaysOffWhenPickerCancelled() {
         Intent cancelled = new Intent();
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT_TREE))
