@@ -133,7 +133,6 @@ public class EpisodeListActionsTest {
         assertTrue(new File(media(0).getLocalFileUrl()).exists());
         assertFalse(media(1).isDownloaded());
 
-        DBWriter.addQueueItem(context, feed.getItemAtIndex(1)).get();
         awaitSecondaryAction(R.string.play_label);
     }
 
