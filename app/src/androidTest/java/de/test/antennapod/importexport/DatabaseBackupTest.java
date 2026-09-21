@@ -22,6 +22,7 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.screen.preferences.PreferenceActivity;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.ui.UITestUtils;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -30,6 +31,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -201,7 +203,7 @@ public class DatabaseBackupTest {
 
         File currentDatabase = InstrumentationRegistry.getInstrumentation().getTargetContext()
                 .getDatabasePath(PodDBAdapter.DATABASE_NAME);
-        org.apache.commons.io.FileUtils.copyFile(backup, currentDatabase);
+        FileUtils.copyFile(backup, currentDatabase);
         File target = exportFile("AntennaPodBackup-fromold.db");
         stubCreateDocument(target);
         clickPreference(R.string.database_export_label);
@@ -211,7 +213,7 @@ public class DatabaseBackupTest {
     @Test
     public void testDatabaseImportShowsErrorForCorruptBackup() throws Exception {
         File corrupt = exportFile("AntennaPodBackup-corrupt.db");
-        java.io.FileOutputStream out = new java.io.FileOutputStream(corrupt);
+        FileOutputStream out = new FileOutputStream(corrupt);
         out.write("this is definitely not a sqlite database".getBytes());
         out.close();
         stubOpenDocument(corrupt);
