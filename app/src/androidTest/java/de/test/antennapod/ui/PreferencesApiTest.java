@@ -132,8 +132,10 @@ public class PreferencesApiTest {
         assertTrue(UserPreferences.getNotifyPriority() > 0);
         put(UserPreferences.PREF_PERSISTENT_NOTIFICATION, false);
         assertFalse(UserPreferences.isPersistNotify());
-        assertTrue(UserPreferences.getShowDownloadReportRaw());
-        assertTrue(UserPreferences.enqueueDownloadedEpisodes());
+        put("prefShowDownloadReport", false);
+        assertFalse(UserPreferences.getShowDownloadReportRaw());
+        put("prefEnqueueDownloaded", false);
+        assertFalse(UserPreferences.enqueueDownloadedEpisodes());
     }
 
     @Test
