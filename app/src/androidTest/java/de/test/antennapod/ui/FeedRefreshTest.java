@@ -37,7 +37,6 @@ import static de.test.antennapod.ui.FeedRobot.waitUntilDisplayed;
 import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -307,8 +306,9 @@ public class FeedRefreshTest {
             List<DownloadResult> log = awaitDownloadLogEntries(feed, i + 1);
             assertEquals(expectedReasons[i], log.get(0).getReason());
         }
-        assertNotNull(FeedRobot.reload(feed));
-        assertNotEquals(0, FeedRobot.reload(feed).getItems().size());
+        Feed survived = FeedRobot.reload(feed);
+        assertEquals(1, survived.getItems().size());
+        assertEquals("Episode A", survived.getItems().get(0).getTitle());
     }
 
     @Test
