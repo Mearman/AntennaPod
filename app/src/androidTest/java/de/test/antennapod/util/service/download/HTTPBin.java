@@ -306,6 +306,7 @@ public class HTTPBin extends NanoHTTPD {
         Response.Status status = Response.Status.OK;
         String contentRange = null;
         final String ifRange = header.get("if-range");
+        // read range header field
         if (header.containsKey("range") && (ifRange == null || ifRange.equals(etag))) {
             final String value = header.get("range");
             final String[] segments = value.split("=");
@@ -340,6 +341,7 @@ public class HTTPBin extends NanoHTTPD {
         boolean successful = false;
         try {
             inputStream = new FileInputStream(file);
+            // skip 'start' bytes
             IOUtils.skipFully(inputStream, start);
             final long announcedLength = truncate ? length + TRUNCATED_MISSING_BYTES : length;
             inputStream = new ServedStream(inputStream, length, announcedLength, stall ? length / 2 : -1);
