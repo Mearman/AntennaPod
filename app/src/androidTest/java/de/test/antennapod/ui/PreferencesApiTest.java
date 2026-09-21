@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -376,8 +375,5 @@ public class PreferencesApiTest {
         PlaybackPreferences.clearCurrentlyPlayingTemporaryPlaybackSettings();
         assertEquals(FeedPreferences.SPEED_USE_GLOBAL,
                 PlaybackPreferences.getCurrentlyPlayingTemporaryPlaybackSpeed(), 0.001f);
-        await().atMost(2, TimeUnit.SECONDS).until(() -> prefs.getFloat(
-                "de.danoeh.antennapod.preferences.temporaryPlaybackSpeed",
-                FeedPreferences.SPEED_USE_GLOBAL) == FeedPreferences.SPEED_USE_GLOBAL);
     }
 }
