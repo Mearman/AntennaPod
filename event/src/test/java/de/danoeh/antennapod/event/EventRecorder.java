@@ -20,51 +20,51 @@ public class EventRecorder {
         }
     }
 
-    public void clear() {
+    public synchronized void clear() {
         received.clear();
     }
 
     @Subscribe
-    public void onQueueEvent(QueueEvent event) {
+    public synchronized void onQueueEvent(QueueEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onFeedItemEvent(FeedItemEvent event) {
+    public synchronized void onFeedItemEvent(FeedItemEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onFeedEvent(FeedEvent event) {
+    public synchronized void onFeedEvent(FeedEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onFeedListUpdateEvent(FeedListUpdateEvent event) {
+    public synchronized void onFeedListUpdateEvent(FeedListUpdateEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onEpisodeDownloadEvent(EpisodeDownloadEvent event) {
+    public synchronized void onEpisodeDownloadEvent(EpisodeDownloadEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onMessageEvent(MessageEvent event) {
+    public synchronized void onMessageEvent(MessageEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onPlaybackHistoryEvent(PlaybackHistoryEvent event) {
+    public synchronized void onPlaybackHistoryEvent(PlaybackHistoryEvent event) {
         received.add(event);
     }
 
     @Subscribe
-    public void onDownloadLogEvent(DownloadLogEvent event) {
+    public synchronized void onDownloadLogEvent(DownloadLogEvent event) {
         received.add(event);
     }
 
-    public <T> List<T> of(Class<T> type) {
+    public synchronized <T> List<T> of(Class<T> type) {
         List<T> result = new ArrayList<>();
         for (Object event : received) {
             if (type.isInstance(event)) {
