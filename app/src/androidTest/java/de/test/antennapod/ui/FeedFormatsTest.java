@@ -286,7 +286,8 @@ public class FeedFormatsTest {
         assertEquals(0, FeedRobot.itemByGuid(feed, "invalid").getMedia().getDuration());
         assertEquals(0, FeedRobot.itemByGuid(feed, "too-many-parts").getMedia().getDuration());
         assertFalse(FeedRobot.itemByGuid(feed, "no-media").hasMedia());
-        assertTrue(FeedRobot.itemByGuid(feed, "small-length").getMedia().checkedOnSizeButUnknown());
+        FeedRobot.awaitCondition(() -> FeedRobot.itemByGuid(FeedRobot.reload(feed), "small-length")
+                .getMedia().checkedOnSizeButUnknown());
     }
 
     @Test
