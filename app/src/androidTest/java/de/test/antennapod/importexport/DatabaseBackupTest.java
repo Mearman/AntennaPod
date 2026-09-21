@@ -10,8 +10,10 @@ import androidx.test.espresso.intent.rule.IntentsTestRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
@@ -237,21 +239,25 @@ public class DatabaseBackupTest {
     @Test
     public void testTurningAutomaticBackupOffClearsFolderAndCancelsWork() throws Exception {
         UserPreferences.setAutomaticExportFolder("content://mock/tree");
-        AutomaticDatabaseExportWorker.enqueueIfNeeded(
-                InstrumentationRegistry.getInstrumentation().getTargetContext(), true);
+        PeriodicWorkRequest pendingBackup = new PeriodicWorkRequest.Builder(
+                AutomaticDatabaseExportWorker.class, 3, TimeUnit.DAYS)
+                .setInitialDelay(1, TimeUnit.HOURS)
+                .build();
         WorkManager workManager = WorkManager.getInstance(
                 InstrumentationRegistry.getInstrumentation().getTargetContext());
+        workManager.enqueueUniquePeriodicWork(AUTOMATIC_BACKUP_WORK,
+                ExistingPeriodicWorkPolicy.REPLACE, pendingBackup);
 
         openImportExportScreen();
         clickPreference(R.string.automatic_database_export_label);
 
         await().atMost(5, TimeUnit.SECONDS)
                 .until(() -> UserPreferences.getAutomaticExportFolder() == null);
-        List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get();
-        assertTrue(!infos.isEmpty());
-        for (WorkInfo info : infos) {
-            assertTrue(info.getState() == WorkInfo.State.CANCELLED || info.getState().isFinished());
-        }
+        await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get();
+            return !infos.isEmpty() && infos.stream().allMatch(info ->
+                    info.getState() == WorkInfo.State.CANCELLED);
+        });
     }
 
     @Test
