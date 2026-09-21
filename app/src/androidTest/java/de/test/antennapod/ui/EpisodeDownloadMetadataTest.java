@@ -15,6 +15,7 @@ import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
+import de.danoeh.antennapod.ui.chapters.ChapterUtils;
 import de.danoeh.antennapod.ui.screen.AddFeedFragment;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.util.TestAssets;
@@ -346,8 +347,9 @@ public class EpisodeDownloadMetadataTest {
 
     @Test
     public void chaptersFromTheFeedUrlAreFetchedDuringDownload() throws Exception {
+        String chaptersUrl = server.getBaseUrl() + "/chapters/episode.json";
         server.publish("/chapters/episode.json", "application/json", TestAssets.readText("chapters/ep1.json"));
-        String tag = "<podcast:chapters url=\"" + server.getBaseUrl() + "/chapters/episode.json\""
+        String tag = "<podcast:chapters url=\"" + chaptersUrl + "\""
                 + " type=\"application/json+chapters\"/>";
         Episode episode = new Episode("webchapters", "Episode webchapters", "audio/mpeg",
                 MediaFixtures.plainAudio(), tag);
@@ -355,7 +357,18 @@ public class EpisodeDownloadMetadataTest {
 
         downloadEpisode(feed, episode);
 
-        assertFalse(server.requestsFor("/chapters/episode.json").isEmpty());
+        FeedRobot.awaitCondition(() -> !server.requestsFor("/chapters/episode.json").isEmpty());
+        List<Chapter> chapters = ChapterUtils.loadChaptersFromUrl(chaptersUrl, false);
+        assertEquals(3, chapters.size());
+        assertEquals("Cold open", chapters.get(0).getTitle());
+        assertEquals(0, chapters.get(0).getStart());
+        assertEquals("Interview", chapters.get(1).getTitle());
+        assertEquals(95000, chapters.get(1).getStart());
+        assertEquals("https://example.com/interview", chapters.get(1).getLink());
+        assertEquals("https://example.com/interview.jpg", chapters.get(1).getImageUrl());
+        assertEquals("Credits", chapters.get(2).getTitle());
+        assertEquals(3600000, chapters.get(2).getStart());
+        assertEquals(1, server.requestsFor("/chapters/episode.json").size());
     }
 
     @Test
