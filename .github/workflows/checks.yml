@@ -5,6 +5,7 @@ on:
     types: [ opened, synchronize, reopened ]
   push:
     branches: [ master, develop ]
+  workflow_dispatch:
 
 jobs:
   wrapper-validation:
