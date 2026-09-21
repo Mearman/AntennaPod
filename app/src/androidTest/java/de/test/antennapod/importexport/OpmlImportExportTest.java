@@ -158,7 +158,7 @@ public class OpmlImportExportTest {
                 FeedItemFilter.unfiltered(), SortOrder.DATE_NEW_OLD);
         favorites.add(items.get(0));
         favorites.add(items.get(1));
-        DBWriter.addFavoriteItems(favorites);
+        DBWriter.addFavoriteItems(favorites).get();
 
         File target = exportTargetFile("favorites.html");
         stubCreateDocument(target, "text/html", "antennapod-favorites");

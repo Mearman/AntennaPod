@@ -205,6 +205,7 @@ public class GpodderLoginTest {
         onView(withText("Existing device")).perform(click());
         onView(withId(R.id.butSyncNow)).perform(click());
         await().atMost(15, TimeUnit.SECONDS).until(SynchronizationSettings::isProviderConnected);
+        waitForViewGlobally(withText(R.string.synchronization_logout), 10000);
 
         clickPreference(R.string.synchronization_logout);
         await().atMost(5, TimeUnit.SECONDS)
