@@ -63,6 +63,7 @@ public class NetworkHelpersTest {
 
     @Test
     public void networkRestrictionFollowsTheMeteredAndCellularStateOfThePlatform() throws Exception {
+        PlatformNetwork.assumeNetworkStateCanBeSwitched();
         PlatformNetwork.activateUnmeteredWifiNetwork();
         assertFalse(NetworkUtils.isNetworkRestricted());
         assertFalse(NetworkUtils.isVpnOverWifi());
@@ -84,6 +85,7 @@ public class NetworkHelpersTest {
 
     @Test
     public void mobileDataSettingsAllowOnlyTheirOwnTransferOnARestrictedNetwork() throws Exception {
+        PlatformNetwork.assumeNetworkStateCanBeSwitched();
         PlatformNetwork.activateMeteredCellularNetwork();
 
         allowMobile(true, false, false, false);
