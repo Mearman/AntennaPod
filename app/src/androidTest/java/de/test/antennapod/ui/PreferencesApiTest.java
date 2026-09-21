@@ -314,6 +314,10 @@ public class PreferencesApiTest {
     @Test
     public void testInitCreatesNoMediaFile() {
         File noMedia = new File(context.getExternalFilesDir(null), ".nomedia");
+        if (noMedia.exists()) {
+            assertTrue(noMedia.delete());
+        }
+        UserPreferences.init(context);
         assertTrue(noMedia.exists());
     }
 
