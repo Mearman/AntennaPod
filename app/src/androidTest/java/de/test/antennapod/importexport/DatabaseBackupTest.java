@@ -17,6 +17,7 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
+import de.danoeh.antennapod.event.MessageEvent;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 import de.danoeh.antennapod.storage.importexport.AutomaticDatabaseExportWorker;
@@ -25,6 +26,8 @@ import de.danoeh.antennapod.ui.screen.preferences.PreferenceActivity;
 import de.test.antennapod.EspressoTestUtils;
 import de.test.antennapod.ui.UITestUtils;
 import org.apache.commons.io.FileUtils;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,6 +40,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static androidx.test.espresso.Espresso.onView;
@@ -260,16 +264,29 @@ public class DatabaseBackupTest {
         });
     }
 
+    private final List<MessageEvent> workerErrorMessages = new CopyOnWriteArrayList<>();
+
+    @Subscribe
+    public void onMessageEvent(MessageEvent event) {
+        workerErrorMessages.add(event);
+    }
+
     @Test
     public void testAutomaticBackupWorkerSucceedsWithoutBackupFolder() throws Exception {
         WorkManager workManager = WorkManager.getInstance(
                 InstrumentationRegistry.getInstrumentation().getTargetContext());
-        workManager.enqueueUniqueWork("AutomaticBackupOnce",
-                ExistingWorkPolicy.REPLACE,
-                OneTimeWorkRequest.from(AutomaticDatabaseExportWorker.class));
-        await().atMost(30, TimeUnit.SECONDS).until(() -> {
-            List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork("AutomaticBackupOnce").get();
-            return !infos.isEmpty() && infos.get(0).getState() == WorkInfo.State.SUCCEEDED;
-        });
+        EventBus.getDefault().register(this);
+        try {
+            workManager.enqueueUniqueWork(AUTOMATIC_BACKUP_WORK,
+                    ExistingWorkPolicy.REPLACE,
+                    OneTimeWorkRequest.from(AutomaticDatabaseExportWorker.class));
+            await().atMost(30, TimeUnit.SECONDS).until(() -> {
+                List<WorkInfo> infos = workManager.getWorkInfosForUniqueWork(AUTOMATIC_BACKUP_WORK).get();
+                return !infos.isEmpty() && infos.get(0).getState() == WorkInfo.State.SUCCEEDED;
+            });
+            assertTrue(workerErrorMessages.isEmpty());
+        } finally {
+            EventBus.getDefault().unregister(this);
+        }
     }
 }
