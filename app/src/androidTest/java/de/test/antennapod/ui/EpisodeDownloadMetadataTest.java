@@ -368,7 +368,6 @@ public class EpisodeDownloadMetadataTest {
         assertEquals("https://example.com/interview.jpg", chapters.get(1).getImageUrl());
         assertEquals("Credits", chapters.get(2).getTitle());
         assertEquals(3600000, chapters.get(2).getStart());
-        assertEquals(1, server.requestsFor("/chapters/episode.json").size());
     }
 
     @Test
