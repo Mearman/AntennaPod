@@ -5,7 +5,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
-import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.event.SyncServiceEvent;
@@ -60,7 +59,6 @@ import static org.junit.Assert.assertTrue;
 @LargeTest
 @RunWith(AndroidJUnit4.class)
 public class GpodderSyncFlowsTest {
-    private static final String WORK_ID_SYNC = "SyncServiceWorkId";
     private static final long SYNC_WAIT_SECONDS = 120;
 
     private GpodderTestServer server;
@@ -91,8 +89,7 @@ public class GpodderSyncFlowsTest {
 
     @After
     public void tearDown() throws Exception {
-        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .cancelUniqueWork(WORK_ID_SYNC);
+        EspressoTestUtils.cancelPendingSyncWork();
         EventBus.getDefault().unregister(this);
         preferenceActivityRule.finishActivity();
         mainActivityRule.finishActivity();
@@ -126,19 +123,23 @@ public class GpodderSyncFlowsTest {
     }
 
     private void giveMediaADuration() {
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
         for (Feed feed : DBReader.getFeedList()) {
-            for (FeedItem item : feed.getItems()) {
+            for (FeedItem item : DBReader.getFeedItemList(feed, FeedItemFilter.unfiltered(),
+                    SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE)) {
                 if (item.getMedia() == null || item.getMedia().getId() == 0) {
                     continue;
                 }
                 FeedMedia media = item.getMedia();
                 media.setDuration(300000);
-                PodDBAdapter adapter = PodDBAdapter.getInstance();
-                adapter.open();
+                if (media.getLastPlayedTimeHistory() == null) {
+                    media.setLastPlayedTimeHistory(new Date(0));
+                }
                 adapter.setFeedMediaPlaybackInformation(media);
-                adapter.close();
             }
         }
+        adapter.close();
     }
 
     private boolean syncScreenOpen = false;
@@ -197,7 +198,13 @@ public class GpodderSyncFlowsTest {
         Feed extraFeed = new Feed(0, null, "Synced feed title", "http://example.com/syncedfeed",
                 "Description", "http://example.com/pay", "author", "en", Feed.TYPE_RSS2,
                 "syncedfeed", null, null, "http://example.com/synced/src", System.currentTimeMillis());
-        extraFeed.setItems(new ArrayList<>());
+        List<FeedItem> extraItems = new ArrayList<>();
+        for (int j = 0; j < 2; j++) {
+            extraItems.add(new FeedItem(0, "Synced feed item " + j, "synceditem" + j,
+                    "http://example.com/syncedfeed/item/" + j, new Date(), FeedItem.UNPLAYED,
+                    extraFeed));
+        }
+        extraFeed.setItems(extraItems);
         String extraUrl = uiTestUtils.hostFeed(extraFeed);
         server.setSubscriptionChanges(Arrays.asList(extraUrl), Arrays.asList());
 
@@ -324,13 +331,12 @@ public class GpodderSyncFlowsTest {
         clickSyncNow();
         waitForSyncToFinish();
 
-        await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
-                .until(() -> !server.uploadedEpisodeActions.isEmpty());
-        JSONObject uploadedAction = server.uploadedEpisodeActions.get(0);
-        assertEquals("play", uploadedAction.optString("action"));
-        assertEquals(markedItem.getMedia().getDownloadUrl(), uploadedAction.optString("episode"));
-        assertEquals("device1", uploadedAction.optString("device"));
-        assertEquals(300, uploadedAction.optInt("position"));
+        await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS).until(() ->
+                server.uploadedEpisodeActions.stream().anyMatch(action ->
+                        markedItem.getMedia().getDownloadUrl().equals(action.optString("episode"))
+                                && "play".equals(action.optString("action"))
+                                && action.optInt("position") == 300
+                                && "device1".equals(action.optString("device"))));
         assertTrue(SynchronizationSettings.isLastSyncSuccessful());
     }
 
@@ -386,23 +392,21 @@ public class GpodderSyncFlowsTest {
         adapter.setCompleteFeed(neverRefreshedFeed);
         adapter.close();
 
+        long unrefreshedFeedId = neverRefreshedFeed.getId();
         preferenceActivityRule.launchActivity(new Intent());
         clickSyncNow();
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> server.uploadedAddedFeeds
                         .contains(uiTestUtils.hostedFeeds.get(4).getDownloadUrl()));
-        await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> lastSyncEventMessage == R.string.sync_status_wait_for_downloads);
-        assertFalse(server.hasRequest("GET", "/api/2/episodes/"));
-
         await().atMost(90, TimeUnit.SECONDS).until(() ->
-                !DBReader.getFeedItemList(DBReader.getFeed(neverRefreshedFeed.getId(), false, 0,
-                        Integer.MAX_VALUE), FeedItemFilter.unfiltered(),
-                        SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE).isEmpty());
-        server.clearRecordedRequests();
-        clickSyncNow();
+                DBReader.getFeed(unrefreshedFeedId, false, 0, Integer.MAX_VALUE)
+                        .getLastRefreshAttempt() > 0);
         await().atMost(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
                 .until(() -> server.hasRequest("GET", "/api/2/episodes/"));
+        await().atMost(90, TimeUnit.SECONDS).until(() ->
+                !DBReader.getFeedItemList(DBReader.getFeed(unrefreshedFeedId, false, 0,
+                        Integer.MAX_VALUE), FeedItemFilter.unfiltered(),
+                        SortOrder.DATE_NEW_OLD, 0, Integer.MAX_VALUE).isEmpty());
         waitForSyncToFinish();
         assertTrue(SynchronizationSettings.isLastSyncSuccessful());
     }

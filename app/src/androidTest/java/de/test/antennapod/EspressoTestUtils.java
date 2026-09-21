@@ -206,10 +206,17 @@ public class EspressoTestUtils {
     }
 
     public static void cancelPendingSyncWork() {
-        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .cancelUniqueWork("SyncServiceWorkId");
-        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .pruneWork();
+        WorkManager workManager = WorkManager.getInstance(
+                InstrumentationRegistry.getInstrumentation().getTargetContext());
+        try {
+            workManager.cancelUniqueWork("SyncServiceWorkId").getResult().get();
+            workManager.cancelUniqueWork("de.danoeh.antennapod.core.service.FeedUpdateWorker")
+                    .getResult().get();
+            workManager.cancelUniqueWork("feedUpdateManual").getResult().get();
+            workManager.pruneWork().getResult().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void setLaunchScreen(String tag) {

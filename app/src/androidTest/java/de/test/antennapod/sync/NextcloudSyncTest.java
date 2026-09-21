@@ -7,7 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
-import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
@@ -56,7 +55,6 @@ import static org.junit.Assert.assertTrue;
 @LargeTest
 @RunWith(AndroidJUnit4.class)
 public class NextcloudSyncTest {
-    private static final String WORK_ID_SYNC = "SyncServiceWorkId";
     private static final long SYNC_WAIT_SECONDS = 120;
 
     private NextcloudTestServer server;
@@ -87,8 +85,7 @@ public class NextcloudSyncTest {
 
     @After
     public void tearDown() throws Exception {
-        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .cancelUniqueWork(WORK_ID_SYNC);
+        EspressoTestUtils.cancelPendingSyncWork();
         InstrumentationRegistry.getInstrumentation().removeMonitor(browserMonitor);
         activityTestRule.finishActivity();
         SynchronizationSettings.setSelectedSyncProvider(null);

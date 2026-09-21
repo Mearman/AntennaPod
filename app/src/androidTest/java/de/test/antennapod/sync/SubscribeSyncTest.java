@@ -5,7 +5,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
-import androidx.work.WorkManager;
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.net.sync.serviceinterface.SynchronizationProvider;
@@ -36,7 +35,6 @@ import static org.awaitility.Awaitility.await;
 @LargeTest
 @RunWith(AndroidJUnit4.class)
 public class SubscribeSyncTest {
-    private static final String WORK_ID_SYNC = "SyncServiceWorkId";
 
     private GpodderTestServer server;
     private UITestUtils uiTestUtils;
@@ -60,8 +58,7 @@ public class SubscribeSyncTest {
 
     @After
     public void tearDown() throws Exception {
-        WorkManager.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext())
-                .cancelUniqueWork(WORK_ID_SYNC);
+        EspressoTestUtils.cancelPendingSyncWork();
         activityTestRule.finishActivity();
         SynchronizationSettings.setSelectedSyncProvider(null);
         SynchronizationCredentials.clear();
