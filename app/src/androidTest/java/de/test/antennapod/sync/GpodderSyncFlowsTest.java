@@ -1,6 +1,7 @@
 package de.test.antennapod.sync;
 
 import android.content.Intent;
+import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -27,6 +28,7 @@ import de.test.antennapod.util.sync.GpodderTestServer;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.hamcrest.Matcher;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -46,12 +48,17 @@ import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.longClick;
 import static androidx.test.espresso.contrib.RecyclerViewActions.actionOnItemAtPosition;
+import static androidx.test.espresso.matcher.ViewMatchers.hasMinimumChildCount;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static de.test.antennapod.EspressoTestUtils.clickBottomNavOverflow;
 import static de.test.antennapod.EspressoTestUtils.clickPreference;
+import static de.test.antennapod.EspressoTestUtils.waitForView;
 import static de.test.antennapod.EspressoTestUtils.waitForViewGlobally;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -316,8 +323,10 @@ public class GpodderSyncFlowsTest {
 
         mainActivityRule.launchActivity(new Intent());
         clickBottomNavOverflow(R.string.episodes_label);
-        waitForViewGlobally(withId(R.id.recyclerView), 10000);
-        onView(withId(R.id.recyclerView)).perform(actionOnItemAtPosition(0, longClick()));
+        Matcher<View> episodesList = allOf(withId(R.id.recyclerView),
+                isDisplayed(), hasMinimumChildCount(2));
+        onView(isRoot()).perform(waitForView(episodesList, 10000));
+        onView(episodesList).perform(actionOnItemAtPosition(0, longClick()));
         waitForViewGlobally(withText(R.string.mark_as_played_label), 10000);
         onView(withText(R.string.mark_as_played_label)).perform(click());
 
