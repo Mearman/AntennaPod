@@ -134,7 +134,7 @@ public class UITestUtils {
 
                 if (!hostTextOnlyFeeds) {
                     File mediaFile = newMediaFile("feed-" + i + "-episode-" + j + ".mp3");
-                    item.setMedia(new FeedMedia(j, item, 0, 0, mediaFile.length(), "audio/mp3",
+                    item.setMedia(new FeedMedia(0, item, 0, 0, mediaFile.length(), "audio/mp3",
                             null, hostFile(mediaFile), 0, null, 0, 0));
                 }
             }

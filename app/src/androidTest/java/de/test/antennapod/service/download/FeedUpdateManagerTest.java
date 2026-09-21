@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -53,16 +54,6 @@ public class FeedUpdateManagerTest {
 
     private void resetManualRefreshCooldown() {
         ((FeedUpdateManagerImpl) FeedUpdateManager.getInstance()).resetManualRefreshCooldown();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        EventBus.getDefault().unregister(this);
-        EventBus.getDefault().removeAllStickyEvents();
-        workManager.cancelAllWorkByTag(FeedUpdateManagerImpl.WORK_TAG_FEED_UPDATE);
-        workManager.cancelAllWorkByTag(FeedUpdateWorker.class.getName());
-        workManager.pruneWork().getResult().get();
-        fixture.tearDown();
     }
 
     @Subscribe(sticky = true)

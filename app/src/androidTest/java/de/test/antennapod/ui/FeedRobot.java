@@ -24,12 +24,12 @@ import org.hamcrest.Matcher;
 
 import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -217,20 +217,12 @@ public class FeedRobot {
     }
 
     private static Set<UUID> manualRefreshIds() throws Exception {
-        Set<UUID> ids = new HashSet<>();
-        for (WorkInfo workInfo : manualRefreshWorkInfos()) {
-            ids.add(workInfo.getId());
-        }
-        return ids;
+        return manualRefreshWorkInfos().stream().map(WorkInfo::getId).collect(Collectors.toSet());
     }
 
     private static boolean manualRefreshSucceededSince(Set<UUID> refreshesBefore) throws Exception {
-        for (WorkInfo workInfo : manualRefreshWorkInfos()) {
-            if (workInfo.getState() == WorkInfo.State.SUCCEEDED && !refreshesBefore.contains(workInfo.getId())) {
-                return true;
-            }
-        }
-        return false;
+        return manualRefreshWorkInfos().stream().anyMatch(workInfo ->
+                workInfo.getState() == WorkInfo.State.SUCCEEDED && !refreshesBefore.contains(workInfo.getId()));
     }
 
     private static List<WorkInfo> manualRefreshWorkInfos() throws Exception {

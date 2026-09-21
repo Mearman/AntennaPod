@@ -26,11 +26,14 @@ import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.screen.drawer.NavDrawerFragment;
+import androidx.work.WorkManager;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.hamcrest.Matcher;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -236,6 +239,30 @@ public class EspressoTestUtils {
                 .edit()
                 .putString(UserPreferences.PREF_UPDATE_INTERVAL_MINUTES, "0")
                 .commit();
+    }
+
+    public static void enableSyncOverAnyConnection() {
+        PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation()
+                        .getTargetContext())
+                .edit()
+                .putStringSet(UserPreferences.PREF_MOBILE_UPDATE,
+                        new HashSet<>(Arrays.asList("images", "feed_refresh", "sync",
+                                "episode_download", "auto_download")))
+                .commit();
+    }
+
+    public static void cancelPendingSyncWork() {
+        WorkManager workManager = WorkManager.getInstance(
+                InstrumentationRegistry.getInstrumentation().getTargetContext());
+        try {
+            workManager.cancelUniqueWork("SyncServiceWorkId").getResult().get();
+            workManager.cancelUniqueWork("de.danoeh.antennapod.core.service.FeedUpdateWorker")
+                    .getResult().get();
+            workManager.cancelUniqueWork("feedUpdateManual").getResult().get();
+            workManager.pruneWork().getResult().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void setLaunchScreen(String tag) {
