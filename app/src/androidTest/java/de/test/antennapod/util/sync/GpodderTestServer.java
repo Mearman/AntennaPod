@@ -240,7 +240,7 @@ public class GpodderTestServer extends NanoHTTPD {
 
             @Override
             public String getDescription() {
-                return "Test status";
+                return code + " Test status";
             }
         };
         return new Response(status, MIME_HTML, "");

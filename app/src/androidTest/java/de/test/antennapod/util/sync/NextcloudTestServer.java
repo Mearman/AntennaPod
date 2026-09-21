@@ -1,5 +1,7 @@
 package de.test.antennapod.util.sync;
 
+import android.util.Base64;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -92,8 +94,8 @@ public class NextcloudTestServer extends NanoHTTPD {
                 response.put("appPassword", APP_PASSWORD);
                 return new Response(Response.Status.OK, MIME_JSON, response.toString());
             } else if (path.endsWith("/index.php/apps/gpoddersync/subscriptions")) {
-                if (subscriptionsStatus != 200) {
-                    return statusResponse(subscriptionsStatus);
+                if (!isAuthenticated(session) || subscriptionsStatus != 200) {
+                    return statusResponse(401);
                 }
                 JSONObject response = new JSONObject();
                 response.put("add", new JSONArray(downloadAdded));
@@ -101,6 +103,9 @@ public class NextcloudTestServer extends NanoHTTPD {
                 response.put("timestamp", 1234567);
                 return new Response(Response.Status.OK, MIME_JSON, response.toString());
             } else if (path.endsWith("/index.php/apps/gpoddersync/subscription_change/create")) {
+                if (!isAuthenticated(session)) {
+                    return statusResponse(401);
+                }
                 JSONObject upload = new JSONObject(body);
                 JSONArray added = upload.getJSONArray("add");
                 JSONArray removed = upload.getJSONArray("remove");
@@ -112,14 +117,17 @@ public class NextcloudTestServer extends NanoHTTPD {
                 }
                 return statusResponse(200);
             } else if (path.endsWith("/index.php/apps/gpoddersync/episode_action")) {
-                if (episodeActionsStatus != 200) {
-                    return statusResponse(episodeActionsStatus);
+                if (!isAuthenticated(session) || episodeActionsStatus != 200) {
+                    return statusResponse(401);
                 }
                 JSONObject response = new JSONObject();
                 response.put("actions", episodeActions);
                 response.put("timestamp", 1234567);
                 return new Response(Response.Status.OK, MIME_JSON, response.toString());
             } else if (path.endsWith("/index.php/apps/gpoddersync/episode_action/create")) {
+                if (!isAuthenticated(session)) {
+                    return statusResponse(401);
+                }
                 JSONArray actions = new JSONArray(body);
                 for (int i = 0; i < actions.length(); i++) {
                     uploadedEpisodeActions.add(actions.getJSONObject(i));
@@ -132,6 +140,17 @@ public class NextcloudTestServer extends NanoHTTPD {
         }
     }
 
+    private boolean isAuthenticated(IHTTPSession session) {
+        Map<String, String> headers = session.getHeaders();
+        String authorization = headers.get("authorization");
+        if (authorization == null || !authorization.startsWith("Basic ")) {
+            return false;
+        }
+        String expected = Base64.encodeToString(
+                (USERNAME + ":" + APP_PASSWORD).getBytes(), Base64.NO_WRAP);
+        return authorization.substring("Basic ".length()).equals(expected);
+    }
+
     private Response statusResponse(final int code) {
         Response.IStatus status = new Response.IStatus() {
             @Override
@@ -141,7 +160,7 @@ public class NextcloudTestServer extends NanoHTTPD {
 
             @Override
             public String getDescription() {
-                return "Test status";
+                return code + " Test status";
             }
         };
         return new Response(status, MIME_HTML, "");
