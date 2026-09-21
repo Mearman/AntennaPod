@@ -18,7 +18,6 @@ import org.awaitility.core.ThrowingRunnable;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 
-import java.lang.reflect.Field;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
@@ -186,21 +185,15 @@ public class FeedRobot {
         }
     }
 
-    public static void refreshFromMenu() throws Exception {
-        resetRefreshCooldown();
+    public static void refreshFromMenu() {
+        FeedUpdateManagerImpl.resetManualRefreshCooldown();
         openFeedMenu(R.string.refresh_label);
     }
 
-    public static void refreshAllFromSubscriptions() throws Exception {
-        resetRefreshCooldown();
+    public static void refreshAllFromSubscriptions() {
+        FeedUpdateManagerImpl.resetManualRefreshCooldown();
         clickBottomNavItem(R.string.subscriptions_label_short);
         openFeedMenu(R.string.refresh_label);
-    }
-
-    private static void resetRefreshCooldown() throws Exception {
-        Field lastRefresh = FeedUpdateManagerImpl.class.getDeclaredField("lastManualRefreshTime");
-        lastRefresh.setAccessible(true);
-        lastRefresh.setLong(null, 0);
     }
 
     public static Feed awaitFeed(String downloadUrl) {
