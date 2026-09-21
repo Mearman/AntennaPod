@@ -171,18 +171,14 @@ public class FeedUpdateWorkerTest {
     public void automaticRefreshWaitsForAnAllowedNetworkBeforeUpdating() throws Exception {
         Feed feed = subscribeWithoutNewestEpisode("Network checked");
         UserPreferences.setAllowMobileFeedRefresh(false);
-        Data automatic = new Data.Builder().putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build();
+        PlatformNetwork.activateMeteredCellularNetwork();
 
-        ListenableWorker.Result result = run(automatic);
+        ListenableWorker.Result result = run(new Data.Builder()
+                .putLong(FeedUpdateManagerImpl.EXTRA_FEED_ID, feed.getId()).build());
 
-        if (PlatformNetwork.isMeteredOrCellular()) {
-            assertEquals(ListenableWorker.Result.retry(), result);
-            assertEquals(2, titlesOf(feed).size());
-            assertTrue(fixture.requestsFor(feed.getDownloadUrl()).isEmpty());
-        } else {
-            assertEquals(ListenableWorker.Result.success(), result);
-            assertEquals(3, titlesOf(feed).size());
-        }
+        assertEquals(ListenableWorker.Result.retry(), result);
+        assertEquals(2, titlesOf(feed).size());
+        assertTrue(fixture.requestsFor(feed.getDownloadUrl()).isEmpty());
     }
 
     @Test
