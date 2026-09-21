@@ -18,6 +18,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.concurrent.Callable;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -84,8 +86,9 @@ public class FeedRefreshChangesTest {
         return FeedRobot.awaitFeed(url);
     }
 
-    private Feed refresh(Feed feed) throws Exception {
+    private Feed refreshAwaiting(Feed feed, Callable<Boolean> storedChange) throws Exception {
         FeedRobot.refreshFromMenu();
+        FeedRobot.awaitCondition(storedChange);
         return FeedRobot.reload(feed);
     }
 
@@ -94,7 +97,8 @@ public class FeedRefreshChangesTest {
         Feed feed = subscribeTo(feed(item("a", "Episode A", enclosure("a1.mp3", 20000), "")));
 
         publish(feed(item("a", "Episode A", enclosure("a2.mp3", 30000), "")));
-        Feed refreshed = refresh(feed);
+        Feed refreshed = refreshAwaiting(feed, () -> (server.getBaseUrl() + "/media/a2.mp3")
+                .equals(FeedRobot.itemByGuid(FeedRobot.reload(feed), "a").getMedia().getDownloadUrl()));
 
         FeedItem item = FeedRobot.itemByGuid(refreshed, "a");
         assertEquals(feed.getId(), refreshed.getId());
@@ -109,7 +113,8 @@ public class FeedRefreshChangesTest {
 
         publish(feed(item("a", "Episode A", enclosure("a1.mp3", 45000),
                 "<itunes:duration>900</itunes:duration>")));
-        Feed refreshed = refresh(feed);
+        Feed refreshed = refreshAwaiting(feed, () -> FeedRobot.itemByGuid(FeedRobot.reload(feed), "a")
+                .getMedia().getSize() == 45000);
 
         FeedItem item = FeedRobot.itemByGuid(refreshed, "a");
         assertEquals(server.getBaseUrl() + "/media/a1.mp3", item.getMedia().getDownloadUrl());
@@ -124,7 +129,8 @@ public class FeedRefreshChangesTest {
         assertFalse(feed.getItems().get(0).hasMedia());
 
         publish(feed(item("a", "Episode A", enclosure("a.mp3", 20000), "")));
-        Feed refreshed = refresh(feed);
+        Feed refreshed = refreshAwaiting(feed,
+                () -> FeedRobot.itemByGuid(FeedRobot.reload(feed), "a").hasMedia());
 
         FeedItem item = FeedRobot.itemByGuid(refreshed, "a");
         assertTrue(item.hasMedia());
@@ -139,7 +145,8 @@ public class FeedRefreshChangesTest {
 
         publish(pagedFeed(server.getBaseUrl() + "/feeds/page2.xml",
                 item("a", "Episode A", enclosure("a.mp3", 20000), "")));
-        Feed refreshed = refresh(feed);
+        Feed refreshed = refreshAwaiting(feed, () -> (server.getBaseUrl() + "/feeds/page2.xml")
+                .equals(FeedRobot.reload(feed).getNextPageLink()));
 
         assertEquals(server.getBaseUrl() + "/feeds/page2.xml", refreshed.getNextPageLink());
     }
@@ -152,7 +159,8 @@ public class FeedRefreshChangesTest {
         assertEquals("https://example.com/old-tip", FeedRobot.itemByGuid(feed, "a").getPaymentLink());
 
         publish(feed(item("a", "Episode A", enclosure("a.mp3", 20000), newTip)));
-        Feed refreshed = refresh(feed);
+        Feed refreshed = refreshAwaiting(feed, () -> "https://example.com/new-tip"
+                .equals(FeedRobot.itemByGuid(FeedRobot.reload(feed), "a").getPaymentLink()));
 
         assertEquals("https://example.com/new-tip", FeedRobot.itemByGuid(refreshed, "a").getPaymentLink());
     }
