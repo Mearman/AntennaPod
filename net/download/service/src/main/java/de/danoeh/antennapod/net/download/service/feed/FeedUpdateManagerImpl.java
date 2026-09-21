@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -37,6 +38,11 @@ public class FeedUpdateManagerImpl extends FeedUpdateManager {
     private static long lastManualRefreshTime = 0;
     private static long lastManualRefreshFeedId = -1;
     private static final long REFRESH_COOLDOWN_MS = 20_000;
+
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    public static void resetManualRefreshCooldown() {
+        lastManualRefreshTime = 0;
+    }
 
     /**
      * Start / restart periodic auto feed refresh
