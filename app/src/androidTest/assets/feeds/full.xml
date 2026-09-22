@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0"
+     xmlns:psc="http://podlove.org/simple-chapters"
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Everything Podcast</title>
+    <link>https://example.com/everything</link>
+    <itunes:summary>Summary of the channel from iTunes</itunes:summary>
+    <description>Plain channel description</description>
+    <language>EN-GB</language>
+    <itunes:author>Jane Host</itunes:author>
+    <itunes:image href="${BASE}/covers/itunes.jpg"/>
+    <image>
+      <url>${BASE}/covers/rss.jpg</url>
+      <title>Ignored image title</title>
+    </image>
+    <atom:link rel="payment" href="https://example.com/donate" type="text/html"/>
+    <podcast:funding url="https://example.com/fund">Support the show</podcast:funding>
+    <item>
+      <guid isPermaLink="false">full-episode-1</guid>
+      <title>Rich &amp; Full Episode</title>
+      <link>https://example.com/everything/1</link>
+      <pubDate>Mon, 02 Jan 2023 10:00:00 +0000</pubDate>
+      <description>Short description</description>
+      <content:encoded><![CDATA[<p>Long <b>encoded</b> description with <a href="https://example.com">a link</a></p>]]></content:encoded>
+      <itunes:duration>01:02:03</itunes:duration>
+      <itunes:image href="${BASE}/covers/ep1.jpg"/>
+      <enclosure url="${BASE}/media/ep1.mp3" length="5000000" type="audio/mpeg"/>
+      <podcast:chapters url="${BASE}/chapters/ep1.json" type="application/json+chapters"/>
+      <podcast:transcript url="${BASE}/transcripts/ep1.srt" type="application/srt"/>
+      <podcast:transcript url="${BASE}/transcripts/ep1.vtt" type="text/vtt"/>
+      <podcast:transcript url="${BASE}/transcripts/ep1.json" type="application/json"/>
+      <podcast:transcript url="${BASE}/transcripts/ep1.html" type="text/html"/>
+      <podcast:socialInteract uri="https://social.example.com/@host/1" protocol="activitypub"/>
+      <psc:chapters version="1.2">
+        <psc:chapter start="00:00:00" title="Introduction"/>
+        <psc:chapter start="1:30.500" title="Main topic" href="https://example.com/main" image="${BASE}/covers/chapter.jpg"/>
+        <psc:chapter start="01:00:00" title="Wrap up"/>
+        <psc:chapter title="Chapter without start"/>
+      </psc:chapters>
+    </item>
+    <item>
+      <guid>video-episode</guid>
+      <title>Video through media content</title>
+      <pubDate>Sun, 01 Jan 2023 10:00:00 +0000</pubDate>
+      <media:content url="${BASE}/media/video.mp4" fileSize="12345678" type="video/mp4" medium="video" duration="90"/>
+      <media:thumbnail url="${BASE}/covers/thumb.jpg"/>
+      <media:description type="plain">Description from media namespace that is the longest</media:description>
+      <dc:date>2023-01-01T10:00:00Z</dc:date>
+    </item>
+    <item>
+      <title>&lt;b&gt;Markup&lt;/b&gt; in the title</title>
+      <link>https://example.com/everything/3</link>
+      <pubDate>Sat, 31 Dec 2022 10:00:00 +0000</pubDate>
+      <description>An episode without a guid</description>
+      <enclosure url="${BASE}/media/unknown.bin" length="not a number" type="application/octet-stream"/>
+    </item>
+    <item>
+      <guid>audio-through-media-content</guid>
+      <pubDate>Fri, 30 Dec 2022 10:00:00 +0000</pubDate>
+      <description>Only a description and no title</description>
+      <enclosure url="${BASE}/media/cover-as-enclosure.jpg" length="100" type="image/jpeg"/>
+      <media:content url="${BASE}/media/first.ogg" medium="audio" isDefault="true"/>
+      <media:content url="${BASE}/media/cover.png" medium="image"/>
+    </item>
+    <item>
+      <guid>future-episode</guid>
+      <title>Episode from the future</title>
+      <pubDate>Fri, 01 Jan 2100 10:00:00 +0000</pubDate>
+      <enclosure url="${BASE}/media/future.mp3" length="20000" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

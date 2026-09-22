@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<rss version="0.91">
+  <channel>
+    <title>Legacy Feed</title>
+    <link>https://example.com/legacy</link>
+    <description>A feed in the oldest RSS dialect</description>
+    <language>en-us</language>
+    <item>
+      <title>Legacy item</title>
+      <link>https://example.com/legacy/1</link>
+      <description>Legacy description</description>
+      <enclosure url="${BASE}/media/legacy.mp3" length="0" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

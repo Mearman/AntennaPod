@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/DTDs/Podcast-1.0.dtd">
+  <channel>
+    <title>Durations</title>
+    <link>https://example.com/durations</link>
+    <itunes:subtitle>Subtitle used as description</itunes:subtitle>
+    <itunes:author>Nested author</itunes:author>
+    <item><guid>seconds</guid><title>Seconds only</title><itunes:duration>90</itunes:duration><itunes:subtitle>Item subtitle</itunes:subtitle><enclosure url="${BASE}/media/a.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>minutes</guid><title>Minutes and seconds</title><itunes:duration>12:34</itunes:duration><itunes:summary>Item summary that is longer than the subtitle</itunes:summary><enclosure url="${BASE}/media/b.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>hours</guid><title>Hours minutes seconds</title><itunes:duration>1:02:03</itunes:duration><enclosure url="${BASE}/media/c.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>fraction</guid><title>Fractional seconds</title><itunes:duration>45.5</itunes:duration><enclosure url="${BASE}/media/d.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>invalid</guid><title>Not a duration</title><itunes:duration>soon</itunes:duration><enclosure url="${BASE}/media/e.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>too-many-parts</guid><title>Too many parts</title><itunes:duration>1:2:3:4</itunes:duration><enclosure url="${BASE}/media/f.mp3" length="20000" type="audio/mpeg"/></item>
+    <item><guid>no-media</guid><title>Duration without media</title><itunes:duration>10</itunes:duration></item>
+    <item><guid>small-length</guid><title>Suspiciously small length</title><enclosure url="${BASE}/media/g.mp3" length="1000" type="audio/mpeg"/></item>
+  </channel>
+</rss>
