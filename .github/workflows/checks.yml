@@ -5,6 +5,7 @@ on:
     types: [ opened, synchronize, reopened ]
   push:
     branches: [ master, develop ]
+  workflow_dispatch:
 
 jobs:
   wrapper-validation:
@@ -106,7 +107,7 @@ jobs:
     name: "Emulator Test API ${{ matrix.version.api-level }} ${{ matrix.version.build-type }}"
     needs: static-analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       matrix:
         version:

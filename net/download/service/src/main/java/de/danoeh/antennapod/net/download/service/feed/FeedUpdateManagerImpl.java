@@ -3,6 +3,7 @@ package de.danoeh.antennapod.net.download.service.feed;
 import android.content.Context;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.Nullable;
 import androidx.work.Constraints;
 import androidx.work.Data;
@@ -34,8 +35,15 @@ public class FeedUpdateManagerImpl extends FeedUpdateManager {
     public static final String EXTRA_EVEN_ON_MOBILE = "even_on_mobile";
     public static final String EXTRA_MANUAL = "manual";
     private static final String TAG = "AutoUpdateManager";
-    private long lastManualRefreshTime = 0;
-    private long lastManualRefreshFeedId = -1;
+    long lastManualRefreshTime = 0;
+    long lastManualRefreshFeedId = -1;
+
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    public void resetManualRefreshCooldown() {
+        lastManualRefreshTime = 0;
+        lastManualRefreshFeedId = -1;
+    }
+
     private static final long REFRESH_COOLDOWN_MS = 20_000;
 
     /**

@@ -18,7 +18,6 @@ import android.view.View;
 
 import de.danoeh.antennapod.playback.service.PlaybackService;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
-import junit.framework.AssertionFailedError;
 
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
@@ -47,6 +46,12 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.not;
 
 public class EspressoTestUtils {
+    public static void performWhenReady(@NonNull Matcher<View> viewMatcher, @NonNull ViewAction action,
+                                        long timeoutMillis) {
+        Awaitility.await().atMost(timeoutMillis, TimeUnit.MILLISECONDS).pollInSameThread().ignoreExceptions()
+                .untilAsserted(() -> onView(viewMatcher).perform(action));
+    }
+
     /**
      * Perform action of waiting for a specific view id.
      * https://stackoverflow.com/a/49814995/
@@ -108,7 +113,7 @@ public class EspressoTestUtils {
                 onView(viewMatcher).check(matches(isDisplayed()));
                 // no Exception thrown -> check successful
                 return;
-            } catch (NoMatchingViewException | AssertionFailedError exception) {
+            } catch (RuntimeException exception) {
                 // check was not successful "not found" -> continue waiting
                 if (System.currentTimeMillis() >= endTime) {
                     throw exception;

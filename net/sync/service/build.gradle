@@ -37,6 +37,5 @@ dependencies {
     testImplementation libs.robolectric
     testImplementation libs.mockito.core
     testImplementation libs.okhttp.mockwebserver
-    testImplementation libs.mockito.core
     testImplementation libs.awaitility
 }
