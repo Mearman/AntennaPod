@@ -12,6 +12,10 @@ android {
     }
 }
 
+project.ext.mutationTargets = "de.danoeh.antennapod.model.*"
+apply from: "../mutation.gradle"
+
+
 dependencies {
     annotationProcessor libs.androidx.annotation
     implementation libs.androidx.media
