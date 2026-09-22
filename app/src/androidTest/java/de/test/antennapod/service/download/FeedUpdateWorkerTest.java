@@ -26,8 +26,11 @@ import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.test.antennapod.util.PlatformNetwork;
 import de.test.antennapod.util.service.download.HTTPBin;
 import org.awaitility.Awaitility;
+import android.os.Build;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -362,6 +365,7 @@ public class FeedUpdateWorkerTest {
 
     @Test
     public void newEpisodeNotificationIsShownWhenEnabledForTheFeed() throws Exception {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 24);
         Feed feed = subscribeWithoutNewestEpisode("Notified");
         feed.getPreferences().setShowEpisodeNotification(true);
         DBWriter.setFeedPreferences(feed.getPreferences()).get();
@@ -374,6 +378,7 @@ public class FeedUpdateWorkerTest {
 
     @Test
     public void newEpisodeNotificationIsNotShownWhenDisabledForTheFeed() throws Exception {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 24);
         Feed silent = subscribeWithoutNewestEpisode("Silent");
         Feed notified = subscribeWithoutNewestEpisode("Also notified");
         notified.getPreferences().setShowEpisodeNotification(true);
