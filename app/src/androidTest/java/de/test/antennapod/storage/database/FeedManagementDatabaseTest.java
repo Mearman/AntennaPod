@@ -14,6 +14,7 @@ import de.danoeh.antennapod.model.feed.FeedItemFilter;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.FeedOrder;
 import de.danoeh.antennapod.model.feed.FeedPreferences;
+import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.model.feed.SubscriptionsFilter;
 import de.danoeh.antennapod.model.feed.VolumeAdaptionSetting;
@@ -174,6 +175,7 @@ public class FeedManagementDatabaseTest {
         DBWriter.markItemsPlayed(FeedItem.PLAYED, false, Collections.singletonList(reload(feed).getItemAtIndex(0)))
                 .get();
 
+        UserPreferences.setAllowMobileFeedRefresh(true);
         DBWriter.setFeedState(context, reload(feed), Feed.STATE_SUBSCRIBED).get();
 
         Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> reload(feed).getPreferences().getKeepUpdated());

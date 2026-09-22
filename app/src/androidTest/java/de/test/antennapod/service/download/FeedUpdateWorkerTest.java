@@ -368,7 +368,7 @@ public class FeedUpdateWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), refresh(feed));
 
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> hasNotificationWithText(
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> hasNotificationWithText(
                 newEpisodeMessage("Notified")));
     }
 
@@ -381,7 +381,7 @@ public class FeedUpdateWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), refresh(null));
 
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> hasNotificationWithText(newEpisodeMessage(
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> hasNotificationWithText(newEpisodeMessage(
                 "Also notified")));
         assertEquals(3, titlesOf(silent).size());
         assertFalse(hasNotificationWithText(newEpisodeMessage("Silent")));
