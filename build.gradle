@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.spotbugs) apply false
+    alias(libs.plugins.errorprone) apply false
     id 'checkstyle'
     alias(libs.plugins.ktlint) apply false
 }

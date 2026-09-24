@@ -88,6 +88,23 @@ tasks.withType(Test).configureEach {
     }
 }
 
+apply plugin: 'net.ltgt.errorprone'
+
+dependencies {
+    errorprone libs.errorprone.core
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        disableAllChecks = true
+        disableWarningsInGeneratedCode = true
+        excludedPaths = ".*/build/generated/.*"
+        error("ArrayEquals", "ArrayHashCode", "EqualsGetClass", "EqualsHashCode", "EqualsIncompatibleType",
+                "EqualsNaN", "EqualsNull", "EqualsReference", "EqualsUnsafeCast", "EqualsUsingHashCode",
+                "EqualsWrongThing", "NonOverridingEquals", "ReferenceEquality", "UndefinedEquals")
+    }
+}
+
 apply plugin: 'com.github.spotbugs'
 
 spotbugs {
