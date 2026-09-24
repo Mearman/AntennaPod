@@ -68,3 +68,29 @@ tasks.register('coverageReport', JacocoReport) {
         summary.text = (["| Suite | Lines | Branches |", "| --- | --- | --- |"] + rows).join("\n") + "\n"
     }
 }
+
+tasks.register('uncoveredOverrides') {
+    group = "verification"
+    def suite = project.findProperty("coverageSuite")
+    def suiteName = suite ?: "all"
+    def coverageXml = layout.buildDirectory.file("reports/coverage/${suiteName}/jacoco.xml")
+    def reportFile = layout.buildDirectory.file("reports/coverage/${suiteName}/uncovered-overrides.txt")
+    dependsOn tasks.named('coverageReport')
+    inputs.file(coverageXml)
+    outputs.file(reportFile)
+    doLast {
+        def slurper = new groovy.xml.XmlSlurper(false, false, true)
+        slurper.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        def uncovered = []
+        slurper.parse(coverageXml.get().asFile).'**'.findAll { it.name() == "class" }.each { type ->
+            type.method.findAll { it.@name == "equals" || it.@name == "hashCode" }.each { method ->
+                def instructions = method.counter.find { it.@type == "INSTRUCTION" }
+                if (instructions.@covered.toInteger() == 0) {
+                    uncovered << "${type.@name.toString().replace('/', '.')}.${method.@name}".toString()
+                }
+            }
+        }
+        reportFile.get().asFile.text = uncovered.sort().join("\n") + "\n"
+        logger.lifecycle("${uncovered.size()} equals or hashCode overrides never executed, listed in ${reportFile.get().asFile}")
+    }
+}
