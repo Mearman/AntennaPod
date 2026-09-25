@@ -73,6 +73,13 @@ As a developer contributing to AntennaPod, we ask that you [test](https://antenn
 * `./gradlew testPlayDebugUnitTest`       # all projects
 * `./gradlew :app:testPlayDebugUnitTest`  # specific project - list project names with `./gradlew projects`
 
+### Measuring test coverage
+Coverage is only collected when the `coverage` property is set. Each run is stored under a suite name (`-PcoverageSuite=<name>`, default `unit`).
+1. `./gradlew testPlayDebugUnitTest -Pcoverage -PcoverageSuite=unit`
+2. `./gradlew coverageReport -PcoverageSuite=unit` (leave out `-PcoverageSuite` to merge all suites)
+
+The reports are written to `build/reports/coverage/<suite>/`, with a summary table in `build/reports/coverage/summary.md`. Coverage of the instrumented tests is reported as the suite `e2e` after running `./gradlew connectedPlayDebugAndroidTest -Pcoverage`.
+
 ### Running integration tests
 
 #### Using Android Studio
